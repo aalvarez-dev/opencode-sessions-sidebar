@@ -35,7 +35,8 @@ See the [behavior specification](docs/specification.md) for the agreed scope and
 
 The [performance and transparency requirements](docs/performance.md) define the runtime design
 constraints and measurements required before release. The component probe measures the adapter
-without rendering; it does not establish terminal latency or stock-OpenCode process overhead.
+without rendering. A separate stock-TUI comparison measures headless activation, idle process cost,
+and lifecycle cleanup; neither establishes the future sidebar's input-to-paint latency.
 
 See [V1 adapter validation](docs/v1-adapter-validation.md) for the exact scope, reproducible checks,
 and outstanding compatibility gates. The adapter does not infer execution starts from busy or

@@ -2,9 +2,10 @@
 
 ## Status and boundaries
 
-This repository is a project foundation. It does not yet provide an installable, working TUI plugin.
-The boundaries below guide implementation; a documented host capability is not evidence that the
-sidebar has exercised it successfully.
+This repository contains a portable core and a headless OpenCode V1 adapter. It does not yet provide
+an installable, rendered sidebar. The boundaries below guide implementation; a documented host
+capability is not evidence that the sidebar has exercised it successfully. Recorded runtime evidence
+and remaining gates are listed in [V1 adapter validation](v1-adapter-validation.md).
 
 The product is a session organizer. Pins, the Later list, and completion marks are visual
 organization features. Moving a session to Later does not schedule or run it. Marking a session
@@ -24,7 +25,7 @@ The core can be tested with ordinary values and fake ports. Host objects are nor
 reach it. A second host adapter should reuse those rules without teaching the core about another SDK
 or UI framework.
 
-OpenCode V1 is the first planned adapter. OpenCode V2 belongs in this same repository if
+OpenCode V1 is the first implemented adapter. OpenCode V2 belongs in this same repository if
 implemented, with a separate adapter and its own validation. No V2 scaffolding or compatibility
 claim is needed until that work starts.
 
@@ -160,8 +161,8 @@ independently disableable; built-in marks, pins, Later actions, and navigation m
 implicitly.
 
 See [performance and transparent behavior](performance.md) for the full requirements and the
-controlled stock-OpenCode comparison. These are planned runtime gates, not measured properties of
-the current foundation.
+controlled stock-OpenCode comparison. Treat the recorded headless measurements separately from the
+future rendered sidebar's responsiveness.
 
 ## Evidence before release
 
@@ -172,7 +173,7 @@ compatibility.
 
 Runtime validation also requires predeclared performance budgets, repeatable baseline comparisons,
 and lifecycle/resource measurements described in [performance.md](performance.md). Define the
-environment and budgets before accepting the adapter; no runtime performance results exist yet.
+environment and budgets before measurement, and keep the scope of each result explicit.
 
 See [the V1 adapter notes](../src/adapters/opencode-v1/README.md) for the researched host API and
 [the UI notes](../src/ui/README.md) for terminal layout constraints.
