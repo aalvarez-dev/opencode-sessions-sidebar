@@ -1,8 +1,9 @@
 # Sessions sidebar specification
 
 This is the agreed product direction. It is **not a list of currently available features or a
-released extension API**. The initial repository implements only the host-independent foundation
-described in the README; the adapter, interface, storage, and event delivery are subsequent work.
+released extension API**. The repository implements the host-independent foundation and a headless
+V1 adapter described in the README. Interface, storage, and public event delivery remain subsequent
+work; a headless adapter does not establish complete plugin compatibility.
 
 ## Product and compatibility
 

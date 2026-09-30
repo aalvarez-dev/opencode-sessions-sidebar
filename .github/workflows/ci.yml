@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   check:
-    name: Foundation checks (${{ matrix.os }})
+    name: Library checks (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:

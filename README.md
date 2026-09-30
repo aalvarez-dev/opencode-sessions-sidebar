@@ -5,9 +5,11 @@ attention, and customizable completion marks.
 
 ## Status
 
-This repository is an early development foundation, **not an installable OpenCode plugin yet**. It
-contains a host-independent domain model, completion-policy and Later-list behavior, and tests. The
-OpenCode adapter, TUI, persistence, event delivery, and extension actions are still planned.
+This repository contains development libraries, **not an installable OpenCode sidebar yet**. The
+portable core implements completion policies and the manual Later list. The headless V1 adapter adds
+scoped session snapshots, incremental activity/attention, descendant summaries, lifecycle cleanup,
+and native session actions. TUI rendering, persistence, the public extension event bus, and
+extension actions remain planned.
 
 The first integration targets stock **OpenCode V1** through its public APIs. The minimum supported
 release will be published after integration and runtime testing. A future V2 adapter can live in
@@ -32,7 +34,12 @@ See the [behavior specification](docs/specification.md) for the agreed scope and
 [roadmap](docs/roadmap.md) for implementation and release gates.
 
 The [performance and transparency requirements](docs/performance.md) define the runtime design
-constraints and measurements required before release. Runtime performance has not been measured yet.
+constraints and measurements required before release. The component probe measures the adapter
+without rendering; it does not establish terminal latency or stock-OpenCode process overhead.
+
+See [V1 adapter validation](docs/v1-adapter-validation.md) for the exact scope, reproducible checks,
+and outstanding compatibility gates. The adapter does not infer execution starts from busy or
+message events, so automatic completion reopening is not wired to this host yet.
 
 The [foundation examples](examples/README.md) demonstrate the current experimental completion
 policies.
@@ -44,12 +51,17 @@ Use Bun **1.3.14**, matching the pinned project toolchain.
 ```sh
 bun install --frozen-lockfile
 bun run check
+bun run benchmark:v1
 ```
 
 The check command runs formatting checks, type checks, architectural boundary checks, tests, and the
 build. Use `bun run format` to apply the project's formatting rules or `bun run format:check` to
 check formatting alone. There are no npm installation instructions yet: the initial build is a
 development artifact, not a published plugin.
+
+The core and headless adapter compile to separate ESM entrypoints. OpenCode SDK/plugin packages are
+development dependencies for public type checking and test harnesses; the built adapter does not
+import or bundle the OpenCode, Solid, or OpenTUI runtimes.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before making changes. Source code, documentation, and
 contributions use English.
