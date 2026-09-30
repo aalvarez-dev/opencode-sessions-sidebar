@@ -25,6 +25,15 @@ function assertSequence(sequence: number): void {
   }
 }
 
+function assertExecutionSequence(sequence: number): void {
+  assertSequence(sequence);
+  if (sequence === 0) {
+    throw new RangeError(
+      "Execution event sequences start at 1; 0 is reserved for the initial frontier",
+    );
+  }
+}
+
 function withFrontier(state: CompletionState, sequence: number): CompletionState {
   assertSequence(sequence);
   return sequence > state.executionSequence
@@ -51,6 +60,7 @@ function changeMark(
 ): CompletionResult {
   if (done === state.done) return { state };
   const revision = state.revision + 1;
+  const { eventId, ...changeContext } = snapshotContext(context);
   return {
     state: Object.freeze({
       ...state,
@@ -59,8 +69,9 @@ function changeMark(
       markEventId: done ? context.eventId : null,
     }),
     change: Object.freeze({
-      ...snapshotContext(context),
+      ...changeContext,
       type: "completion.changed",
+      causedByEventId: eventId,
       sessionKey: state.sessionKey,
       before: state.done,
       after: done,
@@ -120,6 +131,9 @@ export function applyCompletionActivity(
   activity: CompletionActivity,
   policy: CompletionPolicy = { mode: "on-execution" },
 ): CompletionResult {
+  if (activity.type === "execution.started" || activity.type === "execution.finished") {
+    assertExecutionSequence(activity.executionSequence);
+  }
   // Expected revisions guard requests/results, not newly confirmed execution facts.
   if (
     activity.type !== "execution.started" &&
@@ -134,11 +148,9 @@ export function applyCompletionActivity(
 
   let next = state;
   if (activity.type === "execution.started") {
-    assertSequence(activity.executionSequence);
     if (activity.executionSequence <= state.executionSequence) return { state };
     next = withFrontier(state, activity.executionSequence);
   } else if (activity.type === "execution.finished") {
-    assertSequence(activity.executionSequence);
     if (activity.executionSequence < state.executionSequence) return { state };
     next = withFrontier(state, activity.executionSequence);
   }

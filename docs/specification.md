@@ -6,9 +6,8 @@ described in the README; the adapter, interface, storage, and event delivery are
 
 ## Product and compatibility
 
-Provide an independent sidebar plugin for stock OpenCode V1 using public APIs. Installation must not
-require the author's private configuration repository, personal scripts, custom OpenCode patches, or
-services.
+Provide an independent sidebar plugin for stock OpenCode V1 using public APIs. Installation requires
+only stock OpenCode and documented dependencies. Optional integrations are configured separately.
 
 The domain model is shared. OpenCode V1 integration belongs in its own adapter. A future V2 adapter
 may share this repository, with separate entry points or packages if dependency and loading
@@ -111,6 +110,31 @@ The proposed versioned envelope contains:
 The payload varies by type. These names and fields are proposed and require contract tests before
 becoming a stable public API.
 
+### Transition results and delivered events
+
+The current core returns immutable transition descriptions; it does not allocate public event IDs,
+timestamps, or deliver notifications. The future coordinator owns that envelope and the applicable
+commit guarantee. Its mapping is explicit:
+
+| Current transition result                  | Proposed delivered event     | Mapping                                                                          |
+| ------------------------------------------ | ---------------------------- | -------------------------------------------------------------------------------- |
+| `completion.changed`                       | `session.completion.changed` | Allocate a new envelope `id`; use `change.causedByEventId` as its `causationId`. |
+| `queue.changed` with `action: "added"`     | `queue.added`                | Add envelope identity and the coordinator's initiating action context.           |
+| `queue.changed` with `action: "removed"`   | `queue.removed`              | Include the initiating action or cleanup reason.                                 |
+| `queue.changed` with `action: "reordered"` | `queue.reordered`            | Describe the resulting order once per actual change.                             |
+
+An input can cause multiple state changes. Its identity is a causal reference, not a unique ID for
+each delivered event. Consumers must deduplicate delivered events by their envelope `id`, not by
+`causationId`. No-op transition results do not create change events.
+
+The core's `markEventId` and workflow `causedByEventId` refer to the input that established the
+current mark, together with its revision. They are not public envelope IDs. The future coordinator
+must preserve or explicitly map that causal reference when exposing workflow helpers; extensions
+must not have to guess an association from names or timing. This mapping needs contract tests before
+event subscriptions become public.
+
+### Proposed event families
+
 | Event family               | Proposed events                                                                                                     |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | Session facts              | `session.created`, `session.selected`, `session.renamed`, `session.deleted`                                         |
@@ -162,6 +186,6 @@ cell-height preferences are optional user settings, not changes made by this plu
 
 ## Out of scope for the first release
 
-Private checkout/report/publish scripts, autonomous execution, Run all, cron jobs, service-specific
+External workflow orchestration, autonomous execution, Run all, scheduling, service-specific
 integrations, a durable automation engine, and an unvalidated V2 adapter. The sidebar may expose
 events that independent extensions use to implement such workflows.

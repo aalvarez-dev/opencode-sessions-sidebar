@@ -31,6 +31,9 @@ this repository and share the domain model; V2 support is not currently implemen
 See the [behavior specification](docs/specification.md) for the agreed scope and the
 [roadmap](docs/roadmap.md) for implementation and release gates.
 
+The [performance and transparency requirements](docs/performance.md) define the runtime design
+constraints and measurements required before release. Runtime performance has not been measured yet.
+
 The [foundation examples](examples/README.md) demonstrate the current experimental completion
 policies.
 

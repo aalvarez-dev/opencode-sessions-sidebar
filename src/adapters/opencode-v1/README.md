@@ -52,6 +52,19 @@ Normalize host records into core inputs. Preserve unknown or unavailable fields 
 than guessing. In particular, `busy` is not a run identifier, and `idle` is not evidence that the
 user's task was completed.
 
+### Execution frontier contract
+
+The foundation reserves `executionSequence: 0` for the frontier before any confirmed execution.
+`execution.started` and `execution.finished` require positive safe integers, beginning at 1; both
+reject 0 with a `RangeError`. Explicit mark requests may carry frontier 0 when no execution has been
+confirmed. Replayed or older positive sequences are handled by the existing state guards.
+
+This is an input contract, not evidence that the host provides such a sequence. The adapter must
+establish reliable ordering and reconcile it across restarts. Do not manufacture it by incrementing
+on busy notifications. Unknown activity remains visible as activity without fabricating a start or
+finish. Custom policies receive the immutable state from before the incoming activity; the returned
+state incorporates accepted execution evidence even when the policy keeps the mark unchanged.
+
 ## Persistence and remote identity
 
 Use plugin-namespaced state scoped to server, project, and session. Do not copy host-native pin
@@ -77,6 +90,34 @@ Publish built artifacts; the documented npm installation path uses `--ignore-scr
 required Solid compilation transform and share the host's Solid/OpenTUI runtime rather than bundling
 a second copy.
 
+### Loading and update validation
+
+Keep source modules separate for maintainability. Test the built TUI artifact and its imports in the
+actual host before choosing the final distribution shape. The v1.18.30 test suite exercises
+directory-to-`index.ts` loading, so a blanket statement that local directories cannot load is not
+supported. That test does not exercise this plugin's transitive modules or Solid transform.
+
+The researched `plugin-meta.json` implementation records loading metadata and an update fingerprint;
+it is not the entrypoint resolver. Runtime code resolves and imports modules before recording that
+metadata. Local fingerprints do not cover the full dependency graph. Test updates rather than
+requiring users to delete this host-owned file. Failed dynamic imports may also be cached within a
+process, which is a separate loader concern.
+
+Merged configuration deduplicates by npm package name or exact local URL. Distinct entries can still
+expose the same plugin ID; the runtime rejects the later registration and reports a duplicate-ID
+error. Installation instructions must avoid simultaneous source and packaged registrations.
+
+Required scenarios, still untested here:
+
+- Load the packaged TUI entrypoint on a fresh stock installation, including transitive modules and
+  the shared Solid/OpenTUI runtime. Test each documented local and package installation form.
+- Upgrade after an entrypoint move, a rebuild, and a transitive-module-only change, with ordinary
+  host metadata present. Verify behavior after restart and any claimed reload mechanism.
+- Combine global and project registrations, including identical specs and distinct paths with the
+  same plugin ID. Confirm one active sidebar and actionable diagnostics for rejected duplicates.
+- Recover from a missing dependency or failed import using the documented recovery procedure;
+  distinguish process import caching from metadata and avoid destructive cache-cleaning advice.
+
 OpenCode V2 has a different plugin entrypoint and configuration contract. A future V2 adapter should
 reuse the core in this repository; these V1 notes do not imply that one bundle can load into both
 runtimes.
@@ -87,4 +128,9 @@ runtimes.
 - [SDK data and event types, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/sdk/js/src/v2/gen/types.gen.ts)
 - [SDK client methods, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/sdk/js/src/v2/gen/sdk.gen.ts)
 - [TUI plugin loading and package specification, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/specs/tui-plugins.md)
+- [Directory entrypoint test, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/test/cli/tui/plugin-loader-entrypoint.test.ts)
+- [Loader and import failure handling, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/plugin/loader.ts)
+- [Plugin metadata, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/plugin/meta.ts)
+- [Configuration deduplication, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/config/plugin.ts)
+- [TUI activation and duplicate IDs, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/plugin/tui/runtime.ts)
 - [OpenCode V2 CLI plugin documentation](https://opencode.ai/v2/docs/build/plugins/cli/)

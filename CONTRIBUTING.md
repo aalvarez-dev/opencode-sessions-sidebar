@@ -22,7 +22,7 @@ only on a build or a unit test.
   rendering, shell commands, and filesystem access.
 - Put host-specific behavior behind an adapter and plugin storage behind a storage interface.
 - Do not edit OpenCode's private session files or depend on private application internals.
-- Keep personal automation and service-specific integrations outside the core.
+- Keep external automation and service-specific integrations outside the core.
 - Do not publish packages, create releases, or change repository settings as part of an unrelated
   implementation change.
 
@@ -38,3 +38,8 @@ include an example and explain ordering, errors, disposal, and compatibility.
 
 Preserve license notices and attribution when reusing code. Contributions are made under this
 repository's MIT license.
+
+Use synthetic examples and fixtures. Do not include real session contents, credentials, local paths,
+nonpublic repository or service identifiers, or descriptions of private environments in code, docs,
+PR text, or logs. Check the Git author and committer addresses before publishing; use a verified
+public address or the account's GitHub `noreply` address.

@@ -5,13 +5,14 @@ import {
   setCompletion,
   type CompletionActivity,
   type CompletionPolicy,
+  type CompletionPolicyContext,
   type CompletionState,
   type WorkflowCorrelation,
 } from "../src/core";
 
 const user = { type: "user" } as const;
 const host = { type: "host" } as const;
-const reporter = { type: "extension", id: "checkout" } as const;
+const reporter = { type: "extension", id: "example-report" } as const;
 
 function mark(
   state = createCompletionState("server-a/project/session-1"),
@@ -38,13 +39,64 @@ function started(
 function correlation(state: CompletionState): WorkflowCorrelation {
   return {
     workflowId: "report-run-1",
-    name: "checkout",
+    name: "example-report",
     causedByEventId: state.markEventId!,
     markRevision: state.revision,
   };
 }
 
 describe("visual completion", () => {
+  test("zero is a marking frontier, never a valid start or finish sequence", () => {
+    const initial = createCompletionState("session");
+    const marked = mark(initial, 0);
+    expect(initial.executionSequence).toBe(0);
+    expect(marked.done).toBe(true);
+
+    for (const activity of [
+      started(0),
+      {
+        type: "execution.finished",
+        executionSequence: 0,
+        eventId: "invalid-finish",
+        origin: host,
+        expectedRevision: marked.revision,
+      },
+      {
+        type: "execution.finished",
+        executionSequence: 0,
+        eventId: "invalid-stale-finish",
+        origin: host,
+        expectedRevision: marked.revision - 1,
+      },
+    ] satisfies CompletionActivity[]) {
+      expect(() => applyCompletionActivity(marked, activity)).toThrow(
+        "Execution event sequences start at 1",
+      );
+    }
+    expect(applyCompletionActivity(marked, started(1)).state.done).toBe(false);
+  });
+
+  test("change descriptions identify their cause without claiming a unique output event ID", () => {
+    const input = { eventId: "shared-input", origin: user, executionSequence: 0 };
+    const marked = setCompletion(createCompletionState("session"), { ...input, done: true });
+    const cleared = setCompletion(marked.state, { ...input, done: false });
+    expect(marked.change).toMatchObject({
+      causedByEventId: input.eventId,
+      before: false,
+      after: true,
+      revision: 1,
+    });
+    expect(cleared.change).toMatchObject({
+      causedByEventId: input.eventId,
+      before: true,
+      after: false,
+      revision: 2,
+    });
+    expect(marked.change).not.toHaveProperty("eventId");
+    expect(cleared.change).not.toHaveProperty("eventId");
+    expect(marked.state.markEventId).toBe(input.eventId);
+  });
+
   test("explicit marking during existing work survives observations and replays of that execution", () => {
     const active = applyCompletionActivity(createCompletionState("session"), started(8)).state;
     const marked = mark(active, 8);
@@ -171,6 +223,52 @@ describe("visual completion", () => {
     }
   });
 
+  test("a stale runtime observation cannot invoke a policy against a newer manual choice", () => {
+    const marked = mark();
+    let calls = 0;
+    const result = applyCompletionActivity(
+      marked,
+      {
+        type: "runtime.observed",
+        status: "idle",
+        eventId: "old-snapshot",
+        origin: host,
+        expectedRevision: marked.revision - 1,
+      },
+      {
+        mode: "custom",
+        decide: () => {
+          calls += 1;
+          return "clear";
+        },
+      },
+    );
+    expect(result.state).toBe(marked);
+    expect(result.change).toBeUndefined();
+    expect(calls).toBe(0);
+  });
+
+  test("a confirmed finish advances the frontier after missed starts without changing the mark", () => {
+    const marked = mark();
+    const finished = applyCompletionActivity(marked, {
+      type: "execution.finished",
+      executionSequence: 3,
+      eventId: "finish-after-gap",
+      origin: host,
+      expectedRevision: marked.revision,
+    });
+    expect(finished.state).toMatchObject({
+      done: true,
+      executionSequence: 3,
+      revision: marked.revision,
+    });
+    expect(finished.change).toBeUndefined();
+    for (const sequence of [1, 2, 3]) {
+      expect(applyCompletionActivity(finished.state, started(sequence)).state).toBe(finished.state);
+    }
+    expect(applyCompletionActivity(finished.state, started(4)).state.done).toBe(false);
+  });
+
   test("a restarted or out-of-order sequence cannot claim unproven new work", () => {
     const marked = mark(undefined, 42);
     expect(applyCompletionActivity(marked, started(1)).state).toBe(marked);
@@ -180,7 +278,7 @@ describe("visual completion", () => {
 });
 
 describe("correlated completion workflows", () => {
-  const policy: CompletionPolicy = { mode: "on-execution", preserveFor: ["checkout"] };
+  const policy: CompletionPolicy = { mode: "on-execution", preserveFor: ["example-report"] };
 
   test("a preserved report does not suppress concurrent user work or remark it on completion", () => {
     const marked = mark();
@@ -290,29 +388,62 @@ describe("correlated completion workflows", () => {
 });
 
 describe("custom completion decisions", () => {
+  test("custom decisions see the pre-event state while accepted evidence advances the returned frontier", () => {
+    const marked = mark(undefined, 4);
+    let observed: CompletionPolicyContext | undefined;
+    const result = applyCompletionActivity(marked, started(5), {
+      mode: "custom",
+      decide: (context) => {
+        observed = context;
+        return "keep";
+      },
+    });
+    expect(observed).toMatchObject({
+      state: { executionSequence: 4, done: true },
+      activity: { type: "execution.started", executionSequence: 5 },
+    });
+    expect(result.diagnostic).toBeUndefined();
+    expect(result.state).toMatchObject({
+      done: true,
+      executionSequence: 5,
+      revision: marked.revision,
+    });
+    expect(result.change).toBeUndefined();
+  });
+
   test("policy inputs are detached frozen snapshots, including origin and workflow", () => {
     const marked = mark();
     const workflow = correlation(marked);
     const activity = started(1, { origin: reporter, workflow });
+    let observed: CompletionPolicyContext | undefined;
+    const mutationResults: boolean[] = [];
     const result = applyCompletionActivity(marked, activity, {
       mode: "custom",
       decide: (context) => {
-        expect(context.state).not.toBe(marked);
-        expect(context.activity).not.toBe(activity);
-        expect(context.activity.origin).not.toBe(reporter);
-        expect(context.activity.workflow).not.toBe(workflow);
-        expect(Reflect.set(context.state, "done", false)).toBe(false);
-        expect(Reflect.set(context.activity.origin, "id", "changed")).toBe(false);
-        expect(Reflect.set(context.activity.workflow!, "markRevision", 999)).toBe(false);
+        observed = context;
+        mutationResults.push(
+          Reflect.set(context.state, "done", false),
+          Reflect.set(context.activity.origin, "id", "changed"),
+          Reflect.set(context.activity.workflow!, "markRevision", 999),
+        );
         throw new Error("mutation attempt followed by failure");
       },
     });
+    expect(observed).toBeDefined();
+    expect(observed?.state).not.toBe(marked);
+    expect(observed?.activity).not.toBe(activity);
+    expect(observed?.activity.origin).not.toBe(reporter);
+    expect(observed?.activity.workflow).not.toBe(workflow);
+    expect(mutationResults).toEqual([false, false, false]);
     expect(marked.done).toBe(true);
-    expect(reporter.id).toBe("checkout");
+    expect(reporter.id).toBe("example-report");
     expect(workflow.markRevision).toBe(marked.revision);
     expect(result.state.done).toBe(true);
     expect(result.change).toBeUndefined();
-    expect(result.diagnostic?.code).toBe("policy-error");
+    expect(result.diagnostic).toEqual({
+      code: "policy-error",
+      message: "mutation attempt followed by failure",
+    });
   });
 
   test("custom policies can mark, clear, keep, or delegate without changing the default policy", () => {
@@ -375,6 +506,24 @@ describe("custom completion decisions", () => {
     expect(failed.diagnostic).toEqual({ code: "policy-error", message: "broken policy" });
     expect(applyCompletionActivity(failed.state, started(1), policy).state).toBe(failed.state);
     expect(calls).toBe(1);
+  });
+
+  test("an invalid JavaScript policy decision preserves the mark and reports the contract violation", () => {
+    const marked = mark();
+    const policy: CompletionPolicy = {
+      mode: "custom",
+      // @ts-expect-error Simulate a JavaScript caller violating the typed decision contract.
+      decide: () => "unsupported-decision",
+    };
+    const result = applyCompletionActivity(marked, started(1), policy);
+    expect(result.state).toMatchObject({
+      done: true,
+      executionSequence: 1,
+      revision: marked.revision,
+    });
+    expect(result.change).toBeUndefined();
+    expect(result.diagnostic?.code).toBe("invalid-policy-decision");
+    expect(applyCompletionActivity(result.state, started(1), policy).state).toBe(result.state);
   });
 
   test("async policies are rejected by types and runtime; their delayed answer is never applied", async () => {

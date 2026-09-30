@@ -11,6 +11,7 @@ export type EventOrigin =
 export interface WorkflowCorrelation {
   readonly workflowId: string;
   readonly name: string;
+  /** Input that established the mark, equal to its change.causedByEventId. */
   readonly causedByEventId: string;
   readonly markRevision: number;
 }
@@ -22,10 +23,13 @@ export interface CompletionState {
   readonly revision: number;
   /**
    * Highest confirmed execution sequence observed or acknowledged at marking.
-   * The host must supply a reliable per-session monotonic sequence and reconcile
-   * it across restarts. A clock, busy snapshot, or reset counter is not enough.
+   * Zero is the reserved frontier before any execution. Execution events are
+   * 1-based. The host must supply a reliable per-session monotonic sequence and
+   * reconcile it across restarts. A clock, busy snapshot, or reset counter is
+   * not enough.
    */
   readonly executionSequence: number;
+  /** Input that established the mark, not an ID assigned by a future event dispatcher. */
   readonly markEventId: string | null;
 }
 
@@ -39,7 +43,7 @@ export interface CompletionEventContext {
 
 export interface SetCompletionInput extends CompletionEventContext {
   readonly done: boolean;
-  /** Current confirmed execution frontier, including work already in flight. */
+  /** Current confirmed frontier, including work in flight; 0 before any execution. */
   readonly executionSequence: number;
 }
 
@@ -48,10 +52,12 @@ export type CompletionActivity = CompletionEventContext &
     | {
         /** Only emit for a confirmed new execution, not a busy observation. */
         readonly type: "execution.started";
+        /** Positive safe integer; 0 is reserved for the pre-execution frontier. */
         readonly executionSequence: number;
       }
     | {
         readonly type: "execution.finished";
+        /** Positive safe integer, using the same 1-based sequence as its start. */
         readonly executionSequence: number;
         /** Captured before the work; late results cannot overwrite a new mark. */
         readonly expectedRevision: number;
@@ -72,7 +78,9 @@ export type CompletionActivity = CompletionEventContext &
 export type CompletionDecision = "mark" | "clear" | "keep" | "default";
 
 export interface CompletionPolicyContext {
+  /** Immutable snapshot before this activity; its frontier has not advanced yet. */
   readonly state: Readonly<CompletionState>;
+  /** Incoming fact; accepted execution evidence advances the returned state frontier. */
   readonly activity: Readonly<CompletionActivity>;
   readonly defaultDecision: Exclude<CompletionDecision, "default">;
 }
@@ -91,8 +99,10 @@ export type CompletionPolicy =
       readonly decide: (context: CompletionPolicyContext) => CompletionDecision;
     };
 
-export interface CompletionChange extends CompletionEventContext {
+export interface CompletionChange extends Omit<CompletionEventContext, "eventId"> {
   readonly type: "completion.changed";
+  /** Input identity causing this change, not a unique identity for the output. */
+  readonly causedByEventId: string;
   readonly sessionKey: SessionKey;
   readonly before: boolean;
   readonly after: boolean;

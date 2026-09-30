@@ -142,12 +142,37 @@ cancel cooperative work, and prevent late responses from updating a disposed ins
 and refresh must reconcile current host state without pretending that every missed transition was
 observed.
 
+## Resource and responsiveness boundaries
+
+Render paths consume normalized state without disk, Git, network, or process operations. Schedule
+asynchronous enrichment outside rendering. Updates should invalidate affected sessions; streamed
+tokens must not cause full-list refreshes or sorts. Use reliable host events to avoid idle polling
+and restrict spinner updates to visible busy rows. Any fallback polling requires documented bounds
+and lifecycle cleanup.
+
+Optional metadata loads progressively without delaying navigation. Bound query concurrency, pending
+work, and caches; deduplicate directory queries and reject late results after disposal or a newer
+request. Persistence contains small organization state rather than copied histories.
+
+Synchronous custom policies must be short and deterministic. Scheduling a listener asynchronously or
+timing out its promise does not isolate its CPU work from the host. Integrations remain explicit and
+independently disableable; built-in marks, pins, Later actions, and navigation must not launch work
+implicitly.
+
+See [performance and transparent behavior](performance.md) for the full requirements and the
+controlled stock-OpenCode comparison. These are planned runtime gates, not measured properties of
+the current foundation.
+
 ## Evidence before release
 
 The first runtime release needs a clean OpenCode installation test, package loading and disposal
 checks, persistence/restart and concurrent-instance checks, and focused remote-server behavior
 checks. Tests of pure core rules do not prove TUI loading, visual correctness, or end-to-end
 compatibility.
+
+Runtime validation also requires predeclared performance budgets, repeatable baseline comparisons,
+and lifecycle/resource measurements described in [performance.md](performance.md). Define the
+environment and budgets before accepting the adapter; no runtime performance results exist yet.
 
 See [the V1 adapter notes](../src/adapters/opencode-v1/README.md) for the researched host API and
 [the UI notes](../src/ui/README.md) for terminal layout constraints.

@@ -2,6 +2,22 @@ import { describe, expect, test } from "bun:test";
 import { addToQueue, createQueue, removeFromQueue, reorderQueue } from "../src/core";
 
 describe("Later organization", () => {
+  test("empty keys are rejected instead of becoming unusable session entries", () => {
+    expect(() => createQueue(["first", ""])).toThrow("Session keys must not be empty");
+    const queue = createQueue(["first"]);
+    expect(() => addToQueue(queue, "")).toThrow("Session keys must not be empty");
+    expect(queue).toEqual(["first"]);
+  });
+
+  test("mutations reject duplicate source entries instead of silently repairing invalid state", () => {
+    const invalid = Object.freeze(["first", "first"]);
+    expect(() => addToQueue(invalid, "second")).toThrow("Queue must contain unique session keys");
+    expect(() => removeFromQueue(invalid, "first")).toThrow(
+      "Queue must contain unique session keys",
+    );
+    expect(invalid).toEqual(["first", "first"]);
+  });
+
   test("restores unique entries in insertion order and retains separate host identities", () => {
     expect(createQueue(["server-a/session-1", "server-b/session-1", "server-a/session-1"])).toEqual(
       ["server-a/session-1", "server-b/session-1"],
