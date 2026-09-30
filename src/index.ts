@@ -1,2 +1,2 @@
-// Foundation API only. The OpenCode TUI entrypoint will be added with its adapter.
+// Portable core API only. Host, organization, and storage libraries have separate entrypoints.
 export * from "./core/index";

@@ -2,7 +2,7 @@
   "name": "opencode-sessions-sidebar",
   "version": "0.1.0-dev.0",
   "private": true,
-  "description": "Extensible sessions sidebar for OpenCode — core and V1 adapter development libraries",
+  "description": "Extensible sessions sidebar for OpenCode — headless development libraries",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -22,7 +22,8 @@
     "benchmark:v1": "bun run scripts/benchmark-v1.ts",
     "benchmark:v1:runtime": "bun run scripts/benchmark-v1-runtime.ts",
     "smoke:v1": "bun run scripts/smoke-v1.ts",
-    "smoke:v1:attention": "bun run scripts/smoke-v1-attention.ts"
+    "smoke:v1:attention": "bun run scripts/smoke-v1-attention.ts",
+    "smoke:organization": "bun run scripts/smoke-organization.ts"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "1.18.30",
@@ -39,6 +40,14 @@
     "./adapters/opencode-v1": {
       "types": "./dist/adapters/opencode-v1/index.d.ts",
       "import": "./dist/adapters/opencode-v1/index.js"
+    },
+    "./organization": {
+      "types": "./dist/organization/index.d.ts",
+      "import": "./dist/organization/index.js"
+    },
+    "./storage/file": {
+      "types": "./dist/storage/file.d.ts",
+      "import": "./dist/storage/file.js"
     }
   }
 }

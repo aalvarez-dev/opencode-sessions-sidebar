@@ -2,10 +2,11 @@
 
 ## Status and boundaries
 
-This repository contains a portable core and a headless OpenCode V1 adapter. It does not yet provide
-an installable, rendered sidebar. The boundaries below guide implementation; a documented host
-capability is not evidence that the sidebar has exercised it successfully. Recorded runtime evidence
-and remaining gates are listed in [V1 adapter validation](v1-adapter-validation.md).
+This repository contains a portable core, a headless OpenCode V1 adapter, and a manual organization
+coordinator with local persistence. It does not yet provide an installable, rendered sidebar. The
+boundaries below guide implementation; a documented host capability is not evidence that the sidebar
+has exercised it successfully. Recorded runtime evidence and remaining gates are listed in
+[V1 adapter validation](v1-adapter-validation.md).
 
 The product is a session organizer. Pins, the Later list, and completion marks are visual
 organization features. Moving a session to Later does not schedule or run it. Marking a session
@@ -65,7 +66,10 @@ stable server identity; a directory string is not a unique server identity eithe
 not become storage keys. Remote paths must not be canonicalized by probing the client's filesystem.
 
 Use a persistence boundary rather than writing OpenCode's database, native pin files, or other
-private state directly. The exact initial persistence backend is not settled by this foundation:
+private state directly. The initial backend now uses asynchronous operations on plugin-owned local
+files with guarded revisions and an atomic-replacement receipt. See
+[storage and events](storage-and-events.md) for locking, migration, and recovery. Alternative host
+storage surfaces remain subject to separate validation:
 
 - The V1 public KV store is suitable to investigate for preferences and local organization state. It
   is shared host state, so keys must be namespaced.
@@ -75,7 +79,7 @@ private state directly. The exact initial persistence backend is not settled by 
   mechanism without validation.
 
 `api.kv.ready` means startup readiness. It must not be interpreted as a durable acknowledgement for
-subsequent writes. A future persistence adapter must state whether a write is merely accepted,
+subsequent writes. Every persistence adapter must state whether a write is merely accepted,
 persisted, rejected, or of unknown outcome. Concurrent edits, conflict detection, migrations, and
 recovery from invalid data must have an explicit policy before a supported runtime is released.
 
@@ -85,12 +89,13 @@ Built-in organization actions pass through the same state-transition boundary wh
 the UI or an extension. Pure transition results are proposed changes; producing one is not proof of
 persistence.
 
-The foundation is not an event dispatcher or a deduplication ledger. Execution sequences reject
-replayed starts, and unchanged marks produce no change description. The future coordinator must
-deduplicate other input event IDs. An asynchronous explicit mark request must carry the revision it
-observed (`expectedRevision`) and its captured execution sequence. A guarded request is also
-rejected when its sequence predates newer work, even if the mark revision has not changed. Omitting
-the guard is reserved for an immediate action against current state, not a delayed workflow result.
+The pure core is not an event dispatcher or a deduplication ledger. Execution sequences reject
+replayed starts, and unchanged marks produce no change description. The organization coordinator
+adds a bounded persisted command ledger and mandatory document-revision guards for manual changes.
+An asynchronous explicit mark request must carry the revision it observed (`expectedRevision`) and
+its captured execution sequence. A guarded request is also rejected when its sequence predates newer
+work, even if the mark revision has not changed. Omitting the guard is reserved for an immediate
+action against current state, not a delayed workflow result.
 
 For an event documented as committed, the coordinator must first obtain the required persistence
 acknowledgement. If the selected backend cannot provide that guarantee, the event contract must
