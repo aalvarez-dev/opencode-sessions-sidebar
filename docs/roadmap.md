@@ -12,12 +12,14 @@ feature status accurate; a build alone does not establish that the plugin works 
 | 5. Extension surface  | Completion-policy configuration, explicit mutation APIs, optional custom menu/palette actions, and examples.       | A report example preserves its own mark exception while a concurrent user task still reopens the session; listener errors and cleanup tested.                                                                                                      |
 | 6. Public release     | Installation instructions, compatibility table, package contents, changelog, and release process.                  | Fresh stock-OpenCode installation works from the packaged artifact; runtime scenarios and predeclared performance budgets pass against a controlled baseline, and known limits are documented.                                                     |
 
-The foundation is the initial delivery. Later stages are planned work, not implemented
-functionality. Publishing a package or release is a separate action after the gates pass.
+The foundation is implemented. Stage 2 has a headless adapter and contract tests; its exact runtime
+evidence and remaining acceptance gates are recorded in
+[V1 adapter validation](v1-adapter-validation.md). Stages 3–6 remain planned. Publishing a package
+or release is a separate action after the gates pass.
 
 The [performance requirements](performance.md) apply across these stages: no blocking render-path
-I/O, event-driven updates, minimal idle work, bounded resources, and explicit integrations. Only
-core behavior has been built and tested; OpenCode runtime overhead has not been measured.
+I/O, event-driven updates, minimal idle work, bounded resources, and explicit integrations. The
+adapter's component probe does not establish stock-OpenCode process overhead or TUI responsiveness.
 
 ## Required runtime scenarios
 

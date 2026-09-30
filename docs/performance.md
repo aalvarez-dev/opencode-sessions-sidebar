@@ -1,8 +1,8 @@
 # Performance and transparent behavior
 
 These are implementation requirements and planned runtime release gates. Only the pure core has been
-built and tested so far. No OpenCode runtime performance has been measured, and this document does
-not claim measured overhead, latency targets, or supported session counts.
+built and tested in the foundation. The V1 adapter adds a separately measured component probe below.
+This document does not claim terminal latency, process overhead, or a supported session count.
 
 ## Implementation requirements
 
@@ -72,3 +72,21 @@ particular, maintain attention visibility under load, keep navigation usable whi
 fails or stalls, and prevent disposed or superseded work from changing the UI. Save the reproducible
 procedure, measurements, and remaining limitations with release validation. Unit tests and a
 successful build alone cannot satisfy this gate.
+
+## V1 component probe (predeclared budgets)
+
+`bun run benchmark:v1` uses Bun 1.3.14, 1,000 synthetic same-directory sessions, an in-memory SDK
+transport, and 10,000 alternating busy/idle events for one session. It has no network or model
+calls. The first measurement environment is Linux x86_64. The following budgets are fixed before
+running the probe; its result must not be described as stock-TUI performance:
+
+- Snapshot activation: at most 250 ms, excluding a real host's network and disk latency.
+- Event handler p95: at most 2 ms on this component workload.
+- No additional SDK requests during the event burst.
+- Each status change invalidates only the affected session in this flat workload.
+- Event deduplication remains bounded and disposal removes every event subscription.
+
+The command prints its environment and measurements. It is an explicit development check rather than
+a timing assertion in cross-platform unit CI. These component budgets do not replace the controlled
+baseline comparison above; terminal rendering, input latency, idle process CPU/memory, and slow
+real-host behavior still require their own recorded runtime results.

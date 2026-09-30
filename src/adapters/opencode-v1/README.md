@@ -6,9 +6,33 @@ OpenCode **1.18.30** is the source-research baseline for this adapter. Its publi
 technical specification contain the capabilities listed below. This does not establish the earliest
 compatible version, a supported version range, or a successful runtime test of this repository.
 
-No executable adapter is supplied by these notes. Before release, exercise the packaged plugin
-against specific unmodified OpenCode versions and publish only the range that the resulting evidence
-supports.
+The executable headless adapter is exported from `index.ts`. Its narrow host port is checked against
+the published 1.18.30 `TuiPluginApi`, with type-only SDK/plugin imports. It does not register a
+sidebar or install a plugin. See
+[validation and limitations](../../../docs/v1-adapter-validation.md) before treating source
+compatibility as runtime support. The packaged sidebar still requires its own stock-installation
+validation before a supported version range is published.
+
+## Implemented boundary
+
+`createV1Adapter(host, scope, limits?)` owns one explicit host/project/directory/workspace scope.
+Pass the live host object so its client getter continues to work. Dispose and recreate when changing
+scope. Subscribe before `start()`, read immutable session records and descendant summaries, and use
+`refresh()` for explicit reconciliation. Incremental status events do not refresh the session list.
+
+The adapter reports unknown/partial coverage, deduplicates a bounded set of event IDs, and fences
+old snapshot/action responses after invalidation or disposal. Network waits have a timeout. It does
+not poll in the background. Observer notifications are read-model changes, not the future versioned
+extension event bus or durable committed organization events.
+
+`create`, `rename`, and `delete` invoke only native session operations. `open` requests navigation;
+`observeRoute()` confirms the host's actual current route. None of these actions sends a prompt. The
+future UI must provide delete confirmation and wire route observation through host reactivity.
+
+Scope is intentionally limited to one exact directory/workspace. Repo-wide worktree aggregation,
+automatic transport-disconnect detection, stable host identity discovery, persistence, and reliable
+execution correlation are not implemented. `busy` and user-message creation never manufacture a core
+execution start; completion policies remain separate until stronger evidence is available.
 
 ## Public host surfaces
 
