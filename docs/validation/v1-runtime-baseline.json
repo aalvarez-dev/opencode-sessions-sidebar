@@ -1,0 +1,633 @@
+{
+  "measurements": [
+    {
+      "size": 25,
+      "repetition": 1,
+      "enabled": false,
+      "bootToProbeReadyMs": 3653.813309,
+      "observationMs": 5002.572660000001,
+      "cpuPercent": 2.1988686117354663,
+      "rssStartMiB": 713.3046875,
+      "rssEndMiB": 713.3046875,
+      "mainThreadContextSwitches": 164,
+      "probe": {
+        "passed": true,
+        "enabled": false,
+        "version": "1.18.30",
+        "activationMs": [],
+        "idleStart": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "idleEnd": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "cycleCounters": [],
+        "finalCounters": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 25,
+      "repetition": 1,
+      "enabled": true,
+      "bootToProbeReadyMs": 3976.082162999999,
+      "observationMs": 5004.494284,
+      "cpuPercent": 1.998203900835947,
+      "rssStartMiB": 723.53125,
+      "rssEndMiB": 723.53125,
+      "mainThreadContextSwitches": 148,
+      "probe": {
+        "passed": true,
+        "enabled": true,
+        "version": "1.18.30",
+        "activationMs": [203.35812499999975, 8.176154000000679, 6.510576000000583],
+        "idleStart": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "idleEnd": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "cycleCounters": [
+          {
+            "reads": 4,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 8,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 12,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          }
+        ],
+        "finalCounters": {
+          "reads": 12,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 25,
+      "repetition": 2,
+      "enabled": true,
+      "bootToProbeReadyMs": 3665.202788999999,
+      "observationMs": 5002.146453999994,
+      "cpuPercent": 2.5988843228699308,
+      "rssStartMiB": 740.49609375,
+      "rssEndMiB": 739.578125,
+      "mainThreadContextSwitches": 150,
+      "probe": {
+        "passed": true,
+        "enabled": true,
+        "version": "1.18.30",
+        "activationMs": [39.0399309999998, 8.406011000000944, 5.3713169999991806],
+        "idleStart": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "idleEnd": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "cycleCounters": [
+          {
+            "reads": 4,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 8,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 12,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          }
+        ],
+        "finalCounters": {
+          "reads": 12,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 25,
+      "repetition": 2,
+      "enabled": false,
+      "bootToProbeReadyMs": 3681.8772129999998,
+      "observationMs": 5002.1663069999995,
+      "cpuPercent": 2.1990472377151216,
+      "rssStartMiB": 721.6796875,
+      "rssEndMiB": 721.6484375,
+      "mainThreadContextSwitches": 123,
+      "probe": {
+        "passed": true,
+        "enabled": false,
+        "version": "1.18.30",
+        "activationMs": [],
+        "idleStart": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "idleEnd": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "cycleCounters": [],
+        "finalCounters": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 25,
+      "repetition": 3,
+      "enabled": false,
+      "bootToProbeReadyMs": 3611.011449999998,
+      "observationMs": 5002.295609000008,
+      "cpuPercent": 2.398898613350617,
+      "rssStartMiB": 715.875,
+      "rssEndMiB": 715.43359375,
+      "mainThreadContextSwitches": 151,
+      "probe": {
+        "passed": true,
+        "enabled": false,
+        "version": "1.18.30",
+        "activationMs": [],
+        "idleStart": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "idleEnd": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "cycleCounters": [],
+        "finalCounters": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 25,
+      "repetition": 3,
+      "enabled": true,
+      "bootToProbeReadyMs": 3678.5296420000086,
+      "observationMs": 5002.212214999992,
+      "cpuPercent": 2.7987617074738647,
+      "rssStartMiB": 714.4765625,
+      "rssEndMiB": 714.46875,
+      "mainThreadContextSwitches": 187,
+      "probe": {
+        "passed": true,
+        "enabled": true,
+        "version": "1.18.30",
+        "activationMs": [25.41120499999988, 7.970642000000225, 6.2551300000013725],
+        "idleStart": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "idleEnd": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "cycleCounters": [
+          {
+            "reads": 4,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 8,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 12,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          }
+        ],
+        "finalCounters": {
+          "reads": 12,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 250,
+      "repetition": 1,
+      "enabled": false,
+      "bootToProbeReadyMs": 3579.424245999995,
+      "observationMs": 5001.803755999994,
+      "cpuPercent": 1.9992787577889957,
+      "rssStartMiB": 715.2578125,
+      "rssEndMiB": 714.953125,
+      "mainThreadContextSwitches": 157,
+      "probe": {
+        "passed": true,
+        "enabled": false,
+        "version": "1.18.30",
+        "activationMs": [],
+        "idleStart": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "idleEnd": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "cycleCounters": [],
+        "finalCounters": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 250,
+      "repetition": 1,
+      "enabled": true,
+      "bootToProbeReadyMs": 3722.7242490000062,
+      "observationMs": 5003.216194000008,
+      "cpuPercent": 2.3984572192564304,
+      "rssStartMiB": 715.21484375,
+      "rssEndMiB": 715.21484375,
+      "mainThreadContextSwitches": 167,
+      "probe": {
+        "passed": true,
+        "enabled": true,
+        "version": "1.18.30",
+        "activationMs": [185.92875800000002, 22.6230570000007, 22.371728000000076],
+        "idleStart": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "idleEnd": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "cycleCounters": [
+          {
+            "reads": 4,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 8,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 12,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          }
+        ],
+        "finalCounters": {
+          "reads": 12,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 250,
+      "repetition": 2,
+      "enabled": true,
+      "bootToProbeReadyMs": 3671.2488659999945,
+      "observationMs": 5001.845174999995,
+      "cpuPercent": 1.999262202273186,
+      "rssStartMiB": 717.15625,
+      "rssEndMiB": 717.15625,
+      "mainThreadContextSwitches": 131,
+      "probe": {
+        "passed": true,
+        "enabled": true,
+        "version": "1.18.30",
+        "activationMs": [37.850179000000026, 23.295562999999675, 15.840661000000182],
+        "idleStart": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "idleEnd": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "cycleCounters": [
+          {
+            "reads": 4,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 8,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 12,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          }
+        ],
+        "finalCounters": {
+          "reads": 12,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 250,
+      "repetition": 2,
+      "enabled": false,
+      "bootToProbeReadyMs": 3598.7349990000075,
+      "observationMs": 5001.806699000008,
+      "cpuPercent": 2.599060855870148,
+      "rssStartMiB": 715.69921875,
+      "rssEndMiB": 715.43359375,
+      "mainThreadContextSwitches": 155,
+      "probe": {
+        "passed": true,
+        "enabled": false,
+        "version": "1.18.30",
+        "activationMs": [],
+        "idleStart": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "idleEnd": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "cycleCounters": [],
+        "finalCounters": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 250,
+      "repetition": 3,
+      "enabled": false,
+      "bootToProbeReadyMs": 3663.075718999986,
+      "observationMs": 5004.3607090000005,
+      "cpuPercent": 2.397908683604445,
+      "rssStartMiB": 724.19921875,
+      "rssEndMiB": 724.19921875,
+      "mainThreadContextSwitches": 129,
+      "probe": {
+        "passed": true,
+        "enabled": false,
+        "version": "1.18.30",
+        "activationMs": [],
+        "idleStart": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "idleEnd": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        },
+        "cycleCounters": [],
+        "finalCounters": {
+          "reads": 0,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    },
+    {
+      "size": 250,
+      "repetition": 3,
+      "enabled": true,
+      "bootToProbeReadyMs": 3510.5700210000214,
+      "observationMs": 5001.836653999984,
+      "cpuPercent": 2.1991921689812215,
+      "rssStartMiB": 716.4765625,
+      "rssEndMiB": 716.7265625,
+      "mainThreadContextSwitches": 150,
+      "probe": {
+        "passed": true,
+        "enabled": true,
+        "version": "1.18.30",
+        "activationMs": [35.52121799999986, 26.07686300000023, 15.187399999998888],
+        "idleStart": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "idleEnd": {
+          "reads": 4,
+          "pending": 0,
+          "eventHandlers": 11,
+          "disposeHooks": 1
+        },
+        "cycleCounters": [
+          {
+            "reads": 4,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 8,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          },
+          {
+            "reads": 12,
+            "pending": 0,
+            "eventHandlers": 0,
+            "disposeHooks": 0
+          }
+        ],
+        "finalCounters": {
+          "reads": 12,
+          "pending": 0,
+          "eventHandlers": 0,
+          "disposeHooks": 0
+        }
+      }
+    }
+  ],
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "kernel": "6.18.44",
+    "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+    "logicalCpus": 9,
+    "memoryGiB": 9.733684539794922,
+    "bun": "1.3.14",
+    "opencode": "1.18.30",
+    "pluginSdk": "1.18.30",
+    "commit": "a739983e133aeb396ad59f3d8d3cd435a8b73963",
+    "workingTreeDirty": true,
+    "harnessAndAdapterSha256": "a638e8fafbd3bdd9737cde644dcfb692215a7017aa68e0f80df8c1afd8bfc72e",
+    "terminal": "Bun POSIX PTY, xterm-256color, 140 columns \u00d7 40 rows",
+    "cache": "New TUI processes and copied seed data per treatment; OS filesystem cache is not flushed.",
+    "scope": "TUI process RSS and aggregate thread CPU only; subprocesses excluded. Common probe in both treatments.",
+    "sizes": [25, 250],
+    "repetitions": 3,
+    "settleMs": 2000,
+    "observationMs": 5000,
+    "clockTicks": 100,
+    "pageSize": 4096,
+    "budgets": {
+      "activationP95Ms": 500,
+      "medianRssDeltaMiB": 32,
+      "medianCpuDeltaPoints": 1
+    }
+  },
+  "results": [
+    {
+      "size": 25,
+      "activationSamples": 3,
+      "activationP95Ms": 203.35812499999975,
+      "repeatedActivationMs": [
+        8.176154000000679, 6.510576000000583, 8.406011000000944, 5.3713169999991806,
+        7.970642000000225, 6.2551300000013725
+      ],
+      "medianRssDeltaMiB": 10.2265625,
+      "medianCpuDeltaPoints": 0.3998370851548092,
+      "deltas": [
+        {
+          "rssMiB": 10.2265625,
+          "cpuPoints": -0.20066471089951943
+        },
+        {
+          "rssMiB": 17.9296875,
+          "cpuPoints": 0.3998370851548092
+        },
+        {
+          "rssMiB": -0.96484375,
+          "cpuPoints": 0.3998630941232477
+        }
+      ],
+      "passed": true
+    },
+    {
+      "size": 250,
+      "activationSamples": 3,
+      "activationP95Ms": 185.92875800000002,
+      "repeatedActivationMs": [
+        22.6230570000007, 22.371728000000076, 23.295562999999675, 15.840661000000182,
+        26.07686300000023, 15.187399999998888
+      ],
+      "medianRssDeltaMiB": 0.26171875,
+      "medianCpuDeltaPoints": -0.1987165146232237,
+      "deltas": [
+        {
+          "rssMiB": 0.26171875,
+          "cpuPoints": 0.39917846146743474
+        },
+        {
+          "rssMiB": 1.72265625,
+          "cpuPoints": -0.5997986535969617
+        },
+        {
+          "rssMiB": -7.47265625,
+          "cpuPoints": -0.1987165146232237
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "caveats": "Three pairs per size, not a confidence interval; warm OS cache, no model inference, no sidebar rendering/input latency, no process-wide timer count or subprocess overhead."
+}

@@ -1,7 +1,7 @@
 /** Real stock-server smoke test. The TUI event/route port is a test bridge, not a loaded TUI. */
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { lstat, mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
+import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createOpencodeClient, type Event } from "@opencode-ai/sdk/v2";
@@ -39,20 +39,40 @@ async function until(check: () => boolean, message: string, budget = 10_000) {
 }
 
 try {
+  // V1's macOS managed preferences bypass its test-directory override. Refuse
+  // those hosts without reading managed content or changing their configuration.
+  if (process.platform === "darwin") {
+    for (const path of [
+      "/Library/Managed Preferences/ai.opencode.managed.plist",
+      join("/Library/Managed Preferences", userInfo().username, "ai.opencode.managed.plist"),
+    ]) {
+      const managed = await lstat(path).catch((error: unknown) => {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+        throw error;
+      });
+      assert(!managed, "Use an unmanaged test host for this isolated probe.");
+    }
+  }
   await Promise.all([
     mkdir(project),
     mkdir(otherProject),
+    mkdir(join(root, "home")),
+    mkdir(join(root, "managed")),
     mkdir(join(config, "opencode"), { recursive: true }),
   ]);
   await writeFile(join(config, "opencode", "opencode.json"), "{}");
   // Allowlist the child environment: no inherited provider credentials or user configuration.
   const env = {
     PATH: process.env.PATH ?? "",
+    OPENCODE_TEST_HOME: join(root, "home"),
+    OPENCODE_TEST_MANAGED_CONFIG_DIR: join(root, "managed"),
     XDG_CONFIG_HOME: config,
     XDG_DATA_HOME: join(root, "data"),
     XDG_CACHE_HOME: join(root, "cache"),
     XDG_STATE_HOME: join(root, "state"),
     OPENCODE_DISABLE_MODELS_FETCH: "true",
+    OPENCODE_DISABLE_AUTOUPDATE: "true",
+    OPENCODE_DISABLE_PROJECT_CONFIG: "true",
   };
   const version = Bun.spawn([executable, "--version"], {
     cwd: project,
@@ -63,24 +83,29 @@ try {
   });
   assert.equal((await new Response(version.stdout).text()).trim(), expectedVersion);
   assert.equal(await version.exited, 0);
-  server = Bun.spawn([executable, "serve", "--pure", "--hostname", "127.0.0.1", "--port", "0"], {
-    cwd: project,
-    env,
-    stdout: "pipe",
-    stderr: "ignore",
-  });
-  let baseUrl: string | undefined;
-  const stdout = server.stdout;
-  assert(stdout && typeof stdout !== "number");
-  const drain = (async () => {
-    let output = "";
-    for await (const chunk of stdout) {
-      output = (output + new TextDecoder().decode(chunk)).slice(-4096);
-      baseUrl ??= output.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
-    }
-  })();
-  await until(() => Boolean(baseUrl), "Stock server did not start.", 45_000);
-  assert(baseUrl);
+  async function startServer(port: string) {
+    server = Bun.spawn([executable, "serve", "--pure", "--hostname", "127.0.0.1", "--port", port], {
+      cwd: project,
+      env,
+      stdout: "pipe",
+      stderr: "ignore",
+    });
+    let baseUrl: string | undefined;
+    const stdout = server.stdout;
+    assert(stdout && typeof stdout !== "number");
+    const drain = (async () => {
+      let output = "";
+      for await (const chunk of stdout) {
+        output = (output + new TextDecoder().decode(chunk)).slice(-4096);
+        baseUrl ??= output.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
+      }
+    })();
+    await until(() => Boolean(baseUrl), "Stock server did not start.", 45_000);
+    assert(baseUrl);
+    return { baseUrl, drain };
+  }
+  let runtime = await startServer("0");
+  const { baseUrl } = runtime;
   const client = createOpencodeClient({ baseUrl });
   const projectResult = await client.project.current(
     { directory: project },
@@ -125,13 +150,13 @@ try {
   };
   const observed: Event[] = [];
   let connected = 0;
-  function connect() {
+  let disconnected = 0;
+  function connect(directory: string, onDisconnect: () => void) {
     const controller = new AbortController();
     streams.add(controller);
-    let streamError: unknown;
     const run = (async () => {
       const subscription = await client.event.subscribe(
-        { directory: project },
+        { directory },
         { signal: controller.signal, sseMaxRetryAttempts: 0 },
       );
       for await (const event of subscription.stream) {
@@ -140,19 +165,27 @@ try {
         if (event.type === "server.connected") connected++;
         for (const listener of listeners.get(event.type) ?? []) listener(event);
       }
-    })().catch((error: unknown) => {
-      if (!controller.signal.aborted) streamError = error;
-    });
+    })()
+      .catch(() => {
+        // An errored stream and an unexpected clean EOF both lose live coverage.
+      })
+      .finally(() => {
+        streams.delete(controller);
+        if (!controller.signal.aborted) {
+          disconnected++;
+          // This bridge owns the SSE transport. The real TUI API has no equivalent
+          // public disconnect observable; do not attribute this signal to the host.
+          onDisconnect();
+        }
+      });
     return {
       async stop() {
         controller.abort();
         await run;
-        streams.delete(controller);
-        if (streamError) throw streamError;
       },
     };
   }
-  let stream = connect();
+  let stream = connect(project, () => adapter?.invalidate());
   await until(() => connected === 1, "Missing real server.connected event.");
   adapter = createV1Adapter(host, {
     hostId: "synthetic-runtime",
@@ -199,10 +232,38 @@ try {
   assert.equal(open.status, "requested");
   adapter.observeRoute();
   assert.equal(adapter.state().selectedSessionId, sessionId);
-  await stream.stop();
-  stream = connect();
+
+  // Stop the real server, rather than injecting a fabricated host event. The SDK
+  // bridge can observe transport loss and conservatively invalidate its adapter.
+  const attentionBeforeDisconnect = adapter.state().attentionCount;
+  assert(server);
+  server.kill("SIGKILL");
+  await server.exited;
+  await runtime.drain;
+  await until(() => disconnected === 1, "SSE transport loss was not observed.");
+  assert.equal(adapter.state().phase, "stale");
+  assert.equal(adapter.state().attentionCoverage, "unknown");
+  assert.equal(adapter.state().attentionCount, attentionBeforeDisconnect);
+  assert(adapter.list().every((session) => session.activity === "unknown"));
+  assert.equal(adapter.summary(sessionId)?.unknown, 2);
+  assert.equal(
+    (await adapter.rename(sessionId, "Synthetic disconnected rename")).status,
+    "unknown",
+  );
+  assert.equal(adapter.get(sessionId)?.title, "Synthetic renamed");
+  await adapter.refresh();
+  assert.equal(adapter.state().phase, "error");
+  assert.equal(adapter.get(sessionId)?.activity, "unknown");
+  assert.equal(adapter.state().attentionCount, attentionBeforeDisconnect);
+
+  runtime = await startServer(new URL(baseUrl).port);
+  assert.equal(runtime.baseUrl, baseUrl);
+  stream = connect(project, () => adapter?.invalidate());
   await until(() => connected === 2, "Reconnect did not emit server.connected.");
   await until(() => adapter?.state().phase === "ready", "Reconnect did not reconcile.");
+  assert.equal(adapter.get(sessionId)?.activity, "idle");
+  assert.equal(adapter.get(sessionId)?.title, "Synthetic renamed");
+  assert.equal(adapter.state().attentionCoverage, "complete");
   assert.equal(adapter.state().executionCorrelation, "unavailable");
   assert.equal((await adapter.delete(sessionId)).status, "succeeded");
   await until(
@@ -219,12 +280,74 @@ try {
     assert(events.length > 0, `Missing real ${type} event.`);
     assert(events.every((event) => typeof event.id === "string" && event.id.startsWith("evt_")));
   }
+  const oldScopeSession = await adapter.create("Synthetic scope survivor");
+  assert.equal(oldScopeSession.status, "succeeded");
+  assert(oldScopeSession.sessionId);
+  const oldScopeId = oldScopeSession.sessionId;
+  assert.equal(adapter.open(oldScopeId).status, "requested");
+  adapter.observeRoute();
+  assert.equal(adapter.state().selectedSessionId, oldScopeId);
   adapter.dispose();
   assert.equal(adapter.state().phase, "disposed");
   assert([...listeners.values()].every((set) => set.size === 0));
+  assert.equal(cleanups.size, 0);
   await stream.stop();
+
+  // Recreate for a different exact directory. The host's selected route still
+  // names the old session, and must not make it selected or actionable here.
+  const disposedAdapter = adapter;
+  const foreignProject = await client.project.current(
+    { directory: otherProject },
+    { signal: lifecycle.signal, throwOnError: true },
+  );
+  assert(foreignProject.data);
+  adapter = createV1Adapter(host, {
+    hostId: "synthetic-runtime",
+    projectId: foreignProject.data.id,
+    directory: otherProject,
+  });
+  await adapter.start();
+  stream = connect(otherProject, () => adapter?.invalidate());
+  await until(() => connected === 3, "Switched scope did not establish its event stream.");
+  await until(() => adapter?.state().phase === "ready", "Switched scope did not reconcile.");
+  assert.equal(adapter.state().selectedSessionId, null);
+  assert.deepEqual(
+    adapter.list().map((session) => session.id),
+    [foreign.data.id],
+  );
+  assert.equal(adapter.get(oldScopeId), undefined);
+  assert.equal(adapter.open(oldScopeId).status, "failed");
+  assert.equal(
+    (await adapter.rename(oldScopeId, "Synthetic out-of-scope rename")).status,
+    "failed",
+  );
+  const previousScope = await client.session.list(
+    { directory: project },
+    { signal: lifecycle.signal, throwOnError: true },
+  );
+  assert(previousScope.data?.some((session) => session.id === oldScopeId));
+  assert.equal(disposedAdapter.state().phase, "disposed");
+  assert.equal(disposedAdapter.list().length, 0);
+  assert.equal(
+    (await adapter.rename(foreign.data.id, "Synthetic switched scope")).status,
+    "succeeded",
+  );
+  await until(
+    () => adapter?.get(foreign.data.id)?.title === "Synthetic switched scope",
+    "Switched scope did not receive its rename.",
+  );
+  assert.equal((await adapter.delete(foreign.data.id)).status, "succeeded");
+  await client.session.delete(
+    { directory: project, sessionID: oldScopeId },
+    { signal: lifecycle.signal, throwOnError: true },
+  );
+  adapter.dispose();
+  assert([...listeners.values()].every((set) => set.size === 0));
+  assert.equal(cleanups.size, 0);
+  await stream.stop();
+  assert.equal(disconnected, 1, "Intentional stream disposal is not an unexpected disconnect.");
   server.kill("SIGKILL");
-  await drain.catch(() => {});
+  await runtime.drain.catch(() => {});
   await server.exited;
   if (testTui) {
     const plugin = join(root, "probe.mjs");
@@ -275,11 +398,11 @@ try {
     assert(result.passed, result.message ?? "Stock TUI probe failed.");
     assert.equal(result.version, expectedVersion);
     console.log(
-      "Stock TUI probe passed: plugin loading, host events, CRUD, real route selection and disposal.",
+      "Stock TUI probe passed: plugin loading, host events, CRUD, real route selection and dispose/recreate within one scope.",
     );
   }
   console.log(
-    `Stock OpenCode ${expectedVersion}: SDK/SSE adapter smoke passed (CRUD, children, directory scope, sparse idle, reconnect, cleanup).`,
+    `Stock OpenCode ${expectedVersion}: SDK/SSE adapter smoke passed (CRUD, children, exact-directory switch, sparse idle, real transport loss, restart/reconcile, cleanup).`,
   );
   console.log(
     "No model inference. Live busy/attention, rendering and performance are separate gates.",

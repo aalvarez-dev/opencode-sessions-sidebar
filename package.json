@@ -20,7 +20,9 @@
     "test": "bun test",
     "build": "bun run scripts/build.ts && tsc -p tsconfig.build.json",
     "benchmark:v1": "bun run scripts/benchmark-v1.ts",
-    "smoke:v1": "bun run scripts/smoke-v1.ts"
+    "benchmark:v1:runtime": "bun run scripts/benchmark-v1-runtime.ts",
+    "smoke:v1": "bun run scripts/smoke-v1.ts",
+    "smoke:v1:attention": "bun run scripts/smoke-v1-attention.ts"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "1.18.30",

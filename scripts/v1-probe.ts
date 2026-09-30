@@ -28,11 +28,12 @@ export default {
       assert.equal(api.app.version, "1.18.30");
       const project = await api.client.project.current({ directory });
       assert(project.data);
-      adapter = createV1Adapter(api, {
+      const scope = {
         hostId: "synthetic-tui-runtime",
         projectId: project.data.id,
         directory,
-      });
+      };
+      adapter = createV1Adapter(api, scope);
       await adapter.start();
       assert.equal(adapter.state().phase, "ready");
       const created = await adapter.create("Synthetic TUI session");
@@ -41,7 +42,7 @@ export default {
       const id = created.sessionId;
       assert(adapter.get(id));
       assert.equal((await adapter.rename(id, "Synthetic renamed")).status, "succeeded");
-      assert.equal(adapter.get(id)?.title, "Synthetic renamed");
+      await until(() => adapter?.get(id)?.title === "Synthetic renamed");
       assert.equal(adapter.open(id).status, "requested");
       await until(() => {
         adapter?.observeRoute();
@@ -64,12 +65,38 @@ export default {
       await until(() => adapter?.get(nativeId)?.title === "Synthetic native rename");
       await api.client.session.delete({ directory, sessionID: nativeId });
       await until(() => !adapter?.get(nativeId));
+
+      // Recreate with the same real host object. The public TUI API does not offer
+      // a directory-switch command, so this is a lifecycle proof within one scope.
+      const previousAdapter = adapter;
+      adapter.dispose();
+      assert.equal(adapter.state().phase, "disposed");
+      adapter = createV1Adapter(api, scope);
+      await adapter.start();
+      assert.equal(adapter.state().phase, "ready");
+      assert.equal(adapter.get(id)?.title, "Synthetic renamed");
+      await api.client.session.update({
+        directory,
+        sessionID: id,
+        title: "Synthetic after recreation",
+      });
+      await until(() => adapter?.get(id)?.title === "Synthetic after recreation");
+      assert.equal(previousAdapter.state().phase, "disposed");
+      assert.equal(previousAdapter.list().length, 0);
+      assert.equal(adapter.open(id).status, "requested");
+      await until(() => {
+        adapter?.observeRoute();
+        return adapter?.state().selectedSessionId === id;
+      });
       assert.equal((await adapter.delete(id)).status, "succeeded");
       adapter.dispose();
       assert.equal(adapter.state().phase, "disposed");
       await result(output, { passed: true, version: api.app.version });
     } catch (error) {
-      await result(output, { passed: false, message: String(error) });
+      await result(output, {
+        passed: false,
+        message: error instanceof Error ? (error.stack ?? error.message) : String(error),
+      });
     } finally {
       adapter?.dispose();
     }

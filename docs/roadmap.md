@@ -50,3 +50,18 @@ permanent product branches merely to distinguish host versions.
 
 Plugin release numbers and supported OpenCode versions are separate. V1 integration is the current
 target; V2 support has no release commitment yet.
+
+## Pending repository workflow decision
+
+Define the branch strategy before enabling repository automation. The candidate is a permissive
+`develop` integration branch and a protected `main`, with promotion by pull request and automatic
+merge only after the required tests pass. This is a proposal, not an enabled policy.
+
+Decide which checks are required, how feature branches reach `develop`, whether promotion also
+requires review, which merge method preserves the desired history, and how hotfixes return to both
+branches. Keep the workflow simple for a small project and ensure a newer commit cannot reuse an
+older successful check.
+
+Until that decision is made, continue using focused task branches and reviewed PRs to `main` under
+the existing contributor instructions. Creating `develop`, changing branch protections, and enabling
+automerge are pending maintenance work.

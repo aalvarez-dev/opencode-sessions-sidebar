@@ -1,8 +1,8 @@
 # Performance and transparent behavior
 
-These are implementation requirements and planned runtime release gates. Only the pure core has been
-built and tested in the foundation. The V1 adapter adds a separately measured component probe below.
-This document does not claim terminal latency, process overhead, or a supported session count.
+These are implementation requirements and runtime release gates. The V1 adapter has component
+measurements and a limited stock-TUI comparison recorded below. These headless workloads do not
+establish rendered-sidebar latency, general process overhead, or a supported session count.
 
 ## Implementation requirements
 
@@ -44,8 +44,8 @@ histories. Any future external reporting requires a separately documented opt-in
 Before accepting the V1 adapter, define the benchmark environment, workload, and release budgets.
 Record the OS, hardware, terminal and dimensions, OpenCode and dependency versions, plugin commit,
 configuration, enabled integrations, warm/cold cache conditions, measurement tools, and repetitions.
-Choose numerical budgets before evaluating acceptance results; this foundation intentionally does
-not invent them.
+Choose numerical budgets for each defined workload before evaluating acceptance results. The
+headless budgets below cover only their stated scope.
 
 Compare stock OpenCode with the plugin disabled against the same installation with the plugin
 enabled. Keep host data, event workloads, and settings equivalent. Use synthetic sessions and
@@ -90,3 +90,61 @@ The command prints its environment and measurements. It is an explicit developme
 a timing assertion in cross-platform unit CI. These component budgets do not replace the controlled
 baseline comparison above; terminal rendering, input latency, idle process CPU/memory, and slow
 real-host behavior still require their own recorded runtime results.
+
+## Headless stock-TUI comparison (predeclared budgets)
+
+The next comparison targets the adapter inside official OpenCode 1.18.30 on Linux, not the future
+rendered sidebar. Use a 140-by-40 `xterm-256color` pseudo-terminal, synthetic datasets of 25 and 250
+sessions, and three paired repetitions per dataset. Alternate baseline/enabled order. Both use the
+same minimal measurement probe and equivalent temporary data/configuration; only the enabled run
+loads the adapter. Use fresh processes with warm operating-system caches, without prompts, model
+inference, optional integrations, or user configuration.
+
+After two seconds of stabilization, observe five seconds of idle. Record the TUI process's RSS and
+CPU time through Linux `/proc`, hardware/kernel, Bun and OpenCode versions, source revision, each
+pair, and request/subscription counts. These budgets are fixed before the first measurement:
+
+| Measurement                      | Budget per dataset                                                                 |
+| -------------------------------- | ---------------------------------------------------------------------------------- |
+| Headless activation p95          | At most 500 ms                                                                     |
+| Median paired RSS increase       | At most 32 MiB                                                                     |
+| Median paired CPU increase       | At most 1.0 percentage point of one CPU core                                       |
+| Snapshot reads                   | Exactly four per activation                                                        |
+| Additional SDK reads during idle | Zero                                                                               |
+| Three activate/dispose cycles    | Zero retained subscriptions, cleanup callbacks, or pending requests after disposal |
+
+Report process-start-to-ready time as context without an acceptance threshold. It is not
+input-to-paint latency. With three repetitions, p95 is effectively the largest observed activation;
+the sample does not establish a statistical latency bound. A shared measurement probe adds its own
+overhead, and process RSS/CPU do not measure the whole machine or unobserved child processes.
+Rendering, keyboard responsiveness, long idle periods, event-burst process overhead, and packaged
+sidebar behavior still require separate validation. A failed budget must be reported, not widened
+after observing the result.
+
+### Recorded headless comparison
+
+The complete run passed the original budgets. The
+[raw measurements](validation/v1-runtime-baseline.json) contain all 12 treatments, paired deltas,
+resource counters, and environment metadata. Environment: Linux x86_64, kernel 6.18.44, AMD EPYC
+9V74 with nine visible logical CPUs and 9.73 GiB visible memory, Bun 1.3.14, and OpenCode/plugin/SDK
+1.18.30. This is a shared development environment, not dedicated benchmark hardware.
+
+The tested tree was based on `a739983e133aeb396ad59f3d8d3cd435a8b73963`, with the new harness files
+uncommitted. To identify the measured content, the command also records a SHA-256 over the harness,
+probe, adapter, and type files: `a638e8fafbd3bdd9737cde644dcfb692215a7017aa68e0f80df8c1afd8bfc72e`.
+
+| Measurement                                             | 25 sessions              | 250 sessions             | Predeclared budget        |
+| ------------------------------------------------------- | ------------------------ | ------------------------ | ------------------------- |
+| Initial activation p95 (maximum of three)               | 203.36 ms                | 185.93 ms                | ≤500 ms                   |
+| Median RSS, baseline / enabled                          | 715.43 / 723.53 MiB      | 715.43 / 716.73 MiB      | Descriptive               |
+| Median paired RSS increase                              | +10.23 MiB               | +0.26 MiB                | ≤32 MiB                   |
+| Median CPU, baseline / enabled                          | 2.199% / 2.599%          | 2.398% / 2.199%          | Descriptive; one CPU core |
+| Median paired CPU increase                              | +0.400 percentage points | −0.199 percentage points | ≤1.0 percentage point     |
+| Median process-start-to-probe-ready, baseline / enabled | 3653.81 / 3678.53 ms     | 3598.73 / 3671.25 ms     | Descriptive               |
+
+Paired deltas are calculated before taking the median; they need not equal the difference between
+the two descriptive medians. Negative deltas reflect variation, not a demonstrated improvement.
+Every enabled treatment made four initial SDK reads and zero additional reads during idle. All three
+activate/dispose cycles per enabled treatment ended with zero instrumented event subscriptions,
+cleanup callbacks, and pending requests. These counters do not prove the absence of every timer or
+heap allocation retained by the host.
