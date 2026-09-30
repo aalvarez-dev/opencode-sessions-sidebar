@@ -35,6 +35,10 @@ distinction explicit in documentation.
 - Update the roadmap when a capability becomes implemented and verified.
 - Preserve license notices for any reused code. Do not copy personal settings, credentials, local
   paths, or unrelated repository history into this project.
+- Keep documentation self-contained and examples synthetic. Do not describe nonpublic project
+  provenance or include real repository/service identifiers or session contents in public changes.
+- Verify author and committer metadata before publishing commits. Use the account's GitHub `noreply`
+  address when a personal email address has not been explicitly approved for publication.
 - Keep the package private until a usable TUI entrypoint and release validation exist. Publishing
   packages and changing host/repository settings are separate release or maintenance actions, not
   side effects of builds or tests.
