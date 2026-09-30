@@ -14,12 +14,15 @@ feature status accurate; a build alone does not establish that the plugin works 
 
 The foundation is implemented. Stage 2 has a headless adapter and contract tests; its exact runtime
 evidence and remaining acceptance gates are recorded in
-[V1 adapter validation](v1-adapter-validation.md). Stages 3–6 remain planned. Publishing a package
-or release is a separate action after the gates pass.
+[V1 adapter validation](v1-adapter-validation.md). Stage 3 now provides plugin-owned local
+persistence, explicit schema migration, guarded manual organization commands, and experimental
+events; see [storage and events](storage-and-events.md) for evidence and limits. Stages 4–6 remain
+planned. Publishing a package or release is a separate action after the gates pass.
 
 The [performance requirements](performance.md) apply across these stages: no blocking render-path
 I/O, event-driven updates, minimal idle work, bounded resources, and explicit integrations. The
-adapter's component probe does not establish stock-OpenCode process overhead or TUI responsiveness.
+adapter's component and stock-TUI probes have explicitly limited workloads. Their measurements do
+not establish the future rendered sidebar's responsiveness or the new storage layer's performance.
 
 ## Required runtime scenarios
 

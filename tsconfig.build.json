@@ -7,5 +7,11 @@
     "rootDir": "./src",
     "outDir": "./dist"
   },
-  "include": ["src/index.ts", "src/core/**/*.ts", "src/adapters/opencode-v1/**/*.ts"]
+  "include": [
+    "src/index.ts",
+    "src/core/**/*.ts",
+    "src/adapters/opencode-v1/**/*.ts",
+    "src/organization/**/*.ts",
+    "src/storage/**/*.ts"
+  ]
 }

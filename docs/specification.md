@@ -2,8 +2,10 @@
 
 This is the agreed product direction. It is **not a list of currently available features or a
 released extension API**. The repository implements the host-independent foundation and a headless
-V1 adapter described in the README. Interface, storage, and public event delivery remain subsequent
-work; a headless adapter does not establish complete plugin compatibility.
+V1 adapter described in the README. A manual organization coordinator now adds local persistence and
+experimental events as described in [storage and events](storage-and-events.md). Interface and
+stable extension delivery remain subsequent work; these libraries do not establish complete plugin
+compatibility.
 
 ## Product and compatibility
 
@@ -113,9 +115,10 @@ becoming a stable public API.
 
 ### Transition results and delivered events
 
-The current core returns immutable transition descriptions; it does not allocate public event IDs,
-timestamps, or deliver notifications. The future coordinator owns that envelope and the applicable
-commit guarantee. Its mapping is explicit:
+The core returns immutable transition descriptions; it does not allocate public event IDs,
+timestamps, or deliver notifications. The organization coordinator owns that envelope and the
+applicable commit guarantee for the implemented manual changes. The broader host and extension
+integration remains planned. Its mapping is explicit:
 
 | Current transition result                  | Proposed delivered event     | Mapping                                                                          |
 | ------------------------------------------ | ---------------------------- | -------------------------------------------------------------------------------- |
