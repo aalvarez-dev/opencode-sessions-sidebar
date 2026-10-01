@@ -47,7 +47,7 @@ function activateSidebar(api: TuiPluginApi, options: SidebarOptions): void {
       ],
     });
     api.slots.register({
-      order: 0,
+      order: 350,
       slots: {
         sidebar_content: () => <SidebarView api={api} controller={controller} actions={actions} />,
         home_bottom: () => <SidebarHome api={api} controller={controller} actions={actions} />,

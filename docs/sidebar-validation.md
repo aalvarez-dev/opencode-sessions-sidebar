@@ -34,23 +34,38 @@ The public project API supplies the project identity. See
 [storage and events](storage-and-events.md) for concurrency, uncertain writes, migration, and
 orphan-lock recovery.
 
-`density` accepts `compact`, `balanced`, or `comfortable`; `icons` accepts `ascii` or `unicode`.
-This is a development checkout procedure, not an npm release or an invitation to change the host's
-private storage. Keep the package private until the separate release gates pass.
+`density` accepts `compact`, `balanced`, or `comfortable`; `icons` accepts `ascii`, `unicode` (the
+default), or `nerd` (requires a compatible Nerd Font). Set `reducedMotion: true` for static activity
+indicators. Display settings can change these options for the current activation. This is a
+development checkout procedure, not an npm release or an invitation to change the host's private
+storage. Keep the package private until the separate release gates pass.
 
 ## Use the sidebar
 
 Open the host command palette (Ctrl+P with the stock bindings) and choose **Sessions sidebar:
 browse**, **create session**, **refresh**, or **settings**. Browse is also available on the home
-screen and in the sidebar. Selecting a row opens the same actions menu with either mouse or
-keyboard. Delete requires the host confirmation dialog; marking complete is an independent visual
-action.
+screen and in the sidebar header menu. Clicking a session title opens it directly; the row ellipsis
+opens its actions. Keyboard Browse opens the same actions. Quick pin/Later controls retain
+independent memberships; delete requires the host confirmation dialog.
 
-Pinned, Later, and All sessions can be collapsed. Their summaries retain known descendant activity
-and attention. Browse is the fallback when the native sidebar is absent, including narrow terminals
-and child-session routes. Short activity/attention labels precede optional title context, and the
-session actions dialog shows the full status. A displayed question mark means unknown coverage or
-activity, not confirmed idle.
+The active session is followed by Later, Pinned sessions, and Other sessions, in that display
+priority. A session has only one full row. Marking it completed turns its title and separate check
+green; **Mark completed** and **Unmark completed** remain yellow actions. The mark never overrides
+activity or attention. A third line shows a parent's child count and available public agent names;
+click it to expand. Explicitly promoted children retain a link to their row's group. Unconfigured
+agent colors stay gray, and no metadata enrichment requests run while rendering.
+
+Collapsed groups and parents keep compact descendant activity/attention/uncertainty summaries.
+Questions and permissions are yellow, retry is orange, and a red cross requires an observed
+non-abort error followed by idle. Historical failures cannot be recovered from list/status snapshots
+after restarting. Unknown activity is a fixed neutral outline (ASCII `?`); animated checking
+requires an actual in-flight refresh. Busy and checking share one visibility-bound clock, released
+when the view disappears. ASCII checking is static `...`; reduced motion freezes both animations.
+
+Browse is the fallback when the native sidebar is absent, including narrow terminals and
+child-session routes. The session actions dialog retains full status and coverage details. Known
+local context is displayed from the exact-directory public host state; it does not imply execution
+correlation or support for arbitrary remote repository metadata.
 
 Use **Manage Later list** to open, reorder, or remove saved entries. Missing entries remain visible
 as unavailable references because absence from a partial or different-directory snapshot does not
@@ -126,7 +141,7 @@ packaged-release performance validation is pending.
 
 The focused probes passed on Linux x86_64 with Bun 1.3.14, official OpenCode 1.18.30, OpenTUI 0.4.5,
 and the host Solid 1.9.10 runtime. The [input/render report](validation/sidebar-runtime.json)
-records hardware, exact source and built-artifact digests, 12 checks, and seven actual
+records hardware, exact source and built-artifact digests, 13 checks, and seven actual
 captured-frame scenarios. Mouse and keyboard CRUD, cancel/confirm delete, organization, Later
 reorder, long-list scrolling, 140×40 and 88×24 layouts, ASCII/Unicode labels, verified light/dark
 host modes, restart, and host deactivation/reactivation passed. Captured colors and text were
@@ -134,13 +149,28 @@ visually inspected.
 
 | Probe                                                                              | Observed result                                        | Predeclared budget           |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------- |
-| Keyboard input to observed rendered frame                                          | p95 98.89 ms, ten samples                              | ≤250 ms                      |
-| Twenty paced native session updates                                                | 625.32 ms; three keyboard samples overlapped the burst | ≤5,000 ms                    |
-| Reactive controller: 250 sessions, 500 activity changes and 500 inert token events | 132.97 ms total; zero extra SDK reads                  | ≤500 ms and zero extra reads |
+| Keyboard input to observed rendered frame                                          | p95 206.75 ms, ten samples                             | ≤250 ms                      |
+| Twenty paced native session updates                                                | 1,557.44 ms; two keyboard samples overlapped the burst | ≤5,000 ms                    |
+| Reactive controller: 250 sessions, 500 activity changes and 500 inert token events | 364.68 ms total; zero extra SDK reads                  | ≤500 ms and zero extra reads |
 
 The native update fixture deliberately spaces requests by 10 ms; this is a responsiveness smoke, not
 unpaced throughput. Observer IPC and public snapshot reads are included in the keyboard timing. Ten
 samples on shared hardware do not establish a statistical latency guarantee.
+
+Earlier runs failed the unchanged 250 ms input budget: one while both native probes ran in parallel
+(the prior assertion did not retain its exact p95), and a subsequent isolated run at **842.87 ms**.
+The isolated sorted samples were 117.79, 131.69, 151.27, 152.83, 155.78, 156.85, 203.05, 218.06,
+254.02, and 842.87 ms. Adding per-observation timing, with no product change, produced the recorded
+206.75 ms pass. Its two overlapping-burst samples were 162.57 and 144.99 ms; its slowest samples
+occurred after the burst. The
+[ordered input diagnostic receipt](validation/sidebar-input-diagnostics.json) separates SDK/storage
+time from round-trip observation time. The earlier spike's cause remains unresolved: this final pass
+does not establish stable tail latency or justify a hardware-only explanation. Keep repeatability
+and broader performance analysis in the release gate.
+
+The initial uncached hierarchy draft also exceeded the 500 ms component budget at 552.59 ms. The
+final model caches parent topology and the recorded component run passed at 364.68 ms. These
+measurements are development observations on shared hardware, not an isolated causal benchmark.
 
 The [controller report](validation/sidebar-component.json) uses synthetic public host ports and real
 Solid reactivity, without a terminal or OpenCode process. It records exactly 500 changed row
@@ -148,24 +178,33 @@ identities, no recomputation from token events, and zero retained instrumented s
 lifecycle callbacks after disposal. The cache keeps unaffected row identities stable and avoids
 sorting on activity-only changes. These measurements do not establish whole-process overhead.
 
-The [native attention report](validation/sidebar-attention.json) uses three deterministic loopback
-provider responses, with no external model inference. Native child busy/question, question reply,
-permission, permission reply, and idle were rendered while the parent remained marked and pinned;
-the collapsed All sessions summary kept attention visible. At 88×24, Browse retained the mark and
-question footer, and the actions menu retained the full busy/question labels. The narrow inspection
-uses a separate idle current session: when viewing the session that owns a native question, the
-host's attention UI takes keyboard priority. The plugin does not override that priority.
+The [native attention report](validation/sidebar-attention.json) uses five deterministic loopback
+provider requests, with no external model inference. Native retry (recoverable 429), child
+busy/question, question reply, permission, permission reply, idle, and a settled error (400) were
+rendered while the parent remained marked and pinned; the collapsed Pinned sessions summary kept
+attention visible. Third-line child disclosure was expanded/collapsed through real mouse input, with
+an additional Unicode capture. The final error rendered a red cross while the completed parent
+retained its green title and check. Retry color was checked on the collapsed parent summary; the
+expanded retry glyph itself was not asserted. At 88×24, Browse retained the mark and question
+footer, and the actions menu retained the full busy/question labels. The narrow inspection uses a
+separate idle current session: when viewing the session that owns a native question, the host's
+attention UI takes keyboard priority. The plugin does not override that priority.
 
-Model/controller tests cover retry and unknown labels, descendant aggregation without double
-counting, cached row identity, actual local organization initialization/persistence, old-scope
-callbacks, late native results after disposal, and bounded noncooperative project lookup. Native
-retry rendering, a real remote server/disconnect, a deliberately stalled optional metadata provider,
-and cross-platform terminal rendering remain unverified. There is no optional metadata provider in
-this build; it displays available public context without initiating enrichment requests. All three
-density choices use integer cell spacing, but an exhaustive density-by-theme visual matrix remains
-part of release validation.
+Model/controller tests cover group priority without duplicate full rows, cycle/orphan reachability,
+retry/error/unknown labels, descendant aggregation without double counting, cached row identity,
+actual local organization initialization/persistence, old-scope callbacks, late native results after
+disposal, and bounded noncooperative project lookup. A real remote server/disconnect, a deliberately
+stalled optional metadata provider, and cross-platform terminal rendering remain unverified. There
+is no optional metadata provider in this build; it displays available public context without
+initiating enrichment requests. All three density choices use integer cell spacing, but an
+exhaustive density-by-theme visual matrix remains part of release validation.
 
-Independent source review found and resolved ownership, stale-action, hidden-attention, and
-whole-list remount issues. The source review, model tests, real-host correctness probes, and limited
-performance workloads are complementary evidence; none substitutes for the pending packaged-release
-gates.
+Motion tests cover three-dot frames, a single shared clock, scroll/ancestor clipping, reduced
+motion, and cleanup. They establish scheduler behavior, not whole-process idle CPU. The optional
+Nerd Font glyph set still requires an appropriate terminal font; ASCII and Unicode were exercised in
+the native probes.
+
+Independent source review found and resolved unknown/error summaries, promoted-child references,
+cumulative indentation, and completion-action placement above expanded children. The source review,
+model tests, real-host correctness probes, and limited performance workloads are complementary
+evidence; none substitutes for the pending packaged-release gates.

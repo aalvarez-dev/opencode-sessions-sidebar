@@ -13,9 +13,9 @@
     "additionalReads": 0
   },
   "observed": {
-    "burstMs": 132.97403699999998,
-    "updateP50Ms": 0.19138900000000092,
-    "updateP95Ms": 0.40938800000000697,
+    "burstMs": 364.682186,
+    "updateP50Ms": 0.5531879999999916,
+    "updateP95Ms": 1.5612909999999829,
     "initialReads": {
       "project": 1,
       "list": 1,

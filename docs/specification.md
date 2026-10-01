@@ -189,6 +189,32 @@ Plan compact, balanced, and comfortable density settings; use grouping, indentat
 backgrounds for the balanced layout, with explicit whole-row gaps where appropriate. Terminal-wide
 cell-height preferences are optional user settings, not changes made by this plugin.
 
+### Continuista presentation
+
+Keep the terminal-native two-line row: an independent activity/attention icon and title, then
+subdued organization controls and available context. A completed title and its separate check use
+success green. Creation and Mark/Unmark completed actions use warning yellow. Inactive pin/Later
+controls use subdued gray and a different glyph from their normal-text active counterparts.
+
+The active session stays at the top, followed by Later, Pinned sessions, and Other sessions. Display
+full rows once with that priority without changing their independent saved memberships. A row opens
+the session directly; its ellipsis opens the shared actions menu. Delete retains native
+confirmation. Move display management into the header menu and palette rather than a permanent
+toolbar.
+
+A parent with children has a third line: disclosure, actual child count, and `[agent]` names. Use
+the public configured agent color when available, otherwise muted gray. Expanding exposes child
+rows; a child promoted to Active/Later/Pinned is referenced without duplicating its full row.
+Malformed parent cycles must not hide sessions or recurse indefinitely. Collapsed groups and parents
+retain known activity, attention, error, and uncertainty summaries.
+
+Questions and permissions use yellow; retry uses an orange tone derived from the host palette.
+Reserve the red cross for an observed non-abort failure followed by confirmed idle, not a retry or a
+lost connection. Busy and idle use normal text color. Unknown is a fixed neutral outline; a
+three-point checking animation is only valid during an actual in-flight refresh. Use one shared,
+visibility-bound animation clock and offer reduced motion and ASCII fallbacks. No idle polling or
+per-row metadata request is required for this presentation.
+
 ## Out of scope for the first release
 
 External workflow orchestration, autonomous execution, Run all, scheduling, service-specific

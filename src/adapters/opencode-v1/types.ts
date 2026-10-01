@@ -46,7 +46,11 @@ export interface SessionRecord {
   readonly projectId: string;
   readonly workspaceId: string | null;
   readonly parentId: string | null;
+  /** Public host-reported agent name, when available. */
+  readonly agent?: string;
   readonly activity: Activity;
+  /** Observed non-abort error with confirmed idle, within this connection. */
+  readonly error?: boolean;
   readonly permissions: number;
   readonly questions: number;
   readonly updatedAt: number;
@@ -59,10 +63,13 @@ export interface SessionSummary {
   readonly unknown: number;
   readonly permissions: number;
   readonly questions: number;
+  readonly errors?: number;
 }
 
 export interface AdapterState {
   readonly phase: "idle" | "loading" | "ready" | "stale" | "error" | "disposed";
+  /** A bounded snapshot read is in progress; unknown alone is not checking. */
+  readonly refreshing?: boolean;
   readonly partial: boolean;
   readonly attentionCoverage: "unknown" | "complete" | "partial";
   readonly selectedSessionId: string | null;
@@ -92,6 +99,7 @@ export type V1Event = Extract<
       | "session.updated"
       | "session.deleted"
       | "session.status"
+      | "session.error"
       | "permission.asked"
       | "permission.replied"
       | "question.asked"

@@ -18,9 +18,12 @@ evidence and remaining acceptance gates are recorded in
 persistence, explicit schema migration, guarded manual organization commands, and experimental
 events; see [storage and events](storage-and-events.md) for evidence and limits. Stage 4 now has an
 experimental local TUI entrypoint with sessions, pins, Later, groups, manual marks, context, and
-mouse/keyboard actions. Its stock-host rendering and input evidence, component budget, and remaining
-release limits are recorded in [sidebar validation](sidebar-validation.md). Stages 5–6 remain
-planned. Publishing a package or release is a separate action after the gates pass.
+mouse/keyboard actions. The approved Continuista presentation now adds a deduplicated active-first
+layout, third-line subagent disclosure, independent completion colors, explicit observed error
+state, and a shared visibility-bound animation clock. Its stock-host rendering and input evidence,
+component budget, and remaining release limits are recorded in
+[sidebar validation](sidebar-validation.md). Stages 5–6 remain planned. Publishing a package or
+release is a separate action after the gates pass.
 
 The [performance requirements](performance.md) apply across these stages: no blocking render-path
 I/O, event-driven updates, minimal idle work, bounded resources, and explicit integrations. The

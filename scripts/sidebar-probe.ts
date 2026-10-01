@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
+import type { Renderable } from "@opentui/core";
 import { createFileStorage } from "../src/storage/file.js";
 
 interface Request {
@@ -37,14 +38,60 @@ export default {
     assert(project.data);
     const scope = { hostId: "synthetic-sidebar-runtime", projectId: project.data.id };
 
+    function geometry() {
+      const result: {
+        id: string;
+        parent: string | null;
+        type: string;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        visible: boolean;
+        text?: string;
+      }[] = [];
+      const pending: Renderable[] = [api.renderer.root];
+      while (pending.length && result.length < 2000) {
+        const node = pending.pop()!;
+        result.push({
+          id: node.id,
+          parent: node.parent?.id ?? null,
+          type: node.constructor.name,
+          x: node.screenX,
+          y: node.screenY,
+          width: node.width,
+          height: node.height,
+          visible: node.visible,
+          ...("plainText" in node && typeof node.plainText === "string"
+            ? { text: node.plainText.slice(0, 240) }
+            : {}),
+        });
+        pending.push(...node.getChildren());
+      }
+      return result;
+    }
     async function snapshot() {
+      const started = performance.now();
       const sessions = await api.client.session.list({ directory: scopeDirectory });
+      const listFinished = performance.now();
       assert(sessions.data);
       const document = await storage.read(scope);
+      const storageFinished = performance.now();
       const frame = api.renderer.currentRenderBuffer;
       return {
+        timing: {
+          listMs: listFinished - started,
+          storageMs: storageFinished - listFinished,
+          observerMs: storageFinished - started,
+        },
         version: api.app.version,
         theme: { mode: api.theme.mode(), selected: api.theme.selected },
+        palette: Object.fromEntries(
+          (["text", "textMuted", "success", "warning", "error"] as const).map((name) => [
+            name,
+            api.theme.current[name].toInts().slice(0, 3),
+          ]),
+        ),
         route: api.route.current,
         dialogDepth: api.ui.dialog.depth,
         plugins: api.plugins.list().map(({ id, active, enabled }) => ({ id, active, enabled })),
@@ -52,6 +99,7 @@ export default {
         organization: document.status === "loaded" ? document.value : null,
         initialIds,
         burst,
+        ...(process.env.SIDEBAR_SMOKE_GEOMETRY === "true" ? { geometry: geometry() } : {}),
         frame: {
           width: frame.width,
           height: frame.height,

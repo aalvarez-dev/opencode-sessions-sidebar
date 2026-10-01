@@ -6,7 +6,7 @@ import type { ActionResult } from "../adapters/opencode-v1";
 import { createOrganizationService, sessionIdFromKey } from "../organization";
 import type { OrganizationAction } from "../organization";
 import { createFileStorage } from "../storage/file";
-import { createGroupBuilder, type Density, type GroupId, type IconMode } from "./model";
+import { createSidebarModelBuilder, type Density, type GroupId, type IconMode } from "./model";
 
 export interface SidebarOptions {
   readonly hostId: string;
@@ -14,6 +14,7 @@ export interface SidebarOptions {
   readonly workspaceId?: string;
   readonly density?: Density;
   readonly icons?: IconMode;
+  readonly reducedMotion?: boolean;
 }
 
 /** Storage is explicitly local; no host-reported directory becomes a local I/O path. */
@@ -37,14 +38,17 @@ export function parseSidebarOptions(input: Record<string, unknown> | undefined):
     !["compact", "balanced", "comfortable"].includes(String(input.density))
   )
     throw new TypeError("density must be compact, balanced, or comfortable.");
-  if (input.icons !== undefined && !["unicode", "ascii"].includes(String(input.icons)))
-    throw new TypeError("icons must be unicode or ascii.");
+  if (input.icons !== undefined && !["unicode", "ascii", "nerd"].includes(String(input.icons)))
+    throw new TypeError("icons must be unicode, ascii, or nerd.");
+  if (input.reducedMotion !== undefined && typeof input.reducedMotion !== "boolean")
+    throw new TypeError("reducedMotion must be a boolean.");
   return {
     hostId: input.hostId,
     storageDirectory: input.storageDirectory,
     ...(input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId as string }),
     ...(input.density === undefined ? {} : { density: input.density as Density }),
     ...(input.icons === undefined ? {} : { icons: input.icons as IconMode }),
+    ...(input.reducedMotion === undefined ? {} : { reducedMotion: input.reducedMotion }),
   };
 }
 
@@ -53,7 +57,9 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   const [active, setActive] = createSignal(true);
   const [density, setDensity] = createSignal<Density>(options.density ?? "balanced");
   const [icons, setIcons] = createSignal<IconMode>(options.icons ?? "unicode");
+  const [reducedMotion, setReducedMotion] = createSignal(options.reducedMotion ?? false);
   const [collapsed, setCollapsed] = createSignal<ReadonlySet<GroupId>>(new Set());
+  const [expandedChildren, setExpandedChildren] = createSignal<ReadonlySet<string>>(new Set());
   const [revision, setRevision] = createSignal(0);
   const [connecting, setConnecting] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -66,8 +72,14 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   let lookupTimer: ReturnType<typeof setTimeout> | undefined;
   let epoch = 0;
   let scopeDirectory: string | undefined;
-  const changed = () => setRevision((value) => value + 1);
-  const buildGroups = createGroupBuilder();
+  const changed = () => {
+    setExpandedChildren((previous) => {
+      const retained = [...previous].filter((id) => adapter?.get(id));
+      return retained.length === previous.size ? previous : new Set(retained);
+    });
+    setRevision((value) => value + 1);
+  };
+  const buildModel = createSidebarModelBuilder();
   const state = createMemo(() => {
     revision();
     return adapter?.state();
@@ -80,11 +92,19 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     revision();
     return organization?.snapshot();
   });
-  const groups = createMemo(() => {
+  const model = createMemo(() => {
     revision();
-    return buildGroups(adapter?.list() ?? [], document(), (id) => adapter?.summary(id));
+    return buildModel(
+      adapter?.list() ?? [],
+      document(),
+      (id) => adapter?.summary(id),
+      state()?.selectedSessionId ?? null,
+    );
   });
-  const rows = createMemo(() => groups().find((group) => group.id === "sessions")?.rows ?? []);
+  const groups = createMemo(() => model().groups);
+  const rows = createMemo(() => model().rows);
+  const activeRow = createMemo(() => model().activeRow);
+  const childrenFor = (id: string) => model().childrenFor(id);
   const laterIds = createMemo(() => {
     const current = document();
     return current?.later.map((key) => sessionIdFromKey(current.scope, key)) ?? [];
@@ -123,6 +143,8 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     scopeDirectory = directory;
     const generation = ++epoch;
     stopScope();
+    setExpandedChildren(new Set<string>());
+    setCollapsed(new Set<GroupId>());
     setPending(false);
     setConnecting(true);
     setError(null);
@@ -295,6 +317,15 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
       return next;
     });
   }
+  function toggleChildren(id: string) {
+    if (!active() || childrenFor(id).length === 0) return;
+    setExpandedChildren((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
   function dispose() {
     if (!active()) return;
     setActive(false);
@@ -308,13 +339,19 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     setDensity,
     icons,
     setIcons,
+    reducedMotion,
+    setReducedMotion,
     collapsed,
     toggleGroup,
+    expandedChildren,
+    toggleChildren,
     state,
     document,
     organizationState,
     groups,
     rows,
+    activeRow,
+    childrenFor,
     laterIds,
     unavailableLater,
     unavailablePins,

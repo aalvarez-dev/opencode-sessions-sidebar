@@ -31,7 +31,9 @@ const budgets = { inputToObservedFrameP95Ms: 250, nativeCrudBurst20Ms: 5_000 };
 type Span = { text: string; width: number; fg: number[]; bg: number[]; attributes: number };
 type Snapshot = {
   version: string;
+  timing: { listMs: number; storageMs: number; observerMs: number };
   theme: { mode: "dark" | "light"; selected: string };
+  palette: Record<"text" | "textMuted" | "success" | "warning" | "error", number[]>;
   route: { name: string; params?: { sessionID?: string } };
   dialogDepth: number;
   plugins: { id: string; active: boolean; enabled: boolean }[];
@@ -49,6 +51,8 @@ type Snapshot = {
 const frames: { name: string; theme: string; icons: string; frame: Snapshot["frame"] }[] = [];
 const checks: string[] = [];
 const inputLatencies: number[] = [];
+const inputDiagnostics: object[] = [];
+let observationTrace: object[] | undefined;
 
 async function pause(ms = 20) {
   lifetime.signal.throwIfAborted();
@@ -77,6 +81,16 @@ async function request<T>(type: string, fields: object = {}): Promise<T> {
       const response = JSON.parse(raw) as { id: number; ok: boolean; error?: string; result: T };
       if (response.id === id) {
         assert(response.ok, response.error ?? "Observer request failed.");
+        if (type === "snapshot" && observationTrace) {
+          const snapshot = response.result as Snapshot;
+          observationTrace.push({
+            roundTripMs: performance.now() - started,
+            frameId: snapshot.frame.frameId,
+            timing: snapshot.timing,
+            burstCount: snapshot.burst?.count,
+            burstRunning: snapshot.burst?.running,
+          });
+        }
         return response.result;
       }
     }
@@ -89,6 +103,25 @@ function lines(snapshot: Snapshot) {
 }
 function text(snapshot: Snapshot) {
   return lines(snapshot).join("\n");
+}
+function sidebarText(snapshot: Snapshot) {
+  const rows = lines(snapshot).map((line) => line.slice(snapshot.frame.width - 42));
+  const start = rows.findIndex((line) => line.includes("Active session:"));
+  return rows.slice(Math.max(0, start)).join("\n");
+}
+function labelColor(snapshot: Snapshot, label: string) {
+  const start = lines(snapshot).findIndex((line) =>
+    line.slice(snapshot.frame.width - 42).includes("Active session:"),
+  );
+  for (const line of snapshot.frame.lines.slice(Math.max(0, start))) {
+    let column = 0;
+    for (const span of line) {
+      const offset = span.text.indexOf(label);
+      if (offset >= 0 && column + offset >= snapshot.frame.width - 42) return span.fg;
+      column += span.width;
+    }
+  }
+  return undefined;
 }
 function dialogText(snapshot: Snapshot) {
   // The tested wide stock sidebar occupies its documented 42 rightmost cells.
@@ -122,7 +155,7 @@ async function click(label: string, occurrence = 0) {
     const column = line.indexOf(label);
     if (column < 0 || found++ !== occurrence) continue;
     assert(child?.terminal);
-    const x = column + 2;
+    const x = column + Math.min(2, label.length);
     const y = row + 1;
     input(`\u001b[<0;${x};${y}M\u001b[<0;${x};${y}m`);
     return;
@@ -252,6 +285,7 @@ try {
         SIDEBAR_SMOKE_EXCHANGE: exchange,
         SIDEBAR_SMOKE_DIRECTORY: project,
         SIDEBAR_SMOKE_STORAGE: storage,
+        SIDEBAR_SMOKE_GEOMETRY: process.env.SIDEBAR_SMOKE_GEOMETRY ?? "false",
       },
       terminal: {
         cols: 140,
@@ -286,21 +320,37 @@ try {
 
   await launch("dark", "ascii");
   await request("seed");
+  const seeded = await until(
+    (snapshot) => text(snapshot).includes("Other sessions"),
+    "Sidebar did not render in the native route.",
+  );
+  // Stock onboarding reserves a fixed panel beneath the scroll viewport. Dismiss
+  // it through its native close control so the long-list fixture has visible rows.
+  if (text(seeded).includes("Getting started")) {
+    await click("✕");
+    await until(
+      (snapshot) => !text(snapshot).includes("Getting started"),
+      "Native onboarding did not close.",
+    );
+  }
   await until(
-    (snapshot) => text(snapshot).includes("All sessions"),
-    "Sidebar did not render in the stock session route.",
+    (snapshot) =>
+      text(snapshot).includes("Other sessions") && text(snapshot).includes("Synthetic 18"),
+    "Sidebar did not render its loaded sessions in the stock session route.",
   );
   await capture("wide-initial", "dark", "ascii");
   input("\u001b[<65;125;18M".repeat(12));
   await until(
-    (snapshot) => !text(snapshot).includes("- Pinned") && text(snapshot).includes("Synthetic"),
+    (snapshot) =>
+      !text(snapshot).includes("v Pinned sessions") && text(snapshot).includes("Synthetic"),
     "Real mouse wheel did not scroll the long stock sidebar.",
   );
   await capture("wide-scrolled", "dark", "ascii");
   input("\u001b[<64;125;18M".repeat(50));
   await until(
-    (snapshot) => text(snapshot).includes("- Pinned"),
-    "Mouse wheel did not restore the sidebar top.",
+    (snapshot) =>
+      text(snapshot).includes("v Pinned sessions") && text(snapshot).includes("Synthetic 18"),
+    "Mouse wheel did not restore the sidebar top and Other session rows.",
   );
   checks.push("real mouse wheel scrolls many long-title rows and restores the sidebar top");
   checks.push(
@@ -328,12 +378,37 @@ try {
   );
   assert.equal(current.route.params?.sessionID, current.initialIds[0]);
   checks.push("real keyboard mark/pin/Later actions persisted without changing native selection");
+  current = await until(
+    (snapshot) =>
+      JSON.stringify(labelColor(snapshot, "Synthetic Alpha")) ===
+      JSON.stringify(snapshot.palette.success),
+    "Completed session title did not use the host success color.",
+  );
+  assert.equal(
+    sidebarText(current).match(/Synthetic Alpha/g)?.length,
+    1,
+    "Active, pin and Later membership must render one primary row.",
+  );
+  assert.deepEqual(
+    labelColor(current, "Unmark completed"),
+    current.palette.warning,
+    "Completion action must use the host warning color.",
+  );
+  checks.push(
+    "completed title uses theme success, completion action uses theme warning, active/pin/Later primary row is deduplicated",
+  );
   await capture("wide-organized", "dark", "ascii");
-  await click("- Pinned");
-  await until((snapshot) => text(snapshot).includes("+ Pinned"), "Mouse collapse did not render.");
+  await click("v Pinned sessions");
+  await until(
+    (snapshot) => text(snapshot).includes("> Pinned sessions"),
+    "Mouse collapse did not render.",
+  );
   await capture("wide-collapsed", "dark", "ascii");
-  await click("+ Pinned");
-  await until((snapshot) => text(snapshot).includes("- Pinned"), "Mouse expansion did not render.");
+  await click("> Pinned sessions");
+  await until(
+    (snapshot) => text(snapshot).includes("v Pinned sessions"),
+    "Mouse expansion did not render.",
+  );
   checks.push("real mouse collapses and expands Pinned with its activity summary retained");
 
   await browse("Synthetic Beta");
@@ -359,16 +434,31 @@ try {
   );
   checks.push("real keyboard open observed on native route; Later membership retained");
   await click("Synthetic Alpha");
+  current = await until(
+    (snapshot) =>
+      snapshot.route.params?.sessionID === snapshot.initialIds[0] &&
+      snapshot.dialogDepth === 0 &&
+      sidebarText(snapshot).includes("Unmark completed"),
+    "Mouse row did not directly open the native session.",
+  );
+  assert.equal(
+    current.organization?.later.length,
+    2,
+    "Opening a row must preserve Later membership.",
+  );
+  await click("...", 1);
   await until(
     (snapshot) => text(snapshot).includes("Open session"),
-    "Mouse row did not open the shared session menu.",
+    "Explicit row action control did not open the shared menu.",
   );
-  await choose("Clear completion mark");
+  await choose("Unmark completed");
   await until(
     (snapshot) => snapshot.organization?.completionStates.every((entry) => !entry.done) === true,
-    "Mouse-opened menu did not clear completion.",
+    "Explicit row menu did not clear completion.",
   );
-  checks.push("real PTY mouse row opens the same action menu; unmark commits");
+  checks.push(
+    "real PTY mouse row opens its session directly; explicit row menu unmarks without changing Later",
+  );
 
   await request("command", { command: "sessions-sidebar.create" });
   await until((snapshot) => snapshot.dialogDepth > 0, "Create prompt missing.");
@@ -448,12 +538,12 @@ try {
   const activated = await request<{ changed: boolean }>("activate");
   assert(activated.changed);
   current = await until(
-    (snapshot) => text(snapshot).includes("All sessions"),
+    (snapshot) => text(snapshot).includes("Other sessions"),
     "Sidebar did not render after reactivation.",
   );
   assert.deepEqual(current.organization, beforeLifecycle);
   assert.equal(
-    text(current).match(/All sessions/g)?.length,
+    text(current).match(/Other sessions/g)?.length,
     1,
     "Reactivation must render one sidebar instance.",
   );
@@ -469,6 +559,7 @@ try {
     const beforeInput = await request<Snapshot>("snapshot");
     if (beforeInput.burst?.running) overlappingInputSamples++;
     const started = performance.now();
+    observationTrace = [];
     input("Synthetic Alpha");
     await until(
       (snapshot) =>
@@ -478,7 +569,16 @@ try {
         !dialogText(snapshot).includes("Synthetic 01"),
       "Typed filter did not repaint.",
     );
-    inputLatencies.push(performance.now() - started);
+    const elapsedMs = performance.now() - started;
+    inputLatencies.push(elapsedMs);
+    inputDiagnostics.push({
+      index,
+      elapsedMs,
+      burstRunning: beforeInput.burst?.running,
+      burstCount: beforeInput.burst?.count,
+      frames: observationTrace,
+    });
+    observationTrace = undefined;
     await dismiss();
   }
   const burstSnapshot = await until(
@@ -495,7 +595,15 @@ try {
   );
   inputLatencies.sort((left, right) => left - right);
   const p95 = inputLatencies[Math.ceil(inputLatencies.length * 0.95) - 1];
-  assert(p95 !== undefined && p95 < budgets.inputToObservedFrameP95Ms);
+  if (process.env.SIDEBAR_SMOKE_DIAGNOSTICS)
+    await writeFile(
+      resolve(process.env.SIDEBAR_SMOKE_DIAGNOSTICS),
+      JSON.stringify({ p95, burst, samples: inputDiagnostics }, null, 2),
+    );
+  assert(
+    p95 !== undefined && p95 < budgets.inputToObservedFrameP95Ms,
+    `Input-to-observed-frame p95 ${p95?.toFixed(2)}ms exceeds ${budgets.inputToObservedFrameP95Ms}ms; samples=${inputLatencies.map((value) => value.toFixed(2)).join(",")}`,
+  );
   checks.push(
     "20 paced native updates overlap real keyboard filtering; observed frames pass the declared p95 budget",
   );
@@ -513,6 +621,9 @@ try {
     "src/ui/controller.ts",
     "src/ui/model.ts",
     "src/ui/view.tsx",
+    "src/ui/motion.ts",
+    "src/adapters/opencode-v1/adapter.ts",
+    "src/adapters/opencode-v1/types.ts",
     "scripts/build.ts",
     "scripts/sidebar-probe.ts",
     "scripts/smoke-sidebar.ts",

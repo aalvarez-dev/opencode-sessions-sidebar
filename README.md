@@ -8,8 +8,10 @@ attention, and customizable completion marks.
 This repository now includes an **experimental development TUI entrypoint** alongside the portable
 core, headless V1 adapter, and local organization service. The sidebar presents sessions, pins,
 Later order, completion marks, and independent activity/attention, with shared session actions and
-keyboard access through the host dialogs. The package is still private and has not been released on
-npm. Extension loading/actions and a stable public extension API remain planned.
+keyboard access through the host dialogs. Its Continuista layout keeps the active session above
+Later, Pinned sessions, and Other sessions, with expandable subagents on a third line. The package
+is still private and has not been released on npm. Extension loading/actions and a stable public
+extension API remain planned.
 
 See [sidebar setup and validation](docs/sidebar-validation.md) for loading the local build, the
 exact runtime evidence, and remaining release gates. The first integration targets stock **OpenCode

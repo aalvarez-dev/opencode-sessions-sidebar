@@ -6,7 +6,14 @@ import { createFileStorage } from "../src/storage/file.js";
 
 interface Request {
   readonly id: number;
-  readonly type: "snapshot" | "seed" | "command" | "start" | "reply-question" | "reply-permission";
+  readonly type:
+    | "snapshot"
+    | "seed"
+    | "command"
+    | "start"
+    | "reply-question"
+    | "reply-permission"
+    | "start-error";
   readonly command?: string;
 }
 
@@ -32,7 +39,13 @@ export default {
     let promptError: unknown;
     const events: string[] = [];
     const off = (
-      ["question.asked", "question.replied", "permission.asked", "permission.replied"] as const
+      [
+        "question.asked",
+        "question.replied",
+        "permission.asked",
+        "permission.replied",
+        "session.error",
+      ] as const
     ).map((type) =>
       api.event.on(type, () => {
         if (events.length < 64) events.push(type);
@@ -54,6 +67,12 @@ export default {
         promptFinished,
         events,
         dialogDepth: api.ui.dialog.depth,
+        palette: Object.fromEntries(
+          (["text", "textMuted", "success", "warning", "error"] as const).map((name) => [
+            name,
+            api.theme.current[name].toInts().slice(0, 3),
+          ]),
+        ),
         questions: questions.data,
         permissions: permissions.data,
         statuses: statuses.data,
@@ -106,7 +125,9 @@ export default {
           assert(request.command);
           return api.keymap.dispatchCommand(request.command);
         case "start":
+        case "start-error":
           assert(childId);
+          promptFinished = false;
           void api.client.session
             .prompt(
               {

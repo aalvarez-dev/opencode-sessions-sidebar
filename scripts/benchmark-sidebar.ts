@@ -55,7 +55,7 @@ try {
     initialCalls.permissions +
     host.calls.questions -
     initialCalls.questions;
-  const finalSummary = controller.groups()[2]!.summary;
+  const finalSummary = controller.groups().find((group) => group.id === "sessions")!.summary;
   controller.dispose();
   samples.sort((a, b) => a - b);
   const passed =

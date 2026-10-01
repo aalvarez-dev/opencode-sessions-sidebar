@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createRoot } from "solid-js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { Event, Session, SessionStatus } from "@opencode-ai/sdk/v2";
-import { createSidebarController } from "../../src/ui/controller";
+import { createSidebarController, parseSidebarOptions } from "../../src/ui/controller";
 import { createFileStorage } from "../../src/storage/file";
 
 export function deferred<T>() {
@@ -37,6 +37,7 @@ export class ControllerHost {
   calls = { project: 0, list: 0, status: 0, permissions: 0, questions: 0, create: 0 };
   toasts: { message: string; variant: string }[] = [];
   navigations: unknown[] = [];
+  currentRoute: { name: string; params?: { sessionID: string } } = { name: "home" };
   handlers = new Map<Event["type"], Set<(event: Event) => void>>();
   disposers = new Set<() => void | Promise<void>>();
   lifetime = new AbortController();
@@ -106,7 +107,9 @@ export class ControllerHost {
         },
       },
       route: {
-        current: { name: "home" },
+        get current() {
+          return host.currentRoute;
+        },
         navigate(name: string, params: unknown) {
           host.navigations.push({ name, params });
         },
@@ -176,7 +179,10 @@ async function ready() {
       controller.document()!.revision,
     );
     assert.equal(controller.document()!.revision, 1);
-    assert.equal(controller.groups()[0]!.rows[0]!.session.id, "one");
+    assert.equal(
+      controller.groups().find((group) => group.id === "pins")!.rows[0]!.session.id,
+      "one",
+    );
     assert.equal(controller.rows()[0]!.pinned, true);
     const saved = await createFileStorage({ directory: storageDirectory }).read({
       hostId: "test-host",
@@ -269,6 +275,92 @@ async function boundedLookup() {
   }
 }
 
+async function hierarchy() {
+  const fixture = await controllerFixture();
+  const { host, controller } = fixture;
+  try {
+    host.sessions = [
+      syntheticSession("parent"),
+      { ...syntheticSession("child"), parentID: "parent" },
+    ];
+    await controller.connect(host.directory);
+    assert.deepEqual(
+      controller.rows().map((row) => row.session.id),
+      ["child", "parent"],
+    );
+    assert.deepEqual(
+      controller.groups()[2]!.rows.map((row) => row.session.id),
+      ["parent"],
+    );
+    assert.equal(controller.childrenFor("parent")[0]!.session.id, "child");
+    controller.toggleChildren("parent");
+    controller.toggleGroup("pins");
+    assert.equal(controller.expandedChildren().has("parent"), true);
+    controller.toggleChildren("missing");
+    assert.equal(controller.expandedChildren().size, 1);
+    await controller.organize(
+      { type: "set-pin", sessionId: "child", pinned: true },
+      controller.document()!.revision,
+    );
+    await controller.organize(
+      { type: "add-later", sessionId: "child" },
+      controller.document()!.revision,
+    );
+    const before = controller.document();
+    assert.equal(controller.groups()[0]!.rows[0]!.session.id, "child");
+    assert.equal(controller.groups()[1]!.rows.length, 0);
+    controller.open("child");
+    assert.deepEqual(host.navigations.at(-1), { name: "session", params: { sessionID: "child" } });
+    host.currentRoute = { name: "session", params: { sessionID: "child" } };
+    controller.observeRoute();
+    assert.equal(controller.activeRow()?.session.id, "child");
+    assert.equal(controller.activeRow()?.pinned, true);
+    assert.equal(controller.activeRow()?.later, true);
+    assert.equal(controller.groups()[0]!.rows.length, 0);
+    assert.equal(controller.document(), before);
+    assert.equal(controller.rows().length, 2);
+    host.currentRoute = { name: "home" };
+    controller.observeRoute();
+    assert.equal(controller.activeRow(), undefined);
+    assert.equal(controller.groups()[0]!.rows[0]!.session.id, "child");
+    assert.equal(controller.document(), before);
+
+    // Identical native IDs in another scope never inherit disclosure or selection state.
+    host.directory = "/example/two";
+    host.sessions = [syntheticSession("parent", host.directory, "project-two")];
+    await controller.connect(host.directory);
+    assert.equal(controller.expandedChildren().size, 0);
+    assert.equal(controller.collapsed().size, 0);
+    assert.equal(controller.childrenFor("parent").length, 0);
+    assert.equal(controller.activeRow(), undefined);
+    assert.deepEqual(controller.laterIds(), []);
+  } finally {
+    await fixture.dispose();
+  }
+}
+
+async function options() {
+  const valid = {
+    hostId: "test",
+    storageDirectory: "/example/storage",
+    icons: "nerd",
+    reducedMotion: true,
+  };
+  assert.deepEqual(parseSidebarOptions(valid), valid);
+  assert.throws(() => parseSidebarOptions({ ...valid, reducedMotion: "false" }), /boolean/);
+  assert.throws(() => parseSidebarOptions({ ...valid, icons: "invalid" }), /icons/);
+  const fixture = await controllerFixture();
+  try {
+    assert.equal(fixture.controller.reducedMotion(), false);
+    fixture.controller.setReducedMotion(true);
+    assert.equal(fixture.controller.reducedMotion(), true);
+    fixture.controller.setIcons("nerd");
+    assert.equal(fixture.controller.icons(), "nerd");
+  } finally {
+    await fixture.dispose();
+  }
+}
+
 if (import.meta.main) {
   const scenario = process.argv[2];
   const scenarios: Record<string, () => Promise<void>> = {
@@ -276,6 +368,8 @@ if (import.meta.main) {
     "stale-guard": staleGuard,
     disposed,
     "bounded-lookup": boundedLookup,
+    hierarchy,
+    options,
   };
   const run = scenario ? scenarios[scenario] : undefined;
   if (!run) throw new Error("Choose a controller test scenario.");
