@@ -148,3 +148,12 @@ Every enabled treatment made four initial SDK reads and zero additional reads du
 activate/dispose cycles per enabled treatment ended with zero instrumented event subscriptions,
 cleanup callbacks, and pending requests. These counters do not prove the absence of every timer or
 heap allocation retained by the host.
+
+## Experimental rendered sidebar
+
+Stage 4 adds a focused stock-TUI input/render smoke and a separate reactive-controller workload.
+Their predeclared budgets, exact measured results, source digests, and limitations are recorded in
+[sidebar validation](sidebar-validation.md). The native input sample uses real PTY mouse/keyboard
+and public rendered frames; the controller sample uses synthetic host ports and no terminal. Neither
+extends the headless CPU/RSS comparison to the rendered plugin. Full packaged-release performance,
+larger rendered datasets, long idle observation, and remote-host behavior remain gates.

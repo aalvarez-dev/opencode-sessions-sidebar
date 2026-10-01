@@ -16,13 +16,17 @@ The foundation is implemented. Stage 2 has a headless adapter and contract tests
 evidence and remaining acceptance gates are recorded in
 [V1 adapter validation](v1-adapter-validation.md). Stage 3 now provides plugin-owned local
 persistence, explicit schema migration, guarded manual organization commands, and experimental
-events; see [storage and events](storage-and-events.md) for evidence and limits. Stages 4–6 remain
+events; see [storage and events](storage-and-events.md) for evidence and limits. Stage 4 now has an
+experimental local TUI entrypoint with sessions, pins, Later, groups, manual marks, context, and
+mouse/keyboard actions. Its stock-host rendering and input evidence, component budget, and remaining
+release limits are recorded in [sidebar validation](sidebar-validation.md). Stages 5–6 remain
 planned. Publishing a package or release is a separate action after the gates pass.
 
 The [performance requirements](performance.md) apply across these stages: no blocking render-path
 I/O, event-driven updates, minimal idle work, bounded resources, and explicit integrations. The
 adapter's component and stock-TUI probes have explicitly limited workloads. Their measurements do
-not establish the future rendered sidebar's responsiveness or the new storage layer's performance.
+not establish the rendered sidebar's responsiveness or the storage layer's performance. The sidebar
+has a separate focused smoke; broad release performance and remote-host validation remain pending.
 
 ## Required runtime scenarios
 

@@ -3,9 +3,10 @@
 This is the agreed product direction. It is **not a list of currently available features or a
 released extension API**. The repository implements the host-independent foundation and a headless
 V1 adapter described in the README. A manual organization coordinator now adds local persistence and
-experimental events as described in [storage and events](storage-and-events.md). Interface and
-stable extension delivery remain subsequent work; these libraries do not establish complete plugin
-compatibility.
+experimental events as described in [storage and events](storage-and-events.md). An experimental TUI
+now connects these boundaries; see [sidebar validation](sidebar-validation.md). Stable extension
+delivery and public release remain subsequent work, and one tested host version does not establish a
+compatibility range.
 
 ## Product and compatibility
 

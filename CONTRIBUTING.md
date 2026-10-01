@@ -1,6 +1,6 @@
 # Contributing
 
-This project is establishing its domain model before connecting it to OpenCode. Read the
+This project has a portable domain model and an experimental OpenCode TUI integration. Read the
 [specification](docs/specification.md) and [roadmap](docs/roadmap.md) first. Changes should describe
 whether they implement an agreed behavior or propose a change to it.
 

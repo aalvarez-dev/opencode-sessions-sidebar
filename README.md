@@ -5,16 +5,17 @@ attention, and customizable completion marks.
 
 ## Status
 
-This repository contains development libraries, **not an installable OpenCode sidebar yet**. The
-portable core implements completion policies and the manual Later list. The headless V1 adapter adds
-scoped session snapshots, incremental activity/attention, descendant summaries, lifecycle cleanup,
-and native session actions. The organization layer persists pins, completion, and Later order in
-plugin-owned local files, with guarded writes and experimental post-acknowledgement events. TUI
-rendering, extension loading/actions, and a stable public extension API remain planned.
+This repository now includes an **experimental development TUI entrypoint** alongside the portable
+core, headless V1 adapter, and local organization service. The sidebar presents sessions, pins,
+Later order, completion marks, and independent activity/attention, with shared session actions and
+keyboard access through the host dialogs. The package is still private and has not been released on
+npm. Extension loading/actions and a stable public extension API remain planned.
 
-The first integration targets stock **OpenCode V1** through its public APIs. The minimum supported
-release will be published after integration and runtime testing. A future V2 adapter can live in
-this repository and share the domain model; V2 support is not currently implemented.
+See [sidebar setup and validation](docs/sidebar-validation.md) for loading the local build, the
+exact runtime evidence, and remaining release gates. The first integration targets stock **OpenCode
+V1** through its public APIs. The minimum supported release will be published after integration and
+runtime testing. A future V2 adapter can live in this repository and share the domain model; V2
+support is not currently implemented.
 
 ## Intended behavior
 
@@ -37,7 +38,8 @@ See the [behavior specification](docs/specification.md) for the agreed scope and
 The [performance and transparency requirements](docs/performance.md) define the runtime design
 constraints and measurements required before release. The component probe measures the adapter
 without rendering. A separate stock-TUI comparison measures headless activation, idle process cost,
-and lifecycle cleanup; neither establishes the future sidebar's input-to-paint latency.
+and lifecycle cleanup; neither establishes the rendered sidebar's input-to-paint latency. The
+sidebar smoke records its separate, limited end-to-end input observations.
 
 See [V1 adapter validation](docs/v1-adapter-validation.md) for the exact scope, reproducible checks,
 and outstanding compatibility gates. The adapter does not infer execution starts from busy or
@@ -62,13 +64,13 @@ bun run benchmark:v1
 
 The check command runs formatting checks, type checks, architectural boundary checks, tests, and the
 build. Use `bun run format` to apply the project's formatting rules or `bun run format:check` to
-check formatting alone. There are no npm installation instructions yet: the initial build is a
-development artifact, not a published plugin.
+check formatting alone. The local TUI build is a development artifact, not a published npm plugin.
 
-The core, headless adapter, organization coordinator, and filesystem backend compile to separate ESM
-entrypoints. Only the filesystem entrypoint imports Node-compatible storage APIs. OpenCode
-SDK/plugin packages are development dependencies for public type checking and test harnesses; the
-built libraries do not import or bundle OpenCode, Solid, or OpenTUI runtimes.
+The core, headless adapter, organization coordinator, filesystem backend, and TUI compile to
+separate ESM entrypoints. The TUI includes the local storage adapter and imports the host-provided
+Solid/OpenTUI runtimes; its build rejects bundled copies. The headless entrypoints do not import
+those runtimes. OpenCode SDK/plugin packages remain development dependencies for type checking and
+test harnesses.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before making changes. Source code, documentation, and
 contributions use English.

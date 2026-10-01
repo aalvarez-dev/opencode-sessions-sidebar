@@ -12,6 +12,9 @@
     "src/core/**/*.ts",
     "src/adapters/opencode-v1/**/*.ts",
     "src/organization/**/*.ts",
-    "src/storage/**/*.ts"
+    "src/storage/**/*.ts",
+    "src/ui/**/*.ts",
+    "src/ui/**/*.tsx",
+    "src/tui.tsx"
   ]
 }

@@ -3,10 +3,11 @@
 ## Status and boundaries
 
 This repository contains a portable core, a headless OpenCode V1 adapter, and a manual organization
-coordinator with local persistence. It does not yet provide an installable, rendered sidebar. The
-boundaries below guide implementation; a documented host capability is not evidence that the sidebar
-has exercised it successfully. Recorded runtime evidence and remaining gates are listed in
-[V1 adapter validation](v1-adapter-validation.md).
+coordinator with local persistence, plus an experimental rendered TUI entrypoint. It remains a
+private development build. The boundaries below guide implementation; a documented host capability
+is not evidence that the sidebar has exercised it successfully. See also
+[sidebar setup and validation](sidebar-validation.md). Recorded runtime evidence and remaining gates
+are listed in [V1 adapter validation](v1-adapter-validation.md).
 
 The product is a session organizer. Pins, the Later list, and completion marks are visual
 organization features. Moving a session to Later does not schedule or run it. Marking a session
@@ -139,9 +140,9 @@ boundary.
 
 ## Runtime dependencies and lifecycle
 
-The future TUI build must use the Solid transform required by OpenTUI while sharing the host's
-Solid/OpenTUI runtime. Bundling another reactive runtime can break component ownership and updates.
-Pure core entrypoints must not import those UI dependencies.
+The TUI build uses the Solid transform required by OpenTUI while sharing the host's Solid/OpenTUI
+runtime. Bundling another reactive runtime can break component ownership and updates. Pure core
+entrypoints must not import those UI dependencies.
 
 Activation owns subscriptions, timers, pending reads, and UI state. Disposal must unsubscribe,
 cancel cooperative work, and prevent late responses from updating a disposed instance. Reconnection
@@ -167,7 +168,7 @@ implicitly.
 
 See [performance and transparent behavior](performance.md) for the full requirements and the
 controlled stock-OpenCode comparison. Treat the recorded headless measurements separately from the
-future rendered sidebar's responsiveness.
+rendered sidebar's responsiveness.
 
 ## Evidence before release
 

@@ -1,8 +1,8 @@
 # Contributor and agent instructions
 
 Read `docs/specification.md`, `docs/architecture.md`, and `docs/roadmap.md` before changing product
-behavior. This repository is currently a foundation, not an installable OpenCode plugin. Keep that
-distinction explicit in documentation.
+behavior. This repository has an experimental local TUI build and remains a private development
+package, not a published OpenCode plugin. Keep that distinction explicit in documentation.
 
 ## Architecture
 
