@@ -1,0 +1,34 @@
+{
+  "scope": "synthetic-reactive-controller",
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "bun": "1.3.14"
+  },
+  "sessionCount": 250,
+  "activityUpdates": 500,
+  "inertTokenEvents": 500,
+  "budget": {
+    "burstMs": 500,
+    "additionalReads": 0
+  },
+  "observed": {
+    "burstMs": 132.97403699999998,
+    "updateP50Ms": 0.19138900000000092,
+    "updateP95Ms": 0.40938800000000697,
+    "initialReads": {
+      "project": 1,
+      "list": 1,
+      "status": 1,
+      "permissions": 1,
+      "questions": 1,
+      "create": 0
+    },
+    "additionalReads": 0,
+    "changedRows": 500,
+    "inertRecomputations": 0,
+    "subscriptionsAfterDisposal": 0,
+    "lifecycleCallbacksAfterDisposal": 0
+  },
+  "passed": true
+}

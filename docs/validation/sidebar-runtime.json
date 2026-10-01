@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "runtime": {
+    "opencode": "1.18.30",
+    "opentui": "0.4.5",
+    "solid": "1.9.10",
+    "bun": "1.3.14"
+  },
+  "environment": {
+    "platform": "linux",
+    "architecture": "x64",
+    "osRelease": "6.18.44",
+    "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+    "visibleLogicalCpus": 9,
+    "visibleMemoryBytes": 10451464192,
+    "isolatedHome": true,
+    "workload": {
+      "initialSessions": 20,
+      "transientCreatedSessions": 1,
+      "nativeUpdateEvents": 20,
+      "externalModelInference": false
+    }
+  },
+  "source": {
+    "baseCommit": "0d384207ad2923cf24499b04122d391c8fc39a3f",
+    "sha256": {
+      "src/tui.tsx": "f467f7034c0086ee080259258382c43ba8b510b809b6dc39fa83a3ab901a3b2f",
+      "src/ui/controller.ts": "c96c7aedaf76a06ef58d3a6c47d12f03dc1bfdb48cc2697c1ead2d22086becbc",
+      "src/ui/model.ts": "d896a6ff12c4d4c0fe2c637b1b59b30c03f6f1a7d09cfaf9737582754fcfa589",
+      "src/ui/view.tsx": "e97cb2a1e89a81f1407c527b82340678c2016c77d85124d2570207c637f1f33d",
+      "scripts/build.ts": "329588b14b97d4454c079077e5f9551e5b5dfd2d55eadbfc728a06671dd36d9d",
+      "scripts/sidebar-probe.ts": "86206059a92e8753afbb6ae522ccee17a13de84e587994a4f36cf58a83e7a287",
+      "scripts/smoke-sidebar.ts": "a4be1f6a61d834257580cb3695fdcff0936fdd240b7deb6996177da7396f7035",
+      "dist/tui.js": "53b00c0c6e2fb9f24497ee476788759699df730e3d90380b6b0dc0a9ec6358a8"
+    }
+  },
+  "scope": "Actual stock TUI rendering, public native CRUD, real PTY keyboard/mouse; no model inference.",
+  "budgets": {
+    "inputToObservedFrameP95Ms": 250,
+    "nativeCrudBurst20Ms": 5000
+  },
+  "results": {
+    "checks": [
+      "real mouse wheel scrolls many long-title rows and restores the sidebar top",
+      "actual built plugin loaded in stock session sidebar; synthetic host sessions rendered",
+      "real keyboard mark/pin/Later actions persisted without changing native selection",
+      "real mouse collapses and expands Pinned with its activity summary retained",
+      "real keyboard Later reordering persisted",
+      "real keyboard open observed on native route; Later membership retained",
+      "real PTY mouse row opens the same action menu; unmark commits",
+      "native create/rename/delete via real keyboard, cancellation preserves session and explicit mouse confirmation deletes",
+      "narrow 88x24 keyboard browse/action fallback remains usable",
+      "stock plugin deactivation/reactivation restores committed organization",
+      "20 paced native updates overlap real keyboard filtering; observed frames pass the declared p95 budget",
+      "new stock process hydrates organization; light terminal and Unicode browse render"
+    ],
+    "nativeCrudBurst20Ms": 625.3241980000003,
+    "inputObservationSamples": 10,
+    "overlappingInputSamples": 3,
+    "nativeBurstFixtureSpacingMs": 10,
+    "inputToObservedFrameP95Ms": 98.89210900000035
+  },
+  "limitations": [
+    "Observer polling and public list reads add overhead; timing is an input-to-observed-frame upper bound, not isolated renderer latency.",
+    "This smoke does not create native busy, retry, permission or question events. See the separate attention probe and model tests for their explicitly stated scope.",
+    "No slow optional metadata provider is enabled; no Git or filesystem enrichment is performed by the UI.",
+    "No baseline CPU/memory, power-loss durability, remote transport or cross-platform rendering claim."
+  ],
+  "captures": [
+    {
+      "name": "wide-initial",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "wide-scrolled",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "wide-organized",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "wide-collapsed",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "delete-confirmation",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "narrow-session-menu",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 88,
+      "height": 24
+    },
+    {
+      "name": "light-restart-browse",
+      "theme": "light",
+      "icons": "unicode",
+      "width": 140,
+      "height": 40
+    }
+  ]
+}

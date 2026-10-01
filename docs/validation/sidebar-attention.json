@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "runtime": {
+    "opencode": "1.18.30",
+    "platform": "linux",
+    "bun": "1.3.14"
+  },
+  "artifact": {
+    "baseGitRevision": "0d384207ad2923cf24499b04122d391c8fc39a3f",
+    "sha256": {
+      "src/tui.tsx": "f467f7034c0086ee080259258382c43ba8b510b809b6dc39fa83a3ab901a3b2f",
+      "src/ui/controller.ts": "c96c7aedaf76a06ef58d3a6c47d12f03dc1bfdb48cc2697c1ead2d22086becbc",
+      "src/ui/model.ts": "d896a6ff12c4d4c0fe2c637b1b59b30c03f6f1a7d09cfaf9737582754fcfa589",
+      "src/ui/view.tsx": "e97cb2a1e89a81f1407c527b82340678c2016c77d85124d2570207c637f1f33d",
+      "scripts/sidebar-attention-probe.ts": "3112427ca03c44ea69c73043b711c1671a05ae0704b483e83971bfa2ef568559",
+      "scripts/smoke-sidebar-attention.ts": "3940d69833d7adb7e3e3f9d4ee618a21cd023c67521bc221fab060cdf27c9520",
+      "dist/tui.js": "53b00c0c6e2fb9f24497ee476788759699df730e3d90380b6b0dc0a9ec6358a8"
+    },
+    "receipt": "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions. The uncommitted source hashes identify this validation build."
+  },
+  "scope": "Actual stock TUI, actual sidebar, real PTY mark/pin/collapse, native child question/permission from deterministic loopback provider.",
+  "checks": [
+    "Marked pinned parent retains completion while displaying child busy/question.",
+    "Collapsed All sessions retains busy/question summary.",
+    "From a separate idle session route, narrow 88x24 browse retains completion and question footer; session menu retains busy/question labels.",
+    "Question reply transitions to native permission with mark and collapsed summary retained.",
+    "Permission reply clears attention and busy labels without clearing completion."
+  ],
+  "providerRequests": 3,
+  "captures": [
+    {
+      "name": "marked-parent-collapsed-question",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "narrow-marked-parent-question",
+      "width": 88,
+      "height": 24
+    },
+    {
+      "name": "marked-parent-collapsed-permission",
+      "width": 140,
+      "height": 40
+    }
+  ],
+  "limitations": [
+    "No external provider or model inference; native host tool handling receives synthetic loopback completion chunks.",
+    "No native retry, remote disconnect, cross-platform render, or performance claim from this focused smoke."
+  ]
+}

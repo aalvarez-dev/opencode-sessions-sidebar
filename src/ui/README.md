@@ -1,7 +1,8 @@
 # Session sidebar UI
 
-This directory documents the intended UI boundary. The project foundation does not yet render a
-sidebar or provide an installable TUI entrypoint.
+This directory implements the experimental sidebar presentation and controller. `src/tui.tsx`
+connects it to the stock host's sidebar and home slots, and registers command-palette actions. See
+[setup and runtime evidence](../../docs/sidebar-validation.md). The package remains private.
 
 ## Presentation responsibilities
 
@@ -29,14 +30,16 @@ Support three density choices without changing the meaning of data or actions:
 | Balanced    | Keep each entry compact and use whitespace at section boundaries; distinguish entry content through hierarchy and alignment |
 | Comfortable | Allow a whole empty row between entries where space permits                                                                 |
 
-These are product policies for implementation, not claims of existing settings. Verify the resulting
-layouts at narrow widths and limited terminal heights. Selection must remain visible, and long text
-must not displace the essential status and action affordances unpredictably.
+The plugin configuration supplies the initial density; Settings changes it for the current
+activation. These settings do not modify terminal-wide preferences. Verify layouts at narrow widths
+and limited terminal heights. Selection must remain visible, and long text must not displace the
+essential status and action affordances unpredictably.
 
-OpenTUI lays out text in terminal cells. A vertical unit is one terminal row. In the researched
-OpenTUI **0.5.12** implementation, Yoga rounds layout edges with a point scale factor of one.
-Passing a fractional gap does not provide uniform half-row spacing; computed positions still land on
-complete cells. The text API does not offer browser-style per-component `line-height`.
+OpenTUI lays out text in terminal cells. A vertical unit is one terminal row. The current host uses
+OpenTUI 0.4.5. In the separately researched OpenTUI **0.5.12** implementation, Yoga rounds layout
+edges with a point scale factor of one. Passing a fractional gap does not provide uniform half-row
+spacing; computed positions still land on complete cells. The text API does not offer browser-style
+per-component `line-height`.
 
 Improve separation without another empty row by using:
 
@@ -68,6 +71,23 @@ Check every density with long titles, missing repository information, busy/retry
 attention, completion marks, and keyboard selection. Exercise scrolling and resize, light/dark
 themes, and plugin deactivation/reactivation. Core tests do not substitute for these runtime and
 visual checks.
+
+## Navigation and state ownership
+
+The native sidebar slot is not present on every host route or terminal width. Browse is also
+available from the home screen and the host command palette. Host select/prompt/confirmation dialogs
+provide keyboard navigation and the same action construction used by mouse input. The sidebar does
+not capture normal prompt keystrokes or add global shortcuts that conflict with host bindings.
+
+The controller owns asynchronous project lookup, the exact-directory adapter, and organization
+storage. Rendering reads normalized snapshots and current public theme/context values. No Git
+provider, per-row clock, spinner interval, or metadata request runs in a render function. Completion
+is manual in this integration because V1 execution correlation remains unavailable.
+
+The default plugin owns activation. Deactivate/reactivate through the public host plugin controls;
+there is no separate exported activation/disposal API that could bypass the host's slot ownership.
+Display changes and collapsed groups last for the current activation. Persistent organization is
+scoped separately, and another client's changes are read on explicit Refresh.
 
 ## Primary references
 
