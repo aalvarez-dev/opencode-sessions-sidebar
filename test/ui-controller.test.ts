@@ -4,7 +4,15 @@ import { fileURLToPath } from "node:url";
 // Solid's browser conditions select its reactive runtime, shared by OpenCode.
 // The default Bun conditions select SSR, whose memo semantics would hide UI regressions.
 describe("reactive sidebar controller", () => {
-  for (const scenario of ["ready", "stale-guard", "disposed", "bounded-lookup"]) {
+  for (const scenario of [
+    "ready",
+    "stale-guard",
+    "disposed",
+    "bounded-lookup",
+    "hierarchy",
+    "context",
+    "options",
+  ]) {
     test(scenario, () => {
       const result = Bun.spawnSync(
         [

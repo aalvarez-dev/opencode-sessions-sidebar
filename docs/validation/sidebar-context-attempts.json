@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "scope": "Development native sidebar probe progression, with fixture corrections kept separate from product observations",
+  "attempts": [
+    {
+      "probe": "general",
+      "attempt": 1,
+      "result": "harness assertion failed",
+      "reason": "The old startup wait required Other sessions before dismissing onboarding; the additional row pushed it below the viewport. The corrected harness first waits for the Active session header."
+    },
+    {
+      "probe": "general",
+      "attempt": 2,
+      "result": "harness assertion failed",
+      "reason": "Worktree selector correctly rendered a shortened path, but the assertion expected a substring elided by truncation. Assertions now use stable visible segments and exact full-value details."
+    },
+    {
+      "probe": "general",
+      "attempt": 3,
+      "result": "passed with incomplete new coverage",
+      "inputToObservedFrameP95Ms": 128.6500359999991,
+      "artifactSha256": {
+        "src/tui.tsx": "047f461576e196a8e7e7c63619762750aa4086299bc7d98f9b9497f0380b4edc",
+        "src/ui/controller.ts": "4740b9dd9c2a57b960778a479677356708aedb8ebe94f83ac3b73c3e21d7e312",
+        "src/ui/model.ts": "2a0458b7ab2526d0ce46d0baf87dfd4a813141c166fac67eb7259524d3e62e56",
+        "src/ui/view.tsx": "5217081e791fbaddc2318f0a3159b463d71d99db4d2d2bcdc43635039013516e",
+        "src/ui/motion.ts": "d94e645427082efd6647c9b2d7f08a1bfa08c8e99c2784cac5f348e8edbdd598",
+        "src/adapters/opencode-v1/adapter.ts": "bfd5721d75184f4b6e6018bd7f346a0ce1d67ce82b8e8a7ca27eaf765047fc9f",
+        "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+        "scripts/build.ts": "329588b14b97d4454c079077e5f9551e5b5dfd2d55eadbfc728a06671dd36d9d",
+        "scripts/sidebar-probe.ts": "05642e743e2fdb878f0994f022fa8d80338bbe19d841385dbc6450ba3a406f2a",
+        "scripts/smoke-sidebar.ts": "c0317f5ab9843614ef191467073dd4287f8c6cd67b6e15d8d3926bff9ccf48a2",
+        "dist/tui.js": "a3f3dfade0ed901f73cfc6c0e62a70c570dbc67f645de06a109ccc14104e394b"
+      },
+      "limits": "This earlier fixture used the same path for repository and worktree. Later visual inspection also found the narrow details scrollbar obscured one branch character, which had not yet been asserted. It is not acceptance evidence for the final source."
+    },
+    {
+      "probe": "attention",
+      "attempt": 1,
+      "result": "environment blocked before test",
+      "reason": "Sandbox rejected the deterministic loopback provider bind with EADDRINUSE at port 0. The isolated probe was subsequently run with approved escalation."
+    },
+    {
+      "probe": "attention",
+      "attempt": 2,
+      "result": "harness assertion failed",
+      "reason": "The probe expected an always-visible retry1 summary from the prior presentation. The new presentation aggregates into the parent status glyph while expanded; assertions now inspect glyph and color and retain textual counts for collapsed groups."
+    },
+    {
+      "probe": "general",
+      "attempt": 4,
+      "result": "harness assertion failed",
+      "reason": "The rendered W path ended in /project, but the ancestor geometry width excluded the final cell in the observer crop. The compact check now uses a leading path segment; exact linked-worktree mapping remains asserted on full details."
+    },
+    {
+      "probe": "general",
+      "attempt": 5,
+      "result": "fixture assumption disproved",
+      "reason": "The fresh host first opened the linked checkout and legitimately reported that path as both project.worktree and path.worktree. Diagnostic public responses confirmed this while independent Git fixture checks confirmed a linked checkout. The final fixture first opens the main checkout through stock OpenCode, then its linked worktree, to validate distinct public R/W values. Product behavior remains faithful to the public host values."
+    },
+    {
+      "probe": "general",
+      "attempt": 6,
+      "result": "passed",
+      "receipt": "sidebar-context-runtime.json",
+      "inputToObservedFrameP95Ms": 110.56000299999869,
+      "coverage": "Primed host project root and distinct linked worktree, mouse/keyboard context, exact full R/W/B values, narrow scrollbar integrity and scrolling."
+    },
+    {
+      "probe": "attention",
+      "attempt": 3,
+      "result": "passed",
+      "receipt": "sidebar-context-attention.json",
+      "coverage": "Actual native retry/question/permission/error; active and pinned parent, live count, mouse/keyboard disclosure, children-context-completion order."
+    },
+    {
+      "probe": "component",
+      "attempt": 1,
+      "result": "passed",
+      "receipt": "sidebar-context-component.json",
+      "burstMs": 214.251282,
+      "additionalReads": 0
+    }
+  ]
+}

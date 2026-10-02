@@ -1,8 +1,24 @@
-import { For, Index, Show } from "solid-js";
-import type { JSX } from "@opentui/solid";
+import { For, Index, Show, createEffect, createSignal, onCleanup, type Accessor } from "solid-js";
+import { RGBA, type Renderable } from "@opentui/core";
+import { createSidebarMotion } from "./motion";
+import { useTerminalDimensions, type JSX } from "@opentui/solid";
 import type { TuiDialogSelectOption, TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { SidebarController } from "./controller";
-import { safeLabel, statusText, type Density, type IconMode, type SidebarRow } from "./model";
+import {
+  safeLabel,
+  statusText,
+  type ContextField,
+  type Density,
+  type IconMode,
+  type SidebarRow,
+} from "./model";
+
+const contextFields = ["repository", "branch", "worktree"] as const;
+const contextLabels = { repository: "Repository", branch: "Branch", worktree: "Worktree" };
+const contextSymbols = { repository: "R", branch: "B", worktree: "W" };
+// Details preserve the full host value while removing terminal controls and direction overrides.
+const fullLabel = (value: string) =>
+  value.replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/gu, " ");
 
 type MenuOption = TuiDialogSelectOption<() => void>;
 
@@ -23,6 +39,7 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
       summary.questions ? `ask${summary.questions}` : "",
       summary.busy ? `busy${summary.busy}` : "",
       summary.retry ? `retry${summary.retry}` : "",
+      summary.errors ? `err${summary.errors}` : "",
       summary.unknown ? `?${summary.unknown}` : "",
     ].filter(Boolean);
     if (labels.length === 0) labels.push("idle");
@@ -77,6 +94,55 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
       />
     ));
   }
+  function details(id: string) {
+    const row = controller.rows().find((entry) => entry.session.id === id);
+    if (!row) return;
+    replace(() => {
+      const dimensions = useTerminalDimensions();
+      return (
+        <box flexDirection="column" paddingLeft={2} paddingRight={2} gap={1}>
+          <text fg={api.theme.current.text} attributes={1}>
+            Session details
+          </text>
+          <scrollbox
+            id={`sidebar-session-${id}-details-scroll`}
+            height={Math.max(1, dimensions().height - 12)}
+            focused
+          >
+            <box flexDirection="column" gap={1} paddingRight={2}>
+              <text fg={api.theme.current.text} wrapMode="word">
+                {fullLabel(row.session.title)}
+              </text>
+              <text fg={api.theme.current.warning} wrapMode="word">
+                {statusText(
+                  controller.rows().find((entry) => entry.session.id === id)?.summary ??
+                    row.summary,
+                  controller.state()?.attentionCoverage,
+                )}
+              </text>
+              <For each={contextFields}>
+                {(field) => (
+                  <box flexDirection="column" flexShrink={0}>
+                    <text fg={api.theme.current.textMuted}>{contextLabels[field]}</text>
+                    <text
+                      id={`sidebar-session-${id}-details-field-${field}`}
+                      fg={api.theme.current.text}
+                      wrapMode="char"
+                    >
+                      {fullLabel(controller.context()[field] ?? "Unavailable")}
+                    </text>
+                  </box>
+                )}
+              </For>
+            </box>
+          </scrollbox>
+          <text fg={api.theme.current.textMuted}>
+            Up/Down or PgUp/PgDn to scroll · Esc to close
+          </text>
+        </box>
+      );
+    });
+  }
   function sessionOptions(id: string): MenuOption[] {
     const row = controller.rows().find((entry) => entry.session.id === id);
     if (!row) return [];
@@ -108,7 +174,7 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
         controller.open(id);
       }),
       option(
-        row.done ? "Clear completion mark" : "Mark completed",
+        row.done ? "Unmark completed" : "Mark completed",
         () => organize({ type: "set-completion", sessionId: id, done: !row.done }),
         !writable,
       ),
@@ -128,6 +194,28 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
             option("Move later in Later", () => move(1), !writable || index === later.length - 1),
           ]
         : []),
+      ...contextFields.map((field) =>
+        option(`Context: show ${field}`, () => {
+          controller.selectContext(id, field);
+          clear();
+        }),
+      ),
+      option(controller.expandedContext().has(id) ? "Collapse context" : "Expand context", () => {
+        controller.toggleContext(id);
+        clear();
+      }),
+      ...(controller.liveChildrenFor(id).length > 0
+        ? [
+            option(
+              controller.expandedChildren().has(id) ? "Collapse subagents" : "Expand subagents",
+              () => {
+                controller.toggleChildren(id);
+                clear();
+              },
+            ),
+          ]
+        : []),
+      option("Session details", () => details(id)),
       option("Rename", () => rename(row), controller.pending()),
       option("Delete session…", () => remove(row), controller.pending()),
     ];
@@ -232,7 +320,7 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
         },
         footer: controller.density() === value ? "Selected" : "",
       })),
-      ...(["unicode", "ascii"] as const).map((value: IconMode) => ({
+      ...(["unicode", "ascii", "nerd"] as const).map((value: IconMode) => ({
         title: `Icons: ${value}`,
         value: () => {
           controller.setIcons(value);
@@ -240,6 +328,13 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
         },
         footer: controller.icons() === value ? "Selected" : "",
       })),
+      {
+        title: `Reduced motion: ${controller.reducedMotion() ? "on" : "off"}`,
+        value: () => {
+          controller.setReducedMotion(!controller.reducedMotion());
+          clear();
+        },
+      },
       ...controller.groups().map((group) => ({
         title: `${controller.collapsed().has(group.id) ? "Expand" : "Collapse"} ${group.title}`,
         value: () => {
@@ -274,12 +369,53 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
       })),
     );
   }
+  function quick(id: string, kind: "pin" | "later" | "completion") {
+    const row = controller.rows().find((entry) => entry.session.id === id);
+    const revision = controller.document()?.revision;
+    if (
+      !row ||
+      revision === undefined ||
+      controller.pending() ||
+      controller.organizationState()?.phase !== "ready"
+    )
+      return;
+    const action =
+      kind === "pin"
+        ? { type: "set-pin" as const, sessionId: id, pinned: !row.pinned }
+        : kind === "completion"
+          ? { type: "set-completion" as const, sessionId: id, done: !row.done }
+          : { type: row.later ? ("remove-later" as const) : ("add-later" as const), sessionId: id };
+    void controller.organize(action, revision);
+  }
+  function removeById(id: string) {
+    const row = controller.rows().find((entry) => entry.session.id === id);
+    if (row && !controller.pending()) remove(row);
+  }
+  function menu() {
+    select("Sessions sidebar", () => [
+      { title: "Browse all sessions", value: browse },
+      { title: "Manage Later list", value: later },
+      { title: "Display settings", value: settings },
+      {
+        title: "Refresh sessions and organization",
+        value: () => {
+          clear();
+          void controller.refresh();
+        },
+        disabled: controller.pending(),
+      },
+    ]);
+  }
   return {
     create,
     session,
     browse,
     settings,
     later,
+    menu,
+    quick,
+    details,
+    remove: removeById,
     disposeDialog: () => {
       if (ownsDialog) clear();
       ownsDialog = false;
@@ -295,37 +431,345 @@ export function SidebarView(props: {
 }) {
   const c = props.controller;
   const theme = () => props.api.theme.current;
-  const attention = (row: SidebarRow) => row.summary.permissions + row.summary.questions > 0;
-  const context = () => {
-    const parts = props.api.state.path.directory.split(/[\\/]/).filter(Boolean);
-    return safeLabel(parts.at(-1) ?? "Current project");
+  const motion = createSidebarMotion(props.api.renderer);
+  onCleanup(motion.dispose);
+  const symbol = (unicode: string, ascii: string, nerd = unicode) =>
+    c.icons() === "ascii" ? ascii : c.icons() === "nerd" ? nerd : unicode;
+  // Derived from the host palette; retry stays distinct from a terminal error.
+  const retryColor = () =>
+    RGBA.fromValues(
+      (theme().warning.r * 2 + theme().error.r) / 3,
+      (theme().warning.g * 2 + theme().error.g) / 3,
+      (theme().warning.b * 2 + theme().error.b) / 3,
+    );
+  const mutedIcon = () =>
+    RGBA.fromValues(
+      (theme().textMuted.r * 3 + theme().backgroundPanel.r) / 4,
+      (theme().textMuted.g * 3 + theme().backgroundPanel.g) / 4,
+      (theme().textMuted.b * 3 + theme().backgroundPanel.b) / 4,
+    );
+  const contextValue = (field: ContextField) => {
+    const value = c.context()[field];
+    if (!value) return "Unavailable";
+    return safeLabel(
+      field === "repository" ? (value.split(/[\\/]/).filter(Boolean).at(-1) ?? value) : value,
+    );
   };
-  const symbol = (unicode: string, ascii: string) => (c.icons() === "ascii" ? ascii : unicode);
+  const agentColor = (name?: string) => {
+    const color = name && props.api.state.config.agent?.[name]?.color;
+    if (!color) return theme().textMuted;
+    if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+    if (["primary", "secondary", "accent", "error", "warning", "success", "info"].includes(color))
+      return theme()[color as "primary"];
+    return theme().textMuted;
+  };
+  const summaryLabel = (row: { summary: SidebarRow["summary"] }) => {
+    const s = row.summary;
+    return [
+      s.permissions ? `perm${s.permissions}` : "",
+      s.questions ? `ask${s.questions}` : "",
+      s.busy ? `busy${s.busy}` : "",
+      s.retry ? `retry${s.retry}` : "",
+      s.errors ? `err${s.errors}` : "",
+      s.unknown ? `unknown${s.unknown}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  };
+  const summaryColor = (row: { summary: SidebarRow["summary"] }) =>
+    row.summary.permissions + row.summary.questions > 0
+      ? theme().warning
+      : row.summary.retry > 0
+        ? retryColor()
+        : row.summary.errors
+          ? theme().error
+          : theme().text;
+  const age = (updatedAt: number) => {
+    const minutes = Math.max(0, Math.floor((Date.now() - updatedAt) / 60_000));
+    return minutes < 1
+      ? "now"
+      : minutes < 60
+        ? `${minutes}m`
+        : minutes < 1440
+          ? `${Math.floor(minutes / 60)}h`
+          : `${Math.floor(minutes / 1440)}d`;
+  };
+  const topLevel = (id: string) =>
+    c.activeRow()?.session.id === id ||
+    c.groups().some((group) => group.rows.some((row) => row.session.id === id));
+  function SessionRow(p: { row: SidebarRow; depth?: number; active?: boolean }) {
+    const row = () => p.row;
+    const children = () => c.liveChildrenFor(row().session.id);
+    const expanded = () => c.expandedChildren().has(row().session.id);
+    const [motionGlyph, setMotionGlyph] = createSignal("");
+    let statusElement: Renderable | undefined;
+    const animation = motion.track({ element: () => statusElement, frame: setMotionGlyph });
+    createEffect(() => {
+      const s = row().summary;
+      const kind =
+        !c.active() || s.permissions > 0 || s.questions > 0 || s.retry > 0
+          ? null
+          : s.busy > 0
+            ? "busy"
+            : s.unknown > 0 && !s.errors && c.state()?.refreshing
+              ? "checking"
+              : null;
+      animation.set(kind, c.icons() === "ascii", c.reducedMotion());
+    });
+    onCleanup(animation.dispose);
+    const status = () => {
+      const s = row().summary;
+      if (s.permissions > 0) return { glyph: "!", color: theme().warning };
+      if (s.questions > 0) return { glyph: "?", color: theme().warning };
+      if (s.retry > 0) return { glyph: symbol("↻", "~"), color: retryColor() };
+      if (s.busy > 0) return { glyph: motionGlyph() || symbol("⠋", "-"), color: theme().text };
+      if ((s.errors ?? 0) > 0) return { glyph: symbol("×", "x"), color: theme().error };
+      if (s.unknown > 0 && c.state()?.refreshing)
+        return { glyph: motionGlyph() || symbol("⠤⠄", "..."), color: theme().text };
+      return {
+        glyph: s.unknown > 0 ? symbol("◌", "?") : symbol("·", "."),
+        color: theme().text,
+      };
+    };
+    const stop = (run: () => void) => (event: { stopPropagation(): void }) => {
+      event.stopPropagation();
+      run();
+    };
+    return (
+      <box
+        flexDirection="column"
+        flexShrink={0}
+        marginBottom={c.density() === "comfortable" ? 1 : 0}
+      >
+        <box
+          flexDirection="column"
+          flexShrink={0}
+          paddingLeft={(p.depth ?? 0) > 0 && (p.depth ?? 0) <= 2 ? 1 : 0}
+        >
+          <box flexDirection="row" height={1} onMouseUp={() => c.open(row().session.id)}>
+            <text
+              id={`sidebar-session-${row().session.id}-status`}
+              ref={(element) => {
+                statusElement = element;
+              }}
+              width={3}
+              flexShrink={0}
+              fg={status().color}
+            >
+              {status().glyph}
+            </text>
+            <text
+              fg={row().done ? theme().success : theme().text}
+              flexGrow={1}
+              flexShrink={1}
+              minWidth={1}
+              truncate
+              wrapMode="none"
+            >
+              {safeLabel(row().session.title)}
+            </text>
+            <Show when={row().done}>
+              <text fg={theme().success} flexShrink={0}>
+                {" "}
+                {symbol("✓", "+")}
+              </text>
+            </Show>
+          </box>
+          <box
+            id={`sidebar-session-${row().session.id}-controls`}
+            flexDirection="row"
+            height={1}
+            paddingLeft={3}
+            gap={1}
+          >
+            <text
+              fg={row().pinned ? theme().text : mutedIcon()}
+              onMouseUp={stop(() => props.actions.quick(row().session.id, "pin"))}
+            >
+              {row().pinned ? symbol("◆", "P", "\uEBA0") : symbol("◇", "p", "\uEB2B")}
+            </text>
+            <text
+              fg={row().later ? theme().text : mutedIcon()}
+              onMouseUp={stop(() => props.actions.quick(row().session.id, "later"))}
+            >
+              {row().later ? symbol("⌛", "L", "\uF4E3") : symbol("≡", "l", "\uF451")}
+            </text>
+            <Show when={children().length > 0}>
+              <text
+                id={`sidebar-session-${row().session.id}-children-disclosure`}
+                fg={theme().warning}
+                flexShrink={0}
+                onMouseUp={stop(() => c.toggleChildren(row().session.id))}
+              >
+                {expanded() ? symbol("▾", "v") : symbol("▸", ">")} {children().length}
+              </text>
+            </Show>
+            <text
+              fg={agentColor(row().session.agent)}
+              flexGrow={1}
+              flexShrink={1}
+              minWidth={0}
+              truncate
+              wrapMode="none"
+            >
+              {row().session.agent ? `[${safeLabel(row().session.agent ?? "")}]` : ""}
+            </text>
+            <text fg={theme().textMuted} flexShrink={0}>
+              {age(row().session.updatedAt)}
+            </text>
+            <text
+              fg={theme().error}
+              flexShrink={0}
+              onMouseUp={stop(() => props.actions.remove(row().session.id))}
+            >
+              {symbol("⌫", "del", "\uF48E")}
+            </text>
+            <text
+              fg={theme().textMuted}
+              flexShrink={0}
+              onMouseUp={stop(() => props.actions.session(row().session.id))}
+            >
+              {symbol("…", "...")}
+            </text>
+          </box>
+          <Show when={children().length > 0}>
+            <Show when={expanded()}>
+              <For each={children()}>
+                {(child) => (
+                  <Show
+                    when={!topLevel(child.session.id)}
+                    fallback={
+                      <text
+                        paddingLeft={3}
+                        fg={theme().textMuted}
+                        truncate
+                        wrapMode="none"
+                        onMouseUp={() => c.open(child.session.id)}
+                      >
+                        {symbol("↗", ">>")} {safeLabel(child.session.title)} — shown in{" "}
+                        {c.activeRow()?.session.id === child.session.id
+                          ? "Active"
+                          : child.later
+                            ? "Later"
+                            : "Pinned"}
+                      </text>
+                    }
+                  >
+                    <SessionRow row={child} depth={(p.depth ?? 0) + 1} />
+                  </Show>
+                )}
+              </For>
+            </Show>
+          </Show>
+          <box
+            id={`sidebar-session-${row().session.id}-context`}
+            flexDirection="column"
+            flexShrink={0}
+            paddingLeft={3}
+          >
+            <box flexDirection="row" height={1}>
+              <text
+                id={`sidebar-session-${row().session.id}-context-disclosure`}
+                fg={theme().warning}
+                width={2}
+                flexShrink={0}
+                onMouseUp={stop(() => c.toggleContext(row().session.id))}
+              >
+                {c.expandedContext().has(row().session.id) ? symbol("▾", "v") : symbol("▸", ">")}
+              </text>
+              <For each={contextFields}>
+                {(field) => (
+                  <text
+                    id={`sidebar-session-${row().session.id}-context-select-${contextSymbols[field]}`}
+                    fg={
+                      c.contextField(row().session.id) === field ? theme().text : theme().textMuted
+                    }
+                    flexShrink={0}
+                    onMouseUp={stop(() => c.selectContext(row().session.id, field))}
+                  >
+                    [{contextSymbols[field]}]
+                  </text>
+                )}
+              </For>
+              <text
+                fg={theme().textMuted}
+                flexGrow={1}
+                flexShrink={1}
+                minWidth={0}
+                truncate
+                wrapMode="none"
+                onMouseUp={stop(() => props.actions.details(row().session.id))}
+              >
+                {" "}
+                {contextValue(c.contextField(row().session.id))}
+              </text>
+            </box>
+            <Show when={c.expandedContext().has(row().session.id)}>
+              <box
+                id={`sidebar-session-${row().session.id}-context-details`}
+                flexDirection="column"
+                flexShrink={0}
+              >
+                <For each={contextFields}>
+                  {(field) => (
+                    <box flexDirection="row" height={1} paddingLeft={2}>
+                      <text fg={theme().textMuted} flexShrink={0}>
+                        [{contextSymbols[field]}]{" "}
+                      </text>
+                      <text
+                        fg={theme().textMuted}
+                        flexGrow={1}
+                        flexShrink={1}
+                        minWidth={0}
+                        truncate
+                        wrapMode="none"
+                        onMouseUp={stop(() => props.actions.details(row().session.id))}
+                      >
+                        {contextValue(field)}
+                      </text>
+                    </box>
+                  )}
+                </For>
+              </box>
+            </Show>
+          </box>
+          <Show when={p.active}>
+            <text
+              id={`sidebar-session-${row().session.id}-completion`}
+              fg={theme().warning}
+              paddingLeft={3}
+              onMouseUp={() => props.actions.quick(row().session.id, "completion")}
+            >
+              {row().done ? "Unmark completed" : "Mark completed"}
+            </text>
+          </Show>
+        </box>
+      </box>
+    );
+  }
   return (
     <Show when={c.active()}>
       <box flexDirection="column" flexShrink={0} gap={0}>
-        <text fg={theme().text} attributes={1}>
-          Sessions
-        </text>
-        <box flexDirection="row" gap={2} marginBottom={c.density() === "compact" ? 0 : 1}>
-          <text fg={theme().primary} onMouseUp={() => props.actions.create()}>
-            New
+        <box flexDirection="row" height={1}>
+          <text fg={theme().text} attributes={1} flexGrow={1}>
+            Active session:
           </text>
-          <text fg={theme().primary} onMouseUp={() => props.actions.browse()}>
-            Browse
-          </text>
-          <text fg={theme().primary} onMouseUp={() => props.actions.settings()}>
-            Settings
+          <text fg={theme().textMuted} onMouseUp={() => props.actions.menu()}>
+            {symbol("…", "...")}
           </text>
         </box>
-        <Show when={c.density() !== "compact"}>
-          <text fg={theme().textMuted} truncate wrapMode="none">
-            {context()}
-            {props.api.state.vcs?.branch ? ` · ${safeLabel(props.api.state.vcs!.branch!)}` : ""}
-          </text>
-        </Show>
-        <Show when={c.connecting()}>
-          <text fg={theme().textMuted}>Loading sessions…</text>
+        <text fg={theme().warning} onMouseUp={() => props.actions.create()}>
+          new session +
+        </text>
+        <Show
+          when={c.activeRow()}
+          fallback={
+            <text fg={theme().textMuted}>
+              {c.connecting() ? "Loading sessions…" : "No active session"}
+            </text>
+          }
+        >
+          {(row: Accessor<SidebarRow>) => <SessionRow row={row()} active />}
         </Show>
         <Show when={c.error()}>
           <text fg={theme().warning} wrapMode="word">
@@ -335,7 +779,7 @@ export function SidebarView(props: {
         <Show
           when={c.state()?.phase === "stale" || c.state()?.phase === "error" || c.state()?.partial}
         >
-          <text fg={theme().warning} wrapMode="word">
+          <text fg={theme().warning} wrapMode="word" onMouseUp={() => void c.refresh()}>
             Session data incomplete — Refresh
           </text>
         </Show>
@@ -344,8 +788,8 @@ export function SidebarView(props: {
             c.organizationState() && c.organizationState()?.phase !== "ready" && !c.connecting()
           }
         >
-          <text fg={theme().warning} wrapMode="word">
-            Organization unavailable ({c.organizationState()?.phase}). Refresh or check storage.
+          <text fg={theme().warning} wrapMode="word" onMouseUp={() => void c.refresh()}>
+            Organization unavailable — Refresh
           </text>
         </Show>
         <Index each={c.groups()}>
@@ -355,70 +799,26 @@ export function SidebarView(props: {
               flexShrink={0}
               marginTop={c.density() === "compact" ? 0 : 1}
             >
-              <text
-                fg={theme().secondary}
-                attributes={1}
-                onMouseUp={() => c.toggleGroup(group().id)}
-              >
-                {c.collapsed().has(group().id) ? symbol("▸", "+") : symbol("▾", "-")}{" "}
-                {group().title} ({group().rows.length})
-              </text>
-              <Show when={group().rows.length > 0}>
+              <box flexDirection="row" height={1} onMouseUp={() => c.toggleGroup(group().id)}>
                 <text
-                  fg={
-                    group().summary.permissions + group().summary.questions > 0
-                      ? theme().warning
-                      : theme().textMuted
-                  }
-                  wrapMode="word"
+                  fg={theme().text}
+                  attributes={1}
+                  flexGrow={1}
+                  flexShrink={1}
+                  truncate
+                  wrapMode="none"
                 >
-                  {statusText(group().summary, c.state()?.attentionCoverage)}
+                  {c.collapsed().has(group().id) ? symbol("▸", ">") : symbol("▾", "v")}{" "}
+                  {group().title}
+                </text>
+              </box>
+              <Show when={c.collapsed().has(group().id) && summaryLabel(group())}>
+                <text fg={summaryColor(group())} paddingLeft={2} wrapMode="word">
+                  {summaryLabel(group())}
                 </text>
               </Show>
               <Show when={!c.collapsed().has(group().id)}>
-                <Show when={group().rows.length === 0}>
-                  <text fg={theme().textMuted}>
-                    {group().id === "later"
-                      ? "Add sessions to read later"
-                      : group().id === "pins"
-                        ? "Pin sessions from their menu"
-                        : "No sessions in this scope"}
-                  </text>
-                </Show>
-                <For each={group().rows}>
-                  {(row) => (
-                    <box
-                      flexDirection="column"
-                      flexShrink={0}
-                      marginBottom={c.density() === "comfortable" ? 1 : 0}
-                      paddingLeft={row.session.parentId ? 1 : 0}
-                      backgroundColor={
-                        c.state()?.selectedSessionId === row.session.id
-                          ? theme().backgroundElement
-                          : theme().backgroundPanel
-                      }
-                      onMouseUp={() => props.actions.session(row.session.id)}
-                    >
-                      <text fg={theme().text} truncate wrapMode="none">
-                        {row.done ? "[x]" : "[ ]"}{" "}
-                        {c.state()?.selectedSessionId === row.session.id ? symbol("›", ">") : " "}{" "}
-                        {safeLabel(row.session.title)}
-                      </text>
-                      <text
-                        fg={
-                          attention(row)
-                            ? theme().warning
-                            : row.summary.busy + row.summary.retry > 0
-                              ? theme().accent
-                              : theme().textMuted
-                        }
-                        wrapMode="word"
-                      >
-                        {statusText(row.summary, c.state()?.attentionCoverage)}
-                      </text>
-                    </box>
-                  )}
-                </For>
+                <For each={group().rows}>{(row) => <SessionRow row={row} />}</For>
               </Show>
               <Show when={group().id === "later" && c.unavailableLater().length > 0}>
                 <text fg={theme().warning} wrapMode="word" onMouseUp={() => props.actions.later()}>
@@ -428,9 +828,6 @@ export function SidebarView(props: {
             </box>
           )}
         </Index>
-        <text fg={theme().textMuted} marginTop={1}>
-          Select a session for actions
-        </text>
       </box>
     </Show>
   );
@@ -444,11 +841,11 @@ export function SidebarHome(props: {
   return (
     <Show when={props.controller.active()}>
       <box flexDirection="row" gap={2}>
-        <text fg={props.api.theme.current.primary} onMouseUp={() => props.actions.browse()}>
+        <text fg={props.api.theme.current.warning} onMouseUp={() => props.actions.browse()}>
           Browse sessions
         </text>
-        <text fg={props.api.theme.current.primary} onMouseUp={() => props.actions.create()}>
-          New session
+        <text fg={props.api.theme.current.warning} onMouseUp={() => props.actions.create()}>
+          new session +
         </text>
       </box>
     </Show>

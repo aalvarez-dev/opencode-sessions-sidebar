@@ -40,6 +40,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
   };
   const sessions = new Map<string, SessionRecord>();
   const activity = new Map<string, Activity>();
+  const failures = new Set<string>();
   const observations = new Map<string, number>();
   const children = new Map<string, Set<string>>();
   const permissions = new Map<string, string>();
@@ -53,6 +54,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
   const disposers: (() => void)[] = [];
   const controllers = new Set<AbortController>();
   let phase: AdapterState["phase"] = "idle";
+  let refreshing = false;
   let partial = false;
   let attentionCoverage: AdapterState["attentionCoverage"] = "unknown";
   let diagnostic: string | null = null;
@@ -72,6 +74,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
   function state(): AdapterState {
     return Object.freeze({
       phase,
+      refreshing,
       partial,
       attentionCoverage,
       selectedSessionId,
@@ -168,6 +171,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
       projectId: session.projectID,
       workspaceId: session.workspaceID ?? null,
       parentId: session.parentID ?? null,
+      ...(session.agent ? { agent: session.agent } : {}),
       updatedAt: session.time.updated,
       activity: "unknown",
       permissions: 0,
@@ -177,6 +181,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
       previous &&
       previous.title === next.title &&
       previous.parentId === next.parentId &&
+      previous.agent === next.agent &&
       previous.updatedAt === next.updatedAt
     )
       return;
@@ -192,13 +197,25 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
       siblings.add(next.id);
       children.set(next.parentId, siblings);
     }
+    // Navigation can precede its created event or snapshot. Reconcile when the
+    // host establishes that the current route's session belongs to this scope.
+    observeRoute();
     changed([...affected, session.id], true);
   }
 
   function putActivity(id: string, value: Activity) {
-    if (!sessions.has(id) || activity.get(id) === value) return;
+    if (!sessions.has(id)) return;
+    // Recovery/new activity supersedes the observed failure without inventing a run ID.
+    const clearedFailure = (value === "busy" || value === "retry") && failures.delete(id);
+    if (activity.get(id) === value && !clearedFailure) return;
     activity.set(id, value);
     changed([id]);
+  }
+
+  function forgetFailures() {
+    const affected = [...failures];
+    failures.clear();
+    changed(affected);
   }
 
   function attention(kind: "permissions" | "questions", id: string, sessionId?: string) {
@@ -243,6 +260,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     }
     sessions.delete(id);
     activity.delete(id);
+    failures.delete(id);
     observations.delete(id);
     for (const [request, owner] of permissions) if (owner === id) attention("permissions", request);
     for (const [request, owner] of questions) if (owner === id) attention("questions", request);
@@ -267,6 +285,17 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
       case "session.status":
         putActivity(event.properties.sessionID, event.properties.status.type);
         break;
+      case "session.error": {
+        const { sessionID, error } = event.properties;
+        if (!sessionID || !sessions.has(sessionID) || !error) break;
+        if (error.name === "MessageAbortedError") {
+          if (failures.delete(sessionID)) changed([sessionID]);
+        } else if (!failures.has(sessionID)) {
+          failures.add(sessionID);
+          changed([sessionID]);
+        }
+        break;
+      }
       case "permission.asked":
       case "question.asked": {
         const request = event.properties;
@@ -355,8 +384,10 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     epoch++;
     for (const controller of controllers) controller.abort();
     phase = "stale";
+    refreshing = false;
     attentionCoverage = "unknown";
     batch(() => {
+      forgetFailures();
       for (const id of sessions.keys()) putActivity(id, "unknown");
       changed([], !alreadyStale);
     });
@@ -366,6 +397,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     if (disposed) return;
     const capturedEpoch = epoch;
     phase = "loading";
+    refreshing = true;
     journal = [];
     journalOverflow = false;
     changed([], true);
@@ -387,6 +419,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
       if (disposed || epoch !== capturedEpoch) return;
       if (journalOverflow) {
         phase = "stale";
+        refreshing = false;
         changed([], true);
         return;
       }
@@ -430,19 +463,26 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
         )
           incomplete("Pending attention includes unloaded sessions; ancestor coverage is partial");
         phase = "ready";
+        refreshing = false;
         changed([], true);
       });
     } catch (error) {
       if (disposed || capturedEpoch !== epoch) return;
       phase = "error";
+      refreshing = false;
       attentionCoverage = "unknown";
       diagnostic = error instanceof Interrupted ? error.message : "Host snapshot failed";
       batch(() => {
+        forgetFailures();
         for (const id of sessions.keys()) putActivity(id, "unknown");
         changed([], true);
       });
     } finally {
       journal = undefined;
+      if (refreshing) {
+        refreshing = false;
+        changed([], true);
+      }
     }
   }
 
@@ -480,6 +520,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     disposed = true;
     epoch++;
     phase = "disposed";
+    refreshing = false;
     for (const controller of controllers) controller.abort();
     for (const unsubscribe of disposers.splice(0)) {
       try {
@@ -503,6 +544,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     ])
       map.clear();
     eventIds.clear();
+    failures.clear();
     deleted.clear();
     dirty.clear();
   }
@@ -519,6 +561,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
         "session.updated",
         "session.deleted",
         "session.status",
+        "session.error",
         "permission.asked",
         "permission.replied",
         "question.asked",
@@ -543,6 +586,9 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
       cached = Object.freeze({
         ...existing,
         activity: activity.get(id) ?? "unknown",
+        // Some host errors initiate recovery (for example auto-compaction). Only
+        // expose a settled error alongside confirmed idle, never over live work.
+        error: failures.has(id) && activity.get(id) === "idle",
         permissions: counts.get(id)?.permissions ?? 0,
         questions: counts.get(id)?.questions ?? 0,
       });
@@ -555,7 +601,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     if (!sessions.has(id)) return;
     const cached = summaries.get(id);
     if (cached) return cached;
-    const result = { busy: 0, retry: 0, unknown: 0, permissions: 0, questions: 0 };
+    const result = { busy: 0, retry: 0, unknown: 0, permissions: 0, questions: 0, errors: 0 };
     const visited = new Set<string>();
     const pending = [id];
     while (pending.length) {
@@ -567,6 +613,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
       if (record.activity !== "idle") result[record.activity]++;
       result.permissions += record.permissions;
       result.questions += record.questions;
+      if (record.error) result.errors++;
       pending.push(...(children.get(current) ?? []));
     }
     const value = Object.freeze(result);

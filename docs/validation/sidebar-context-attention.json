@@ -6,30 +6,32 @@
     "bun": "1.3.14"
   },
   "artifact": {
-    "baseGitRevision": "d535566536124e691af243c185a3d5d72608f383",
+    "baseGitRevision": "d838fdb6cc6d61ded2aa3e323fabd22c95ea54d5",
     "sha256": {
-      "src/tui.tsx": "047f461576e196a8e7e7c63619762750aa4086299bc7d98f9b9497f0380b4edc",
-      "src/ui/controller.ts": "fae4ad5d489980af453115d630ced91fb419d61b7fc9787d807e132d46d456cb",
-      "src/ui/model.ts": "9e9a9bb3e8546eef9a6a9c278145b138129638013566321955725d8c21e1315a",
-      "src/ui/view.tsx": "b69786b3f7c6dbda190dbac059878661ececa12a59a23aeae91a643a601d1be6",
+      "src/tui.tsx": "83e5629c2c2f8162278b9c4f348abf0bbf79b5bbda6b34142579f9a38ff3c416",
+      "src/ui/controller.ts": "4740b9dd9c2a57b960778a479677356708aedb8ebe94f83ac3b73c3e21d7e312",
+      "src/ui/model.ts": "2a0458b7ab2526d0ce46d0baf87dfd4a813141c166fac67eb7259524d3e62e56",
+      "src/ui/view.tsx": "5e29d4689f81dfc9699f21a874c0931006494b79082ab7f8aa6e175c07b0033a",
       "src/ui/motion.ts": "d94e645427082efd6647c9b2d7f08a1bfa08c8e99c2784cac5f348e8edbdd598",
-      "src/adapters/opencode-v1/adapter.ts": "bfd5721d75184f4b6e6018bd7f346a0ce1d67ce82b8e8a7ca27eaf765047fc9f",
+      "src/adapters/opencode-v1/adapter.ts": "6e4654ee67091232ff9c936baa3fd5e838756d81ddae6bd82a8a0480aee6e177",
       "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
-      "scripts/sidebar-attention-probe.ts": "fb352c00b6087e8556af0ef6b5392c421beb22e4338a22006c7d15ccc061098d",
-      "scripts/smoke-sidebar-attention.ts": "6eed60ff56496dde3c6d2e7c9369d2fa0ed24acad21d4522bc7b3eb42267cd8a",
-      "dist/tui.js": "2f1e4a021df083985f1dfdae5fd491f6e80ddf0645699e8d0630d8a6b882a29b"
+      "scripts/sidebar-attention-probe.ts": "88a885e96cfba11d83d61ac9ad94ecfbf2064059676c09c436001f463ceffea6",
+      "scripts/smoke-sidebar-attention.ts": "2f1227164f83bbb57db0de78200d4576fe7ebb96b61aa0715fc65a9c0c86c60b",
+      "dist/tui.js": "b5113d06b73911646c0e62d53f0019e807647b9dd0f108bfc1ed97ebb1ba55ad"
     },
     "receipt": "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions. The uncommitted source hashes identify this validation build."
   },
   "scope": "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
   "checks": [
     "Marked pinned parent retains completion while displaying child busy/question.",
-    "Three-line child disclosure expands and collapses native child rows; deduplicated pinned parent retains its mark and success title color.",
+    "Mouse and keyboard line-two live-subagent disclosure expands and collapses native child rows above the parent's line-three context; deduplicated pinned parent retains its mark and success title color.",
+    "Active parent completion remains below both expanded live children and expanded R/B/W context.",
     "Collapsed Pinned sessions retains busy/question summary.",
     "Native recoverable 429 renders a warning retry glyph; terminal 400 renders an error glyph after host idle, independently of completion.",
     "From a separate idle session route, narrow 88x24 browse retains completion and question footer; session menu retains busy/question labels.",
     "Question reply transitions to native permission with mark and collapsed summary retained.",
-    "Permission reply clears attention and busy labels without clearing completion."
+    "Permission reply clears attention and busy labels without clearing completion.",
+    "Settled children disappear from the live count and disclosure; their terminal error remains discoverable on the parent's status and group summary."
   ],
   "providerRequests": 5,
   "captures": [
@@ -39,17 +41,22 @@
       "height": 40
     },
     {
-      "name": "marked-parent-third-line-question",
+      "name": "marked-parent-second-line-question",
       "width": 140,
       "height": 40
     },
     {
-      "name": "unicode-marked-parent-third-line-question",
+      "name": "unicode-marked-parent-second-line-question",
       "width": 140,
       "height": 40
     },
     {
       "name": "marked-parent-expanded-child-question",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "active-parent-children-context-completion-order",
       "width": 140,
       "height": 40
     },
@@ -69,6 +76,11 @@
       "height": 40
     },
     {
+      "name": "marked-parent-settled-no-live-subagents",
+      "width": 140,
+      "height": 40
+    },
+    {
       "name": "marked-parent-final-error",
       "width": 140,
       "height": 40
@@ -76,7 +88,6 @@
   ],
   "limitations": [
     "No external provider or model inference; native host tool handling receives synthetic loopback completion chunks.",
-    "No remote disconnect, cross-platform render, or performance claim from this focused smoke.",
-    "The retry color assertion covers the collapsed-parent retry1 summary, not the expanded child retry glyph. Expanded question and settled-error glyph colors are asserted directly."
+    "No remote disconnect, cross-platform render, or performance claim from this focused smoke."
   ]
 }

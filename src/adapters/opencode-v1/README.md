@@ -25,6 +25,29 @@ old snapshot/action responses after invalidation or disposal. Network waits have
 not poll in the background. Observer notifications are read-model changes, not the future versioned
 extension event bus or durable committed organization events.
 
+Session records include the public `Session.agent` name when the host provides it. Missing agent
+names remain absent; the adapter does not infer them from titles or private metadata. The UI may
+resolve an explicitly configured color through the public `api.state.config.agent` map. There is no
+public `api.state.agent` list in the researched TUI contract, and no per-session history reads are
+added to fill missing names.
+
+`state().refreshing` is true only while a bounded snapshot read is in progress. Unknown activity
+alone does not indicate that a check is running. It becomes false after success, failure,
+invalidation, or disposal; there is no checking timer or background polling in the adapter.
+
+`session.error` is observed separately from retry activity. A record exposes `error: true` only when
+a non-abort error has been observed and activity is confirmed idle. This matters because the host
+also emits errors during recoverable context-overflow handling. A later busy or retry status clears
+the observed failure, including a repeated busy status; idle preserves it. An explicit abort clears
+pending failure evidence instead of producing a terminal-error indicator. Descendant summaries count
+these settled observed errors independently of busy, retry, and attention.
+
+These error observations are connection-local, not a history of task outcomes. Reconnection,
+invalidation, or failed reads discard uncertain failure evidence. The list/status snapshot cannot
+reconstruct earlier errors after restart, and the adapter does not fetch message histories or infer
+a run identifier to invent that information. Events received during a snapshot read are replayed in
+order so a newer error/idle pair wins over an older busy snapshot.
+
 `create`, `rename`, and `delete` invoke only native session operations. `open` requests navigation;
 `observeRoute()` confirms the host's actual current route. None of these actions sends a prompt. The
 future UI must provide delete confirmation and wire route observation through host reactivity.
@@ -64,6 +87,7 @@ Start with the smallest useful host event set:
 | --------------------------------------------------------- | ------------------------------------------------------------ |
 | `session.created`, `session.updated`, `session.deleted`   | Reconcile session records and organization metadata, if used |
 | `session.status`                                          | Update execution activity: idle, busy, or retry              |
+| `session.error`                                           | Observe non-abort failures without hiding recovery activity  |
 | `permission.asked`, `permission.replied`                  | Track permission attention                                   |
 | `question.asked`, `question.replied`, `question.rejected` | Track question attention                                     |
 | `vcs.branch.updated`, optionally                          | Invalidate current-workspace branch information              |
@@ -151,6 +175,7 @@ runtimes.
 - [TUI public types, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/plugin/src/tui.ts)
 - [SDK data and event types, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/sdk/js/src/v2/gen/types.gen.ts)
 - [SDK client methods, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/sdk/js/src/v2/gen/sdk.gen.ts)
+- [Session processor error, retry, and recovery ordering, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/session/processor.ts)
 - [TUI plugin loading and package specification, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/specs/tui-plugins.md)
 - [Directory entrypoint test, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/test/cli/tui/plugin-loader-entrypoint.test.ts)
 - [Loader and import failure handling, OpenCode v1.18.30](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/plugin/loader.ts)

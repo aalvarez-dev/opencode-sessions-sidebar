@@ -47,7 +47,7 @@ function activateSidebar(api: TuiPluginApi, options: SidebarOptions): void {
       ],
     });
     api.slots.register({
-      order: 0,
+      order: 350,
       slots: {
         sidebar_content: () => <SidebarView api={api} controller={controller} actions={actions} />,
         home_bottom: () => <SidebarHome api={api} controller={controller} actions={actions} />,
@@ -61,7 +61,10 @@ function activateSidebar(api: TuiPluginApi, options: SidebarOptions): void {
       }
     });
     createEffect(() => {
-      api.route.current;
+      // Track route fields even before asynchronous connection creates the adapter.
+      // The host may update a stable reactive route object in place.
+      const route = api.route.current;
+      if (route.name === "session") route.params?.sessionID;
       controller.observeRoute();
     });
     let removeLifecycle = () => {};

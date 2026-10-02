@@ -351,6 +351,7 @@ describe("V1 adapter contract with a fake public host", () => {
       unknown: 0,
       permissions: 1,
       questions: 1,
+      errors: 0,
     });
     expect(adapter.summary("other")).toEqual({
       busy: 0,
@@ -358,6 +359,7 @@ describe("V1 adapter contract with a fake public host", () => {
       unknown: 0,
       permissions: 0,
       questions: 0,
+      errors: 0,
     });
     expect(adapter.summary("absent")).toBeUndefined();
     expect(adapter.summary("orphan")?.permissions).toBe(1);
@@ -376,6 +378,7 @@ describe("V1 adapter contract with a fake public host", () => {
       unknown: 0,
       permissions: 1,
       questions: 0,
+      errors: 0,
     });
     expect(adapter.summary("b")).toEqual(adapter.summary("a"));
   });
@@ -430,7 +433,9 @@ describe("V1 adapter contract with a fake public host", () => {
     host.listRead = () => list.promise;
     const refreshing = adapter.refresh();
     await Promise.resolve();
+    expect(adapter.state().refreshing).toBe(true);
     adapter.invalidate();
+    expect(adapter.state().refreshing).toBe(false);
     await refreshing;
     expect(adapter.state().phase).toBe("stale");
     expect(adapter.get("a")?.activity).toBe("unknown");
@@ -600,6 +605,37 @@ describe("V1 adapter contract with a fake public host", () => {
     adapter.observeRoute();
     expect(adapter.state().selectedSessionId).toBe("a");
     expect(host.calls).toMatchObject({ create: 0, update: 0, delete: 0 });
+  });
+
+  test("a route observed before its session arrives becomes selected on scoped host data", async () => {
+    const host = new FakeHost();
+    const adapter = adapterFor(host);
+    await adapter.start();
+    host.currentRoute = { name: "session", params: { sessionID: "late" } };
+    adapter.observeRoute();
+    expect(adapter.state().selectedSessionId).toBeNull();
+    host.emit({
+      id: "foreign-route-target",
+      type: "session.created",
+      properties: { sessionID: "late", info: session("late", { directory: "/different/project" }) },
+    });
+    expect(adapter.state().selectedSessionId).toBeNull();
+    host.emit({
+      id: "route-target-arrived",
+      type: "session.created",
+      properties: { sessionID: "late", info: session("late") },
+    });
+    expect(adapter.state().selectedSessionId).toBe("late");
+    expect(host.navigations).toEqual([]);
+    expect(host.calls.list).toBe(1);
+
+    host.currentRoute = { name: "session", params: { sessionID: "snapshot-target" } };
+    adapter.observeRoute();
+    expect(adapter.state().selectedSessionId).toBeNull();
+    host.sessions = [session("snapshot-target")];
+    await adapter.refresh();
+    expect(adapter.state().selectedSessionId).toBe("snapshot-target");
+    expect(host.navigations).toEqual([]);
   });
 
   test("reconnect reads the current host client and reconciles after cancelling an old read", async () => {
@@ -822,5 +858,201 @@ describe("V1 adapter contract with a fake public host", () => {
     ]) {
       expect(() => adapterFor(host, limits)).toThrow(RangeError);
     }
+  });
+
+  test("uses public agent names and invalidates rows when only the agent changes", async () => {
+    const host = new FakeHost();
+    host.sessions = [
+      session("a", { agent: "builder" }),
+      session("b", { title: "[reviewer] Example", metadata: { agent: "reviewer" } }),
+    ];
+    const adapter = adapterFor(host);
+    await adapter.start();
+    expect(adapter.get("a")?.agent).toBe("builder");
+    expect(adapter.get("b")?.agent).toBeUndefined();
+    const before = adapter.get("a");
+    host.emit({
+      id: "agent-changed",
+      type: "session.updated",
+      properties: { sessionID: "a", info: session("a", { agent: "reviewer" }) },
+    });
+    expect(adapter.get("a")).not.toBe(before);
+    expect(adapter.get("a")?.agent).toBe("reviewer");
+    host.emit({
+      id: "agent-removed",
+      type: "session.updated",
+      properties: { sessionID: "a", info: session("a") },
+    });
+    expect(adapter.get("a")?.agent).toBeUndefined();
+    expect(host.calls.list).toBe(1);
+  });
+
+  test("distinguishes an idle host error from retry and keeps descendant errors discoverable", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("parent"), session("child", { parentID: "parent" }), session("other")];
+    host.statuses = { child: { type: "busy" } };
+    const adapter = adapterFor(host);
+    await adapter.start();
+    const failure = {
+      id: "failure",
+      type: "session.error" as const,
+      properties: {
+        sessionID: "child",
+        error: { name: "UnknownError" as const, data: { message: "Synthetic failure" } },
+      },
+    };
+    host.emit(failure);
+    expect(adapter.get("child")).toMatchObject({ activity: "busy", error: false });
+    host.status("settled", "child", { type: "idle" });
+    host.emit(failure);
+    expect(adapter.get("child")).toMatchObject({ activity: "idle", error: true });
+    expect(adapter.summary("parent")?.errors).toBe(1);
+    expect(adapter.summary("other")?.errors).toBe(0);
+    host.status("still-idle", "child", { type: "idle" });
+    expect(adapter.get("child")?.error).toBe(true);
+    host.status("retry", "child", { type: "retry", attempt: 1, message: "Retrying", next: 5 });
+    expect(adapter.get("child")).toMatchObject({ activity: "retry", error: false });
+    expect(adapter.summary("parent")).toMatchObject({ retry: 1, errors: 0 });
+    host.status("recovered", "child", { type: "idle" });
+    expect(adapter.get("child")?.error).toBe(false);
+    host.emit({ ...failure, id: "another-failure" });
+    expect(adapter.get("child")?.error).toBe(true);
+    host.status("working-again", "child", { type: "busy" });
+    expect(adapter.get("child")?.error).toBe(false);
+    expect(host.calls.list).toBe(1);
+  });
+
+  test("aborts and automatic recovery do not become terminal errors", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a")];
+    host.statuses = { a: { type: "busy" } };
+    const adapter = adapterFor(host);
+    await adapter.start();
+    const overflow = {
+      id: "overflow",
+      type: "session.error" as const,
+      properties: {
+        sessionID: "a",
+        error: { name: "ContextOverflowError" as const, data: { message: "Synthetic overflow" } },
+      },
+    };
+    host.emit(overflow);
+    expect(adapter.get("a")?.error).toBe(false);
+    // The host can repeat busy while recovery starts; activity need not change.
+    host.status("compacting", "a", { type: "busy" });
+    host.status("recovery-finished", "a", { type: "idle" });
+    expect(adapter.get("a")?.error).toBe(false);
+    host.status("work", "a", { type: "busy" });
+    host.emit({ ...overflow, id: "second-overflow" });
+    host.emit({
+      id: "aborted",
+      type: "session.error",
+      properties: {
+        sessionID: "a",
+        error: { name: "MessageAbortedError", data: { message: "Stopped by user" } },
+      },
+    });
+    host.status("stopped", "a", { type: "idle" });
+    expect(adapter.get("a")?.error).toBe(false);
+    host.emit({
+      id: "no-session",
+      type: "session.error",
+      properties: { error: overflow.properties.error },
+    });
+    host.emit({ id: "no-error", type: "session.error", properties: { sessionID: "a" } });
+    host.emit({
+      id: "unloaded",
+      type: "session.error",
+      properties: { ...overflow.properties, sessionID: "absent" },
+    });
+    expect(adapter.get("a")?.error).toBe(false);
+    expect(adapter.state().sessionCount).toBe(1);
+  });
+
+  test("error and idle observed during a refresh win over its stale busy snapshot", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a")];
+    host.statuses = { a: { type: "busy" } };
+    const adapter = adapterFor(host);
+    await adapter.start();
+    const list = deferred<Session[]>();
+    host.listRead = () => list.promise;
+    const refreshing = adapter.refresh();
+    await Promise.resolve();
+    host.emit({
+      id: "live-failure",
+      type: "session.error",
+      properties: {
+        sessionID: "a",
+        error: { name: "UnknownError", data: { message: "Synthetic failure" } },
+      },
+    });
+    host.status("live-idle", "a", { type: "idle" });
+    list.resolve(host.sessions);
+    await refreshing;
+    expect(adapter.get("a")).toMatchObject({ activity: "idle", error: true });
+    host.status("new-busy", "a", { type: "busy" });
+    expect(adapter.get("a")?.error).toBe(false);
+  });
+
+  test("bootstrap replays errors for sessions not yet loaded, without fabricating history", async () => {
+    const host = new FakeHost();
+    const list = deferred<Session[]>();
+    host.listRead = () => list.promise;
+    const adapter = adapterFor(host);
+    const starting = adapter.start();
+    await Promise.resolve();
+    host.emit({
+      id: "bootstrap-failure",
+      type: "session.error",
+      properties: {
+        sessionID: "a",
+        error: { name: "UnknownError", data: { message: "Synthetic failure" } },
+      },
+    });
+    host.status("bootstrap-idle", "a", { type: "idle" });
+    list.resolve([session("a"), session("b")]);
+    await starting;
+    expect(adapter.get("a")?.error).toBe(true);
+    expect(adapter.get("b")?.error).toBe(false);
+    adapter.invalidate();
+    expect(adapter.get("a")).toMatchObject({ activity: "unknown", error: false });
+    await adapter.refresh();
+    expect(adapter.get("a")).toMatchObject({ activity: "idle", error: false });
+  });
+
+  test("checking is limited to a pending snapshot and stops on failure or disposal", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a")];
+    const adapter = adapterFor(host);
+    expect(adapter.state().refreshing).toBe(false);
+    await adapter.start();
+    expect(adapter.state().refreshing).toBe(false);
+    host.emit({
+      id: "failure-before-read",
+      type: "session.error",
+      properties: {
+        sessionID: "a",
+        error: { name: "UnknownError", data: { message: "Synthetic failure" } },
+      },
+    });
+    expect(adapter.get("a")?.error).toBe(true);
+    const list = deferred<Session[]>();
+    host.listRead = () => list.promise;
+    const reading = adapter.refresh();
+    await Promise.resolve();
+    expect(adapter.state()).toMatchObject({ phase: "loading", refreshing: true });
+    list.reject(new Error("Synthetic read failure"));
+    await reading;
+    expect(adapter.state()).toMatchObject({ phase: "error", refreshing: false });
+    expect(adapter.get("a")).toMatchObject({ activity: "unknown", error: false });
+    const nextList = deferred<Session[]>();
+    host.listRead = () => nextList.promise;
+    const nextReading = adapter.refresh();
+    await Promise.resolve();
+    expect(adapter.state().refreshing).toBe(true);
+    adapter.dispose();
+    expect(adapter.state()).toMatchObject({ phase: "disposed", refreshing: false });
+    await nextReading;
   });
 });

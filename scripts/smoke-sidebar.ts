@@ -13,6 +13,7 @@ assert(process.platform !== "win32", "The rendered stock TUI smoke requires a PO
 const executable = await realpath(binary);
 const root = await mkdtemp(join(tmpdir(), "sidebar-ui-smoke-"));
 const project = join(root, "project");
+const repositoryDirectory = join(root, "main-repository");
 const config = join(root, "config");
 const storage = join(root, "sidebar-state");
 const exchange = join(root, "exchange");
@@ -29,14 +30,30 @@ const deadline = setTimeout(() => {
 // the test observer's 10ms polling, one public host list read, and a local file receipt.
 const budgets = { inputToObservedFrameP95Ms: 250, nativeCrudBurst20Ms: 5_000 };
 type Span = { text: string; width: number; fg: number[]; bg: number[]; attributes: number };
+type Geometry = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  visible: boolean;
+};
 type Snapshot = {
   version: string;
+  timing: { listMs: number; storageMs: number; observerMs: number };
   theme: { mode: "dark" | "light"; selected: string };
+  palette: Record<"text" | "textMuted" | "success" | "warning" | "error", number[]>;
   route: { name: string; params?: { sessionID?: string } };
   dialogDepth: number;
+  geometry: Geometry[];
   plugins: { id: string; active: boolean; enabled: boolean }[];
   sessions: { id: string; title: string }[];
   initialIds: string[];
+  publicContext: {
+    project: { worktree: string };
+    path: { directory: string; worktree: string };
+    vcs: { branch?: string };
+  };
   burst: { running: boolean; count: number; hostOperationsMs: number; error?: string } | null;
   organization: {
     revision: number;
@@ -49,6 +66,33 @@ type Snapshot = {
 const frames: { name: string; theme: string; icons: string; frame: Snapshot["frame"] }[] = [];
 const checks: string[] = [];
 const inputLatencies: number[] = [];
+const inputDiagnostics: object[] = [];
+let observationTrace: object[] | undefined;
+const sourceFiles = [
+  "src/tui.tsx",
+  "src/ui/controller.ts",
+  "src/ui/model.ts",
+  "src/ui/view.tsx",
+  "src/ui/motion.ts",
+  "src/adapters/opencode-v1/adapter.ts",
+  "src/adapters/opencode-v1/types.ts",
+  "scripts/build.ts",
+  "scripts/sidebar-probe.ts",
+  "scripts/smoke-sidebar.ts",
+  "dist/tui.js",
+];
+async function artifactHashes() {
+  return Object.fromEntries(
+    await Promise.all(
+      sourceFiles.map(async (file) => [
+        file,
+        createHash("sha256")
+          .update(await readFile(resolve(import.meta.dir, "..", file)))
+          .digest("hex"),
+      ]),
+    ),
+  );
+}
 
 async function pause(ms = 20) {
   lifetime.signal.throwIfAborted();
@@ -77,6 +121,16 @@ async function request<T>(type: string, fields: object = {}): Promise<T> {
       const response = JSON.parse(raw) as { id: number; ok: boolean; error?: string; result: T };
       if (response.id === id) {
         assert(response.ok, response.error ?? "Observer request failed.");
+        if (type === "snapshot" && observationTrace) {
+          const snapshot = response.result as Snapshot;
+          observationTrace.push({
+            roundTripMs: performance.now() - started,
+            frameId: snapshot.frame.frameId,
+            timing: snapshot.timing,
+            burstCount: snapshot.burst?.count,
+            burstRunning: snapshot.burst?.running,
+          });
+        }
         return response.result;
       }
     }
@@ -89,6 +143,47 @@ function lines(snapshot: Snapshot) {
 }
 function text(snapshot: Snapshot) {
   return lines(snapshot).join("\n");
+}
+function sidebarText(snapshot: Snapshot) {
+  const rows = lines(snapshot).map((line) => line.slice(snapshot.frame.width - 42));
+  const start = rows.findIndex((line) => line.includes("Active session:"));
+  return rows.slice(Math.max(0, start)).join("\n");
+}
+function node(snapshot: Snapshot, id: string) {
+  return snapshot.geometry.find((entry) => entry.id === id && entry.visible && entry.height > 0);
+}
+function nodeText(snapshot: Snapshot, id: string) {
+  const entry = node(snapshot, id);
+  if (!entry) return "";
+  return lines(snapshot)
+    .slice(entry.y, entry.y + entry.height)
+    .map((line) => line.slice(entry.x, entry.x + entry.width))
+    .join("\n");
+}
+async function clickNode(id: string) {
+  const snapshot = await request<Snapshot>("snapshot");
+  const entry = node(snapshot, id);
+  assert(
+    entry && entry.y >= 0 && entry.y < snapshot.frame.height,
+    `Missing visible control ${id}.\n${text(snapshot)}`,
+  );
+  const x = Math.floor(entry.x + Math.max(0, entry.width - 1) / 2) + 1;
+  const y = entry.y + 1;
+  input(`\u001b[<0;${x};${y}M\u001b[<0;${x};${y}m`);
+}
+function labelColor(snapshot: Snapshot, label: string) {
+  const start = lines(snapshot).findIndex((line) =>
+    line.slice(snapshot.frame.width - 42).includes("Active session:"),
+  );
+  for (const line of snapshot.frame.lines.slice(Math.max(0, start))) {
+    let column = 0;
+    for (const span of line) {
+      const offset = span.text.indexOf(label);
+      if (offset >= 0 && column + offset >= snapshot.frame.width - 42) return span.fg;
+      column += span.width;
+    }
+  }
+  return undefined;
 }
 function dialogText(snapshot: Snapshot) {
   // The tested wide stock sidebar occupies its documented 42 rightmost cells.
@@ -122,7 +217,7 @@ async function click(label: string, occurrence = 0) {
     const column = line.indexOf(label);
     if (column < 0 || found++ !== occurrence) continue;
     assert(child?.terminal);
-    const x = column + 2;
+    const x = column + Math.min(2, label.length);
     const y = row + 1;
     input(`\u001b[<0;${x};${y}M\u001b[<0;${x};${y}m`);
     return;
@@ -187,6 +282,42 @@ try {
     mkdir(join(config, "opencode"), { recursive: true }),
   ]);
   await writeFile(join(config, "opencode", "opencode.json"), "{}");
+  const contextBranch = "synthetic/sidebar-context-full-branch-name-that-exceeds-a-terminal-row";
+  for (const args of [
+    ["init", "--initial-branch", "main", repositoryDirectory],
+    [
+      "-C",
+      repositoryDirectory,
+      "-c",
+      "user.name=Synthetic fixture",
+      "-c",
+      "user.email=synthetic@example.invalid",
+      "-c",
+      "commit.gpgsign=false",
+      "-c",
+      "core.hooksPath=/dev/null",
+      "commit",
+      "--allow-empty",
+      "-m",
+      "Synthetic sidebar context",
+    ],
+    ["-C", repositoryDirectory, "worktree", "add", "-b", contextBranch, project],
+  ]) {
+    const initialized = Bun.spawn(["git", ...args], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: {
+        PATH: process.env.PATH ?? "",
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_CONFIG_GLOBAL: "/dev/null",
+      },
+    });
+    assert.equal(
+      await initialized.exited,
+      0,
+      `Could not initialize the synthetic linked-worktree fixture: ${await new Response(initialized.stderr).text()}`,
+    );
+  }
   const env = {
     PATH: process.env.PATH ?? "",
     OPENCODE_TEST_HOME: join(root, "home"),
@@ -222,7 +353,11 @@ try {
   const plugin = resolve(import.meta.dir, "../dist/tui.js");
   assert(await Bun.file(plugin).exists(), "Build the sidebar TUI entrypoint before the smoke.");
 
-  async function launch(theme: "dark" | "light", icons: "ascii" | "unicode") {
+  async function launch(
+    theme: "dark" | "light",
+    icons: "ascii" | "unicode",
+    currentDirectory = project,
+  ) {
     await writeFile(
       join(config, "opencode", "tui.json"),
       JSON.stringify({
@@ -244,14 +379,15 @@ try {
     await rm(`${exchange}.request.json`, { force: true });
     outputTail = "";
     child = Bun.spawn([executable], {
-      cwd: project,
+      cwd: currentDirectory,
       env: {
         ...env,
         TERM: "xterm-256color",
         LANG: "C.UTF-8",
         SIDEBAR_SMOKE_EXCHANGE: exchange,
-        SIDEBAR_SMOKE_DIRECTORY: project,
+        SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
         SIDEBAR_SMOKE_STORAGE: storage,
+        SIDEBAR_SMOKE_GEOMETRY: process.env.SIDEBAR_SMOKE_GEOMETRY ?? "false",
       },
       terminal: {
         cols: 140,
@@ -284,27 +420,153 @@ try {
     );
   }
 
+  const measuredHashes = await artifactHashes();
+  // OpenCode preserves the first discovered worktree as the public project root.
+  // Establish the main checkout through the same isolated stock host before visiting
+  // its linked worktree; no private database edits or local plugin enrichment.
+  await launch("dark", "ascii", repositoryDirectory);
+  const knownProject = await request<Snapshot>("snapshot");
+  assert.equal(knownProject.publicContext.project.worktree, repositoryDirectory);
+  await stopChild();
   await launch("dark", "ascii");
   await request("seed");
+  const seeded = await until(
+    (snapshot) => text(snapshot).includes("Active session:"),
+    "Sidebar did not render in the native route.",
+  );
+  assert.equal(seeded.publicContext.project.worktree, repositoryDirectory);
+  assert.equal(seeded.publicContext.path.worktree, project);
+  assert.equal(seeded.publicContext.vcs.branch, contextBranch);
+  // Stock onboarding reserves a fixed panel beneath the scroll viewport. Dismiss
+  // it through its native close control so the long-list fixture has visible rows.
+  if (text(seeded).includes("Getting started")) {
+    await click("✕");
+    await until(
+      (snapshot) => !text(snapshot).includes("Getting started"),
+      "Native onboarding did not close.",
+    );
+  }
   await until(
-    (snapshot) => text(snapshot).includes("All sessions"),
-    "Sidebar did not render in the stock session route.",
+    (snapshot) =>
+      text(snapshot).includes("Other sessions") && text(snapshot).includes("Synthetic 18"),
+    "Sidebar did not render its loaded sessions in the stock session route.",
   );
   await capture("wide-initial", "dark", "ascii");
   input("\u001b[<65;125;18M".repeat(12));
   await until(
-    (snapshot) => !text(snapshot).includes("- Pinned") && text(snapshot).includes("Synthetic"),
+    (snapshot) =>
+      !text(snapshot).includes("v Pinned sessions") && text(snapshot).includes("Synthetic"),
     "Real mouse wheel did not scroll the long stock sidebar.",
   );
   await capture("wide-scrolled", "dark", "ascii");
   input("\u001b[<64;125;18M".repeat(50));
   await until(
-    (snapshot) => text(snapshot).includes("- Pinned"),
-    "Mouse wheel did not restore the sidebar top.",
+    (snapshot) =>
+      text(snapshot).includes("v Pinned sessions") && text(snapshot).includes("Synthetic 18"),
+    "Mouse wheel did not restore the sidebar top and Other session rows.",
   );
   checks.push("real mouse wheel scrolls many long-title rows and restores the sidebar top");
   checks.push(
     "actual built plugin loaded in stock session sidebar; synthetic host sessions rendered",
+  );
+
+  const activeId = seeded.initialIds[0]!;
+  const contextId = `sidebar-session-${activeId}-context`;
+  const controlsId = `sidebar-session-${activeId}-controls`;
+  const contextDetailsId = `sidebar-session-${activeId}-context-details`;
+  let contextFrame = await until(
+    (snapshot) => Boolean(node(snapshot, contextId) && node(snapshot, controlsId)),
+    "Active controls and repository context must occupy separate rows.",
+  );
+  assert.equal(node(contextFrame, contextId)!.y, node(contextFrame, controlsId)!.y + 1);
+  assert(!node(contextFrame, contextDetailsId), "Context must start collapsed.");
+  for (const [field, expected] of [
+    ["B", "synthetic"],
+    ["W", "/tmp/"],
+    ["R", "main-repository"],
+  ] as const) {
+    await clickNode(`sidebar-session-${activeId}-context-select-${field}`);
+    contextFrame = await until(
+      (snapshot) => nodeText(snapshot, contextId).includes(expected),
+      `Context selector ${field} did not display its own value.`,
+    );
+    assert(
+      !node(contextFrame, contextDetailsId),
+      "Selecting a context value must not expand details.",
+    );
+    assert.equal(contextFrame.route.params?.sessionID, activeId);
+  }
+  await clickNode(`sidebar-session-${activeId}-context-disclosure`);
+  contextFrame = await until(
+    (snapshot) => Boolean(node(snapshot, contextDetailsId)),
+    "The separate context arrow must expand context details.",
+  );
+  const expandedContext = nodeText(contextFrame, contextDetailsId);
+  assert(
+    expandedContext.indexOf("R") < expandedContext.indexOf("B") &&
+      expandedContext.indexOf("B") < expandedContext.indexOf("W"),
+    "Expanded context must retain repository, branch, worktree order.",
+  );
+  assert(
+    node(contextFrame, `sidebar-session-${activeId}-completion`)!.y >=
+      node(contextFrame, contextDetailsId)!.y + node(contextFrame, contextDetailsId)!.height,
+    "Active completion must follow all expanded context.",
+  );
+  await capture("wide-context-expanded", "dark", "ascii");
+  await clickNode(`sidebar-session-${activeId}-context-disclosure`);
+  await until(
+    (snapshot) => !node(snapshot, contextDetailsId),
+    "The context arrow did not collapse its details.",
+  );
+  await browse("Synthetic Alpha");
+  await choose("Context: show branch");
+  contextFrame = await until(
+    (snapshot) => nodeText(snapshot, contextId).includes("synthetic"),
+    "Keyboard context selector did not update the inline value.",
+  );
+  assert(!node(contextFrame, contextDetailsId));
+  await browse("Synthetic Alpha");
+  await choose("Expand context");
+  await until(
+    (snapshot) => Boolean(node(snapshot, contextDetailsId)),
+    "Keyboard context expansion did not update the sidebar.",
+  );
+  await browse("Synthetic Alpha");
+  await choose("Collapse context");
+  await until(
+    (snapshot) => !node(snapshot, contextDetailsId),
+    "Keyboard context collapse did not update the sidebar.",
+  );
+  await browse("Synthetic Alpha");
+  await choose("Session details");
+  const detailsFrame = await until(
+    (snapshot) =>
+      text(snapshot).includes("Session details") &&
+      text(snapshot).includes("Repository") &&
+      nodeText(snapshot, `sidebar-session-${activeId}-details-field-branch`)
+        .replaceAll(/\s/g, "")
+        .includes(contextBranch),
+    "Session details must expose the complete branch value.",
+  );
+  assert.equal(
+    nodeText(detailsFrame, `sidebar-session-${activeId}-details-field-repository`).replaceAll(
+      /\s/g,
+      "",
+    ),
+    repositoryDirectory,
+  );
+  assert.equal(
+    nodeText(detailsFrame, `sidebar-session-${activeId}-details-field-worktree`).replaceAll(
+      /\s/g,
+      "",
+    ),
+    project,
+  );
+  input("\u001b[6~\u001b[5~");
+  await capture("wide-session-details", "dark", "ascii");
+  await dismiss();
+  checks.push(
+    "line-two controls and line-three context stay separate; mouse and keyboard R/B/W selection does not expand context, separate disclosure expands R/B/W in order, completion stays last, Session details retains distinct repository root and linked worktree plus the full branch value",
   );
 
   await browse("Synthetic Alpha");
@@ -328,12 +590,37 @@ try {
   );
   assert.equal(current.route.params?.sessionID, current.initialIds[0]);
   checks.push("real keyboard mark/pin/Later actions persisted without changing native selection");
+  current = await until(
+    (snapshot) =>
+      JSON.stringify(labelColor(snapshot, "Synthetic Alpha")) ===
+      JSON.stringify(snapshot.palette.success),
+    "Completed session title did not use the host success color.",
+  );
+  assert.equal(
+    sidebarText(current).match(/Synthetic Alpha/g)?.length,
+    1,
+    "Active, pin and Later membership must render one primary row.",
+  );
+  assert.deepEqual(
+    labelColor(current, "Unmark completed"),
+    current.palette.warning,
+    "Completion action must use the host warning color.",
+  );
+  checks.push(
+    "completed title uses theme success, completion action uses theme warning, active/pin/Later primary row is deduplicated",
+  );
   await capture("wide-organized", "dark", "ascii");
-  await click("- Pinned");
-  await until((snapshot) => text(snapshot).includes("+ Pinned"), "Mouse collapse did not render.");
+  await click("v Pinned sessions");
+  await until(
+    (snapshot) => text(snapshot).includes("> Pinned sessions"),
+    "Mouse collapse did not render.",
+  );
   await capture("wide-collapsed", "dark", "ascii");
-  await click("+ Pinned");
-  await until((snapshot) => text(snapshot).includes("- Pinned"), "Mouse expansion did not render.");
+  await click("> Pinned sessions");
+  await until(
+    (snapshot) => text(snapshot).includes("v Pinned sessions"),
+    "Mouse expansion did not render.",
+  );
   checks.push("real mouse collapses and expands Pinned with its activity summary retained");
 
   await browse("Synthetic Beta");
@@ -359,16 +646,31 @@ try {
   );
   checks.push("real keyboard open observed on native route; Later membership retained");
   await click("Synthetic Alpha");
+  current = await until(
+    (snapshot) =>
+      snapshot.route.params?.sessionID === snapshot.initialIds[0] &&
+      snapshot.dialogDepth === 0 &&
+      sidebarText(snapshot).includes("Unmark completed"),
+    "Mouse row did not directly open the native session.",
+  );
+  assert.equal(
+    current.organization?.later.length,
+    2,
+    "Opening a row must preserve Later membership.",
+  );
+  await click("...", 1);
   await until(
     (snapshot) => text(snapshot).includes("Open session"),
-    "Mouse row did not open the shared session menu.",
+    "Explicit row action control did not open the shared menu.",
   );
-  await choose("Clear completion mark");
+  await choose("Unmark completed");
   await until(
     (snapshot) => snapshot.organization?.completionStates.every((entry) => !entry.done) === true,
-    "Mouse-opened menu did not clear completion.",
+    "Explicit row menu did not clear completion.",
   );
-  checks.push("real PTY mouse row opens the same action menu; unmark commits");
+  checks.push(
+    "real PTY mouse row opens its session directly; explicit row menu unmarks without changing Later",
+  );
 
   await request("command", { command: "sessions-sidebar.create" });
   await until((snapshot) => snapshot.dialogDepth > 0, "Create prompt missing.");
@@ -422,12 +724,55 @@ try {
   );
   await browse("Synthetic Alpha");
   await capture("narrow-session-menu", "dark", "ascii");
+  await choose("Session details");
+  const narrowDetails = await until(
+    (snapshot) => Boolean(node(snapshot, `sidebar-session-${activeId}-details-scroll`)),
+    "Narrow Session details dialog did not open.",
+  );
+  const worktreeDetailsId = `sidebar-session-${activeId}-details-field-worktree`;
+  const initialWorktreeY = node(narrowDetails, worktreeDetailsId)!.y;
+  input("\u001b[B");
+  await until(
+    (snapshot) => node(snapshot, worktreeDetailsId)!.y < initialWorktreeY,
+    "Down key must scroll overflowing narrow details.",
+  );
+  input("\u001b[6~");
+  const scrolledDetails = await until((snapshot) => {
+    const viewport = node(snapshot, `sidebar-session-${activeId}-details-scroll`);
+    const worktree = node(snapshot, worktreeDetailsId);
+    return Boolean(
+      viewport &&
+        worktree &&
+        worktree.y >= viewport.y &&
+        worktree.y + worktree.height <= viewport.y + viewport.height &&
+        nodeText(snapshot, worktreeDetailsId).replaceAll(/\s/g, "").includes(project),
+    );
+  }, "PgDn must reveal the full worktree value inside the narrow details viewport.");
+  assert.equal(
+    nodeText(scrolledDetails, `sidebar-session-${activeId}-details-field-branch`).replaceAll(
+      /\s/g,
+      "",
+    ),
+    contextBranch,
+    "The narrow details scrollbar must not cover any character of the wrapped branch.",
+  );
+  await capture("narrow-session-details-scrolled", "dark", "ascii");
+  input("\u001b[5~");
+  await until(
+    (snapshot) =>
+      node(snapshot, worktreeDetailsId)!.y > node(scrolledDetails, worktreeDetailsId)!.y,
+    "PgUp must scroll narrow details toward the beginning.",
+  );
+  await dismiss();
+  await browse("Synthetic Alpha");
   await choose("Open session");
   await until(
     (snapshot) => snapshot.route.params?.sessionID === snapshot.initialIds[0],
     "Narrow menu did not open the native session.",
   );
-  checks.push("narrow 88x24 keyboard browse/action fallback remains usable");
+  checks.push(
+    "narrow 88x24 keyboard browse/action fallback and Session details remain usable; Down/PgDn/PgUp scroll to full worktree context and Esc closes",
+  );
   resize(140, 40);
   await until((snapshot) => snapshot.frame.width === 140, "Wide resize was not applied.");
 
@@ -448,12 +793,12 @@ try {
   const activated = await request<{ changed: boolean }>("activate");
   assert(activated.changed);
   current = await until(
-    (snapshot) => text(snapshot).includes("All sessions"),
+    (snapshot) => text(snapshot).includes("Other sessions"),
     "Sidebar did not render after reactivation.",
   );
   assert.deepEqual(current.organization, beforeLifecycle);
   assert.equal(
-    text(current).match(/All sessions/g)?.length,
+    text(current).match(/Other sessions/g)?.length,
     1,
     "Reactivation must render one sidebar instance.",
   );
@@ -469,6 +814,7 @@ try {
     const beforeInput = await request<Snapshot>("snapshot");
     if (beforeInput.burst?.running) overlappingInputSamples++;
     const started = performance.now();
+    observationTrace = [];
     input("Synthetic Alpha");
     await until(
       (snapshot) =>
@@ -478,7 +824,16 @@ try {
         !dialogText(snapshot).includes("Synthetic 01"),
       "Typed filter did not repaint.",
     );
-    inputLatencies.push(performance.now() - started);
+    const elapsedMs = performance.now() - started;
+    inputLatencies.push(elapsedMs);
+    inputDiagnostics.push({
+      index,
+      elapsedMs,
+      burstRunning: beforeInput.burst?.running,
+      burstCount: beforeInput.burst?.count,
+      frames: observationTrace,
+    });
+    observationTrace = undefined;
     await dismiss();
   }
   const burstSnapshot = await until(
@@ -495,7 +850,15 @@ try {
   );
   inputLatencies.sort((left, right) => left - right);
   const p95 = inputLatencies[Math.ceil(inputLatencies.length * 0.95) - 1];
-  assert(p95 !== undefined && p95 < budgets.inputToObservedFrameP95Ms);
+  if (process.env.SIDEBAR_SMOKE_DIAGNOSTICS)
+    await writeFile(
+      resolve(process.env.SIDEBAR_SMOKE_DIAGNOSTICS),
+      JSON.stringify({ p95, burst, samples: inputDiagnostics }, null, 2),
+    );
+  assert(
+    p95 !== undefined && p95 < budgets.inputToObservedFrameP95Ms,
+    `Input-to-observed-frame p95 ${p95?.toFixed(2)}ms exceeds ${budgets.inputToObservedFrameP95Ms}ms; samples=${inputLatencies.map((value) => value.toFixed(2)).join(",")}`,
+  );
   checks.push(
     "20 paced native updates overlap real keyboard filtering; observed frames pass the declared p95 budget",
   );
@@ -508,25 +871,10 @@ try {
   checks.push("new stock process hydrates organization; light terminal and Unicode browse render");
   await stopChild();
 
-  const sourceFiles = [
-    "src/tui.tsx",
-    "src/ui/controller.ts",
-    "src/ui/model.ts",
-    "src/ui/view.tsx",
-    "scripts/build.ts",
-    "scripts/sidebar-probe.ts",
-    "scripts/smoke-sidebar.ts",
-    "dist/tui.js",
-  ];
-  const hashes = Object.fromEntries(
-    await Promise.all(
-      sourceFiles.map(async (file) => [
-        file,
-        createHash("sha256")
-          .update(await readFile(resolve(import.meta.dir, "..", file)))
-          .digest("hex"),
-      ]),
-    ),
+  assert.deepEqual(
+    await artifactHashes(),
+    measuredHashes,
+    "Validation sources or built TUI changed during the runtime probe.",
   );
   const revisionProcess = Bun.spawn(["git", "rev-parse", "HEAD"], {
     cwd: resolve(import.meta.dir, ".."),
@@ -554,7 +902,12 @@ try {
         externalModelInference: false,
       },
     },
-    source: { baseCommit, sha256: hashes },
+    source: {
+      baseCommit,
+      sha256: measuredHashes,
+      receipt:
+        "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions.",
+    },
     scope:
       "Actual stock TUI rendering, public native CRUD, real PTY keyboard/mouse; no model inference.",
     budgets,
