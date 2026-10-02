@@ -1,0 +1,53 @@
+{
+  "family": "JetBrainsMono Nerd Font Mono",
+  "baseVersion": "2.304",
+  "nerdFontsVersion": "3.4.0",
+  "repository": "https://github.com/ryanoasis/nerd-fonts",
+  "commit": "fa7b859994228a9c8759f99c55a8d31ee92a1b5e",
+  "files": [
+    {
+      "name": "JetBrainsMonoNerdFontMono-Regular.ttf",
+      "path": "patched-fonts/JetBrainsMono/Ligatures/Regular/JetBrainsMonoNerdFontMono-Regular.ttf",
+      "sha256": "f01031f40e48dc29e1112e6b0b0450a2c6cd097f3f35cfff05c55cb311f8034c",
+      "bytes": 2470116
+    },
+    {
+      "name": "JetBrainsMonoNerdFontMono-Bold.ttf",
+      "path": "patched-fonts/JetBrainsMono/Ligatures/Bold/JetBrainsMonoNerdFontMono-Bold.ttf",
+      "sha256": "5bdd4a873f3cd32f882d2c55545089123926e27707d5880fc9eaf84eb01b6686",
+      "bytes": 2473884
+    },
+    {
+      "name": "JetBrainsMonoNerdFontMono-Italic.ttf",
+      "path": "patched-fonts/JetBrainsMono/Ligatures/Italic/JetBrainsMonoNerdFontMono-Italic.ttf",
+      "sha256": "ccd88b36d325e6a905edc8dd3f2522718d9690d9bed3fbb4684c7e746c34f846",
+      "bytes": 2472232
+    },
+    {
+      "name": "JetBrainsMonoNerdFontMono-BoldItalic.ttf",
+      "path": "patched-fonts/JetBrainsMono/Ligatures/BoldItalic/JetBrainsMonoNerdFontMono-BoldItalic.ttf",
+      "sha256": "d931df2928b3216892d35980cddcad9edade1b9c9cd2e09a6c2937139f474742",
+      "bytes": 2475144
+    }
+  ],
+  "licenses": [
+    {
+      "name": "JetBrainsMono-OFL.txt",
+      "path": "src/unpatched-fonts/JetBrainsMono/OFL.txt",
+      "sha256": "30f0c136e3c88e422d0791acd97238870f9054a9729bc34cf2ff0d4ed8cac4ad",
+      "bytes": 4399
+    },
+    {
+      "name": "JetBrainsMono-AUTHORS.txt",
+      "path": "src/unpatched-fonts/JetBrainsMono/AUTHORS.txt",
+      "sha256": "33f99c94ef0a0909d7584a5d4bde1fb9b1630daa620f5a788c28c43327e79412",
+      "bytes": 350
+    },
+    {
+      "name": "NerdFonts-LICENSE.txt",
+      "path": "LICENSE",
+      "sha256": "1f6ad4edae6479aaace3112ede5279a23284ae54b2a34db66357aef5f64df160",
+      "bytes": 6200
+    }
+  ]
+}

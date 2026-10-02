@@ -137,6 +137,83 @@ describe("sidebar presentation", () => {
     expect(model.groups[1]!.summary).toEqual(empty);
   });
 
+  test("live subagent disclosure removes idle branches while preserving completion and unresolved summaries", () => {
+    const sessions = [
+      session("parent"),
+      session("busy", { parentId: "parent", activity: "busy" }),
+      session("idle", { parentId: "parent" }),
+      session("error", { parentId: "parent", error: true }),
+      session("permission", { parentId: "parent", permissions: 1 }),
+      session("question", { parentId: "parent", questions: 1 }),
+      session("retry", { parentId: "parent", activity: "retry" }),
+      session("unknown", { parentId: "parent", activity: "unknown" }),
+    ];
+    const organization = document({
+      completionStates: ["busy", "permission", "idle"].map((id) => ({
+        sessionKey: key(id),
+        done: true,
+        revision: 1,
+        executionSequence: 0,
+        markEventId: `manual-${id}`,
+      })),
+    });
+    const build = createSidebarModelBuilder();
+    const model = build(sessions, organization, noSummary, "parent");
+    expect(model.childrenFor("parent")).toHaveLength(7);
+    expect(model.liveChildrenFor("parent").map((row) => row.session.id)).toEqual([
+      "busy",
+      "permission",
+      "question",
+      "retry",
+      "unknown",
+    ]);
+    expect(model.liveChildrenFor("parent")[0]!.done).toBe(true);
+    expect(model.activeRow!.summary).toEqual({
+      busy: 1,
+      retry: 1,
+      unknown: 1,
+      permissions: 1,
+      questions: 1,
+      errors: 1,
+    });
+    const stopped = build(
+      sessions.map((entry) => ({ ...entry, activity: "idle", permissions: 0, questions: 0 })),
+      organization,
+      noSummary,
+      "parent",
+    );
+    expect(stopped.liveChildrenFor("parent")).toEqual([]);
+    expect(stopped.activeRow!.summary.errors).toBe(1);
+    expect(stopped.childrenFor("parent")).toHaveLength(7);
+    expect(stopped.rows).toHaveLength(sessions.length);
+    expect(stopped.liveChildrenFor("missing")).toEqual([]);
+  });
+
+  test("idle intermediary subagents keep live and attention descendants reachable", () => {
+    const build = createSidebarModelBuilder();
+    const parent = session("parent");
+    const intermediary = session("bridge", { parentId: "parent" });
+    const leaf = session("leaf", { parentId: "bridge", activity: "busy" });
+    const model = build([parent, intermediary, leaf], null, noSummary);
+    expect(model.liveChildrenFor("parent").map((row) => row.session.id)).toEqual(["bridge"]);
+    expect(model.liveChildrenFor("bridge").map((row) => row.session.id)).toEqual(["leaf"]);
+    const attention = build(
+      [parent, intermediary, { ...leaf, activity: "idle", questions: 1 }],
+      null,
+      noSummary,
+    );
+    expect(attention.liveChildrenFor("parent")).toHaveLength(1);
+    expect(attention.liveChildrenFor("bridge")).toHaveLength(1);
+    const finished = build(
+      [parent, intermediary, { ...leaf, activity: "idle", error: true }],
+      null,
+      noSummary,
+    );
+    expect(finished.liveChildrenFor("parent")).toEqual([]);
+    expect(finished.liveChildrenFor("bridge")).toEqual([]);
+    expect(finished.groups[2]!.summary.errors).toBe(1);
+  });
+
   test("malformed parent cycles and self references have deterministic reachable roots and bounded summaries", () => {
     const a = session("a", { parentId: "b", activity: "busy", questions: 1 });
     const b = session("b", { parentId: "a", activity: "unknown", permissions: 1 });

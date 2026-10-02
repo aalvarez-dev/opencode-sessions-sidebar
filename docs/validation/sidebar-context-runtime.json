@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "runtime": {
+    "opencode": "1.18.30",
+    "opentui": "0.4.5",
+    "solid": "1.9.10",
+    "bun": "1.3.14"
+  },
+  "environment": {
+    "platform": "linux",
+    "architecture": "x64",
+    "osRelease": "6.18.44",
+    "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+    "visibleLogicalCpus": 9,
+    "visibleMemoryBytes": 10451464192,
+    "isolatedHome": true,
+    "workload": {
+      "initialSessions": 20,
+      "transientCreatedSessions": 1,
+      "nativeUpdateEvents": 20,
+      "externalModelInference": false
+    }
+  },
+  "source": {
+    "baseCommit": "d838fdb6cc6d61ded2aa3e323fabd22c95ea54d5",
+    "sha256": {
+      "src/tui.tsx": "83e5629c2c2f8162278b9c4f348abf0bbf79b5bbda6b34142579f9a38ff3c416",
+      "src/ui/controller.ts": "4740b9dd9c2a57b960778a479677356708aedb8ebe94f83ac3b73c3e21d7e312",
+      "src/ui/model.ts": "2a0458b7ab2526d0ce46d0baf87dfd4a813141c166fac67eb7259524d3e62e56",
+      "src/ui/view.tsx": "5e29d4689f81dfc9699f21a874c0931006494b79082ab7f8aa6e175c07b0033a",
+      "src/ui/motion.ts": "d94e645427082efd6647c9b2d7f08a1bfa08c8e99c2784cac5f348e8edbdd598",
+      "src/adapters/opencode-v1/adapter.ts": "6e4654ee67091232ff9c936baa3fd5e838756d81ddae6bd82a8a0480aee6e177",
+      "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+      "scripts/build.ts": "329588b14b97d4454c079077e5f9551e5b5dfd2d55eadbfc728a06671dd36d9d",
+      "scripts/sidebar-probe.ts": "0d7ce90277fa99aa9c110a39992546ce18dcab837ffb813ee2fb9ca078bc4caf",
+      "scripts/smoke-sidebar.ts": "4cbc707738ddf92f3028ce875a3d101c7915a55b7268f37ab47f90538974b69c",
+      "dist/tui.js": "b5113d06b73911646c0e62d53f0019e807647b9dd0f108bfc1ed97ebb1ba55ad"
+    },
+    "receipt": "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions."
+  },
+  "scope": "Actual stock TUI rendering, public native CRUD, real PTY keyboard/mouse; no model inference.",
+  "budgets": {
+    "inputToObservedFrameP95Ms": 250,
+    "nativeCrudBurst20Ms": 5000
+  },
+  "results": {
+    "checks": [
+      "real mouse wheel scrolls many long-title rows and restores the sidebar top",
+      "actual built plugin loaded in stock session sidebar; synthetic host sessions rendered",
+      "line-two controls and line-three context stay separate; mouse and keyboard R/B/W selection does not expand context, separate disclosure expands R/B/W in order, completion stays last, Session details retains distinct repository root and linked worktree plus the full branch value",
+      "real keyboard mark/pin/Later actions persisted without changing native selection",
+      "completed title uses theme success, completion action uses theme warning, active/pin/Later primary row is deduplicated",
+      "real mouse collapses and expands Pinned with its activity summary retained",
+      "real keyboard Later reordering persisted",
+      "real keyboard open observed on native route; Later membership retained",
+      "real PTY mouse row opens its session directly; explicit row menu unmarks without changing Later",
+      "native create/rename/delete via real keyboard, cancellation preserves session and explicit mouse confirmation deletes",
+      "narrow 88x24 keyboard browse/action fallback and Session details remain usable; Down/PgDn/PgUp scroll to full worktree context and Esc closes",
+      "stock plugin deactivation/reactivation restores committed organization",
+      "20 paced native updates overlap real keyboard filtering; observed frames pass the declared p95 budget",
+      "new stock process hydrates organization; light terminal and Unicode browse render"
+    ],
+    "nativeCrudBurst20Ms": 679.0519559999993,
+    "inputObservationSamples": 10,
+    "overlappingInputSamples": 2,
+    "nativeBurstFixtureSpacingMs": 10,
+    "inputToObservedFrameP95Ms": 110.56000299999869
+  },
+  "limitations": [
+    "Observer polling and public list reads add overhead; timing is an input-to-observed-frame upper bound, not isolated renderer latency.",
+    "This smoke does not create native busy, retry, permission or question events. See the separate attention probe and model tests for their explicitly stated scope.",
+    "No slow optional metadata provider is enabled; no Git or filesystem enrichment is performed by the UI.",
+    "No baseline CPU/memory, power-loss durability, remote transport or cross-platform rendering claim."
+  ],
+  "captures": [
+    {
+      "name": "wide-initial",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "wide-scrolled",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "wide-context-expanded",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "wide-session-details",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "wide-organized",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "wide-collapsed",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "delete-confirmation",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 140,
+      "height": 40
+    },
+    {
+      "name": "narrow-session-menu",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 88,
+      "height": 24
+    },
+    {
+      "name": "narrow-session-details-scrolled",
+      "theme": "dark",
+      "icons": "ascii",
+      "width": 88,
+      "height": 24
+    },
+    {
+      "name": "light-restart-browse",
+      "theme": "light",
+      "icons": "unicode",
+      "width": 140,
+      "height": 40
+    }
+  ]
+}

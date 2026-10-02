@@ -4,6 +4,14 @@ import type { OrganizationDocument } from "../organization/types";
 export type Density = "compact" | "balanced" | "comfortable";
 export type IconMode = "unicode" | "ascii" | "nerd";
 export type GroupId = "pins" | "later" | "sessions";
+export type ContextField = "repository" | "branch" | "worktree";
+
+export interface SidebarContext {
+  /** Full host-reported values; null means the context is not established. */
+  readonly repository: string | null;
+  readonly branch: string | null;
+  readonly worktree: string | null;
+}
 
 export interface SidebarRow {
   readonly session: SessionRecord;
@@ -29,6 +37,8 @@ export interface SidebarModel {
   readonly groups: readonly SidebarGroup[];
   /** A deterministic forest prevents malformed host parent cycles in the renderer. */
   readonly childrenFor: (id: string) => readonly SidebarRow[];
+  /** Live/uncertain activity and pending attention, with ancestors needed to reach it. */
+  readonly liveChildrenFor: (id: string) => readonly SidebarRow[];
 }
 
 type SummaryProvider = (id: string) => SessionSummary | undefined;
@@ -219,6 +229,24 @@ function renderModel(
   }
   for (const [id, members] of collectingChildren) childrenRows.set(id, Object.freeze(members));
 
+  const liveBranches = new Set<string>();
+  for (const row of rows) {
+    const session = row.session;
+    if (session.activity === "idle" && session.permissions === 0 && session.questions === 0)
+      continue;
+    let current: string | undefined = session.id;
+    while (current !== undefined && !liveBranches.has(current)) {
+      liveBranches.add(current);
+      current = parents.get(current);
+    }
+  }
+  const liveChildrenRows = new Map<string, readonly SidebarRow[]>();
+  for (const [id, members] of childrenRows)
+    liveChildrenRows.set(
+      id,
+      Object.freeze(members.filter((row) => liveBranches.has(row.session.id))),
+    );
+
   const claimed = new Set(activeRow ? [activeRow.session.key] : []);
   function claim(keys: readonly string[]): readonly SidebarRow[] {
     const members: SidebarRow[] = [];
@@ -252,6 +280,7 @@ function renderModel(
     activeRow,
     groups,
     childrenFor: (id: string) => childrenRows.get(id) ?? noRows,
+    liveChildrenFor: (id: string) => liveChildrenRows.get(id) ?? noRows,
   });
 }
 

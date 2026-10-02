@@ -1,0 +1,200 @@
+{
+  "p95": 110.56000299999869,
+  "burst": {
+    "running": false,
+    "count": 20,
+    "hostOperationsMs": 679.0519559999993
+  },
+  "samples": [
+    {
+      "index": 0,
+      "elapsedMs": 110.56000299999869,
+      "burstRunning": true,
+      "burstCount": 3,
+      "frames": [
+        {
+          "roundTripMs": 108.91394600000058,
+          "frameId": 231,
+          "timing": {
+            "listMs": 18.4444110000004,
+            "storageMs": 9.447390000001178,
+            "observerMs": 27.89180100000158
+          },
+          "burstCount": 5,
+          "burstRunning": true
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "elapsedMs": 104.91500799999994,
+      "burstRunning": true,
+      "burstCount": 13,
+      "frames": [
+        {
+          "roundTripMs": 104.32459899999958,
+          "frameId": 244,
+          "timing": {
+            "listMs": 15.320778999999675,
+            "storageMs": 0.6550760000009177,
+            "observerMs": 15.975855000000593
+          },
+          "burstCount": 15,
+          "burstRunning": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "elapsedMs": 87.07221200000095,
+      "burstRunning": false,
+      "burstCount": 20,
+      "frames": [
+        {
+          "roundTripMs": 86.63430300000073,
+          "frameId": 254,
+          "timing": {
+            "listMs": 9.911396999999852,
+            "storageMs": 0.5538739999992686,
+            "observerMs": 10.46527099999912
+          },
+          "burstCount": 20,
+          "burstRunning": false
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "elapsedMs": 69.64433199999985,
+      "burstRunning": false,
+      "burstCount": 20,
+      "frames": [
+        {
+          "roundTripMs": 69.16723899999852,
+          "frameId": 261,
+          "timing": {
+            "listMs": 3.528661000000284,
+            "storageMs": 9.500990000000456,
+            "observerMs": 13.02965100000074
+          },
+          "burstCount": 20,
+          "burstRunning": false
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "elapsedMs": 69.89844400000038,
+      "burstRunning": false,
+      "burstCount": 20,
+      "frames": [
+        {
+          "roundTripMs": 66.83189800000036,
+          "frameId": 267,
+          "timing": {
+            "listMs": 11.353037000000768,
+            "storageMs": 2.787535999999818,
+            "observerMs": 14.140573000000586
+          },
+          "burstCount": 20,
+          "burstRunning": false
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "elapsedMs": 90.76251200000115,
+      "burstRunning": false,
+      "burstCount": 20,
+      "frames": [
+        {
+          "roundTripMs": 90.30178800000067,
+          "frameId": 273,
+          "timing": {
+            "listMs": 10.764061999998376,
+            "storageMs": 2.377237000000605,
+            "observerMs": 13.14129899999898
+          },
+          "burstCount": 20,
+          "burstRunning": false
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "elapsedMs": 68.00482799999736,
+      "burstRunning": false,
+      "burstCount": 20,
+      "frames": [
+        {
+          "roundTripMs": 67.64968299999964,
+          "frameId": 279,
+          "timing": {
+            "listMs": 11.9358540000012,
+            "storageMs": 2.3436369999999442,
+            "observerMs": 14.279491000001144
+          },
+          "burstCount": 20,
+          "burstRunning": false
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "elapsedMs": 74.51219000000128,
+      "burstRunning": false,
+      "burstCount": 20,
+      "frames": [
+        {
+          "roundTripMs": 73.75771499999973,
+          "frameId": 285,
+          "timing": {
+            "listMs": 8.763840999999957,
+            "storageMs": 2.2089240000004793,
+            "observerMs": 10.972765000000436
+          },
+          "burstCount": 20,
+          "burstRunning": false
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "elapsedMs": 83.2007479999993,
+      "burstRunning": false,
+      "burstCount": 20,
+      "frames": [
+        {
+          "roundTripMs": 82.61712899999839,
+          "frameId": 291,
+          "timing": {
+            "listMs": 10.368656000000556,
+            "storageMs": 2.4660119999989547,
+            "observerMs": 12.83466799999951
+          },
+          "burstCount": 20,
+          "burstRunning": false
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "elapsedMs": 74.63214099999823,
+      "burstRunning": false,
+      "burstCount": 20,
+      "frames": [
+        {
+          "roundTripMs": 74.11155299999882,
+          "frameId": 297,
+          "timing": {
+            "listMs": 9.531036000000313,
+            "storageMs": 2.2800310000002355,
+            "observerMs": 11.811067000000548
+          },
+          "burstCount": 20,
+          "burstRunning": false
+        }
+      ]
+    }
+  ]
+}

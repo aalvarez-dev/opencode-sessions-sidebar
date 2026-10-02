@@ -191,8 +191,9 @@ cell-height preferences are optional user settings, not changes made by this plu
 
 ### Continuista presentation
 
-Keep the terminal-native two-line row: an independent activity/attention icon and title, then
-subdued organization controls and available context. A completed title and its separate check use
+Keep the terminal-native three-line row: an independent activity/attention icon and title; pin,
+Later, a yellow live-subagent disclosure/count, primary agent, age, red delete, and menu controls;
+then collapsible repository/branch/worktree context. A completed title and its separate check use
 success green. Creation and Mark/Unmark completed actions use warning yellow. Inactive pin/Later
 controls use subdued gray and a different glyph from their normal-text active counterparts.
 
@@ -202,11 +203,23 @@ the session directly; its ellipsis opens the shared actions menu. Delete retains
 confirmation. Move display management into the header menu and palette rather than a permanent
 toolbar.
 
-A parent with children has a third line: disclosure, actual child count, and `[agent]` names. Use
-the public configured agent color when available, otherwise muted gray. Expanding exposes child
-rows; a child promoted to Active/Later/Pinned is referenced without duplicating its full row.
-Malformed parent cycles must not hide sessions or recurse indefinitely. Collapsed groups and parents
-retain known activity, attention, error, and uncertainty summaries.
+Context selectors `[R][B][W]` switch the visible field without changing expansion. The selected
+field uses normal text color and the others muted color. A separate yellow disclosure expands
+context below the line in the same R–B–W order. Missing values remain explicitly unavailable;
+selecting an unavailable field never silently substitutes a different value. Full values are
+available in the keyboard-accessible, scrollable details view. Render from public host context only;
+this exact-directory integration does not discover or navigate other worktrees.
+
+Live child rows expand between the controls line and context. Use the public configured agent color
+when available, otherwise muted gray. The live list includes busy/retrying/unknown branches and
+branches awaiting attention; idle intermediate parents remain to expose live descendants. Entirely
+idle branches leave this list, while unresolved errors remain in ancestor summaries. Completion
+marks never remove live work from the list. A child promoted to Active/Later/Pinned is referenced
+without duplicating its full row. Malformed parent cycles must not hide sessions or recurse
+indefinitely. Collapsed groups and parents retain known activity, attention, error, and uncertainty
+summaries. The parent status glyph includes descendant facts. The active session's Mark/Unmark
+completed action stays below all expanded child and context content. All loaded children remain
+available through Browse and native actions.
 
 Questions and permissions use yellow; retry uses an orange tone derived from the host palette.
 Reserve the red cross for an observed non-abort failure followed by confirmed idle, not a retry or a

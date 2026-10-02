@@ -20,6 +20,16 @@ and should degrade gracefully when unavailable. Keep labels and action availabil
 across pointer, keyboard, and command palette access. Destructive actions must not be confused with
 visual marks.
 
+The collapsed row has three whole lines: title/status, controls/agent, and context. Live children
+expand after controls; context expands after its selector line. The active completion action is
+last. `[R][B][W]` selection and context disclosure have separate state. Keyboard session actions
+provide equivalent selectors and a bounded, scrollable details view for full host values. Context is
+sourced from the current public project/path/VCS data, with no local Git or per-row reads.
+
+Idle child branches leave the live disclosure without leaving the loaded session model. Parent
+glyphs and summaries retain descendant attention/errors; a completion annotation cannot hide busy
+work. See [font setup](../../docs/terminal-fonts.md) for the optional pinned family and fallbacks.
+
 ## Density on a terminal grid
 
 Support three density choices without changing the meaning of data or actions:

@@ -28,12 +28,22 @@ const deadline = setTimeout(() => {
 }, 90_000);
 
 type Span = { text: string; width: number; fg: number[]; bg: number[]; attributes: number };
+type Geometry = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  visible: boolean;
+};
 type Snapshot = {
   parentId: string;
   childId: string;
   promptFinished: boolean;
   events: string[];
   dialogDepth: number;
+  route: { name: string; params?: { sessionID?: string } };
+  geometry: Geometry[];
   palette: Record<"text" | "textMuted" | "success" | "warning" | "error", number[]>;
   questions: { sessionID: string }[];
   permissions: { sessionID: string }[];
@@ -105,6 +115,38 @@ function lines(snapshot: Snapshot) {
 }
 function text(snapshot: Snapshot) {
   return lines(snapshot).join("\n");
+}
+function node(snapshot: Snapshot, id: string) {
+  return snapshot.geometry.find((entry) => entry.id === id && entry.visible && entry.height > 0);
+}
+function nodeText(snapshot: Snapshot, id: string) {
+  const entry = node(snapshot, id);
+  if (!entry) return "";
+  return lines(snapshot)
+    .slice(entry.y, entry.y + entry.height)
+    .map((line) => line.slice(entry.x, entry.x + entry.width))
+    .join("\n");
+}
+function nodeColor(snapshot: Snapshot, id: string) {
+  const entry = node(snapshot, id);
+  if (!entry) return undefined;
+  let column = 0;
+  for (const span of snapshot.frame.lines[entry.y] ?? []) {
+    if (column <= entry.x && column + span.width > entry.x) return span.fg;
+    column += span.width;
+  }
+  return undefined;
+}
+async function clickNode(id: string) {
+  const snapshot = await request<Snapshot>("snapshot");
+  const entry = node(snapshot, id);
+  assert(
+    entry && entry.y >= 0 && entry.y < snapshot.frame.height,
+    `Missing visible control ${id}.\n${text(snapshot)}`,
+  );
+  const x = Math.floor(entry.x + Math.max(0, entry.width - 1) / 2) + 1;
+  const y = entry.y + 1;
+  input(`\u001b[<0;${x};${y}M\u001b[<0;${x};${y}m`);
 }
 async function until(check: (value: Snapshot) => boolean, description: string, budget = 5_000) {
   const started = performance.now();
@@ -192,16 +234,24 @@ function assertVisible(
     pinned.includes(`${collapsed ? ">" : "v"} Pinn`),
     "Pinned group disclosure has the expected state.",
   );
-  assert(
-    pinned.includes("busy1") && pinned.includes(`${attention === "questions" ? "ask" : "perm"}1`),
-    "Pinned group hides descendant activity/attention.",
-  );
   if (collapsed) {
+    assert(
+      pinned.includes("busy1") && pinned.includes(`${attention === "questions" ? "ask" : "perm"}1`),
+      "Collapsed pinned group hides descendant activity/attention.",
+    );
     assert(
       !pinned.includes("Synthetic attention parent"),
       "Collapsed pinned group unexpectedly expanded.",
     );
   } else {
+    assert.equal(
+      nodeText(snapshot, `sidebar-session-${snapshot.parentId}-status`).trim(),
+      attention === "questions" ? "?" : "!",
+    );
+    assert.deepEqual(
+      nodeColor(snapshot, `sidebar-session-${snapshot.parentId}-status`),
+      snapshot.palette.warning,
+    );
     assert.deepEqual(
       labelColor(snapshot, "Synthetic attention parent"),
       snapshot.palette.success,
@@ -445,6 +495,17 @@ try {
     await pause();
   }
   await request("seed");
+  const seeded = await until(
+    (snapshot) => text(snapshot).includes("Active session:"),
+    "Active session header missing.",
+  );
+  if (text(seeded).includes("Getting started")) {
+    await click("✕");
+    await until(
+      (snapshot) => !text(snapshot).includes("Getting started"),
+      "Native onboarding did not close.",
+    );
+  }
   await until(
     (snapshot) => text(snapshot).includes("Other sessions"),
     "Sidebar missing deduplicated native parent session.",
@@ -464,7 +525,7 @@ try {
   const retry = await until(
     (snapshot) =>
       snapshot.statuses[snapshot.childId]?.type === "retry" &&
-      groupText(snapshot, "Pinned sessions", "Other sessions").includes("retry1"),
+      nodeText(snapshot, `sidebar-session-${snapshot.parentId}-status`).trim() === "~",
     "Native recoverable rate limit did not render retry state.",
     25_000,
   );
@@ -472,7 +533,7 @@ try {
     Math.round((channel * 2 + retry.palette.error[index]!) / 3),
   );
   assert.deepEqual(
-    labelColor(retry, "retry1"),
+    nodeColor(retry, `sidebar-session-${retry.parentId}-status`),
     retryColor,
     "Retry summary must use the distinct theme-derived orange.",
   );
@@ -481,18 +542,32 @@ try {
   const question = await until(
     (snapshot) =>
       snapshot.questions.length === 1 &&
-      groupText(snapshot, "Pinned sessions", "Other sessions").includes("ask1"),
+      nodeText(snapshot, `sidebar-session-${snapshot.parentId}-status`).trim() === "?" &&
+      JSON.stringify(nodeColor(snapshot, `sidebar-session-${snapshot.parentId}-status`)) ===
+        JSON.stringify(snapshot.palette.warning),
     "Native question did not reach marked parent sidebar.",
     25_000,
   );
   assert.equal(question.questions[0]?.sessionID, question.childId);
   assertVisible(question, "questions", false);
   assert.deepEqual(
-    labelColor(question, "ask1"),
+    nodeColor(question, `sidebar-session-${question.parentId}-status`),
     question.palette.warning,
     "Question summary must use the host warning color.",
   );
-  await capture("marked-parent-third-line-question", question);
+  const parentPrefix = `sidebar-session-${question.parentId}`;
+  const childPrefix = `sidebar-session-${question.childId}`;
+  assert.equal(
+    node(question, `${parentPrefix}-children-disclosure`)!.y,
+    node(question, `${parentPrefix}-controls`)!.y,
+    "Live-subagent disclosure belongs in the controls row.",
+  );
+  assert.equal(
+    node(question, `${parentPrefix}-context`)!.y,
+    node(question, `${parentPrefix}-controls`)!.y + 1,
+    "Collapsed parent context belongs on line three.",
+  );
+  await capture("marked-parent-second-line-question", question);
   await request("command", { command: "sessions-sidebar.settings" });
   await until(
     (snapshot) => snapshot.dialogDepth > 0,
@@ -501,9 +576,9 @@ try {
   input("Icons: unicode\r");
   const unicode = await until(
     (snapshot) => snapshot.dialogDepth === 0 && sidebarText(snapshot).includes("▸ 1"),
-    "Unicode third-line disclosure did not render.",
+    "Unicode line-two disclosure did not render.",
   );
-  await capture("unicode-marked-parent-third-line-question", unicode);
+  await capture("unicode-marked-parent-second-line-question", unicode);
   await request("command", { command: "sessions-sidebar.settings" });
   await until(
     (snapshot) => snapshot.dialogDepth > 0,
@@ -514,15 +589,23 @@ try {
     (snapshot) => snapshot.dialogDepth === 0 && sidebarText(snapshot).includes("> 1"),
     "ASCII fallback did not return.",
   );
-  await click("> 1");
+  await clickNode(`${parentPrefix}-children-disclosure`);
   const expanded = await until(
     (snapshot) =>
       groupText(snapshot, "Pinned sessions", "Other sessions").includes(
         "Synthetic attention child",
       ),
-    "Third-line disclosure did not reveal the native child.",
+    "Line-two disclosure did not reveal the native child.",
   );
   assert(groupText(expanded, "Pinned sessions", "Other sessions").includes("v 1"));
+  assert(
+    node(expanded, `${childPrefix}-controls`)!.y > node(expanded, `${parentPrefix}-controls`)!.y,
+    "Expanded child must follow parent controls.",
+  );
+  assert(
+    node(expanded, `${childPrefix}-context`)!.y < node(expanded, `${parentPrefix}-context`)!.y,
+    "Expanded child must precede parent context.",
+  );
   const childLine = expanded.frame.lines.find((line) =>
     line.some((span) => span.text.includes("Synthetic attention child")),
   );
@@ -535,13 +618,60 @@ try {
     "Expanded child's question glyph must be yellow.",
   );
   await capture("marked-parent-expanded-child-question", expanded);
-  await click("v 1");
+  await request("activate-parent");
+  await until(
+    (snapshot) =>
+      snapshot.route.params?.sessionID === snapshot.parentId &&
+      Boolean(node(snapshot, `${parentPrefix}-completion`)),
+    "Marked parent did not become the active row.",
+  );
+  await clickNode(`${parentPrefix}-context-disclosure`);
+  const activeExpanded = await until(
+    (snapshot) => Boolean(node(snapshot, `${parentPrefix}-context-details`)),
+    "Active parent context did not expand after its live children.",
+  );
+  assert(
+    node(activeExpanded, `${parentPrefix}-controls`)!.y <
+      node(activeExpanded, `${childPrefix}-controls`)!.y,
+  );
+  assert(
+    node(activeExpanded, `${childPrefix}-context`)!.y <
+      node(activeExpanded, `${parentPrefix}-context`)!.y,
+  );
+  assert(
+    node(activeExpanded, `${parentPrefix}-completion`)!.y >=
+      node(activeExpanded, `${parentPrefix}-context-details`)!.y +
+        node(activeExpanded, `${parentPrefix}-context-details`)!.height,
+    "Active completion action must be below both expanded children and context.",
+  );
+  await capture("active-parent-children-context-completion-order", activeExpanded);
+  await clickNode(`${parentPrefix}-context-disclosure`);
+  await request("activate-current");
+  await until(
+    (snapshot) =>
+      snapshot.route.params?.sessionID !== snapshot.parentId &&
+      groupText(snapshot, "Pinned sessions", "Other sessions").includes(
+        "Synthetic attention child",
+      ),
+    "Pinned parent did not return with expanded children preserved.",
+  );
+  await clickNode(`${parentPrefix}-children-disclosure`);
   await until(
     (snapshot) =>
       !groupText(snapshot, "Pinned sessions", "Other sessions").includes(
         "Synthetic attention child",
       ),
-    "Third-line disclosure did not hide child rows.",
+    "Line-two disclosure did not hide child rows.",
+  );
+  await action("Expand subagents");
+  await until(
+    (snapshot) => Boolean(node(snapshot, `${childPrefix}-controls`)),
+    "Keyboard subagent expansion did not reveal live children.",
+  );
+  await action("Collapse subagents");
+  await until(
+    (snapshot) => !node(snapshot, `${childPrefix}-controls`),
+    "Keyboard subagent collapse did not hide live children.",
   );
   await click("Pinn");
   const collapsed = await until(
@@ -615,27 +745,34 @@ try {
     (snapshot) => text(snapshot).includes("v Pinn"),
     "Pinned group failed to expand before error fixture.",
   );
-  await click("> 1");
-  await until(
-    (snapshot) =>
-      groupText(snapshot, "Pinned sessions", "Other sessions").includes(
-        "Synthetic attention child",
-      ),
-    "Child must be expanded before the final error fixture.",
+  const settled = await request<Snapshot>("snapshot");
+  assert(
+    !node(settled, `${parentPrefix}-children-disclosure`),
+    "Settled idle children must leave the live-subagent count and disclosure.",
   );
+  assert(
+    !groupText(settled, "Pinned sessions", "Other sessions").includes("Synthetic attention child"),
+  );
+  await capture("marked-parent-settled-no-live-subagents", settled);
   await request("start-error");
   const terminalError = await until(
     (snapshot) =>
       snapshot.promptFinished &&
       snapshot.events.includes("session.error") &&
-      JSON.stringify(labelColor(snapshot, "x")) === JSON.stringify(snapshot.palette.error),
+      nodeText(snapshot, `${parentPrefix}-status`).trim() === "x" &&
+      JSON.stringify(nodeColor(snapshot, `${parentPrefix}-status`)) ===
+        JSON.stringify(snapshot.palette.error),
     "Native final provider error did not render independently of completion.",
     25_000,
   );
   assert.deepEqual(
-    labelColor(terminalError, "x"),
+    nodeColor(terminalError, `${parentPrefix}-status`),
     terminalError.palette.error,
     "Final error glyph must use the host error color.",
+  );
+  assert(
+    !node(terminalError, `${parentPrefix}-children-disclosure`),
+    "A settled error remains visible through the parent status, without posing as a live subagent.",
   );
   assert.deepEqual(
     labelColor(terminalError, "Synthetic attention parent"),
@@ -665,12 +802,14 @@ try {
       "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
     checks: [
       "Marked pinned parent retains completion while displaying child busy/question.",
-      "Three-line child disclosure expands and collapses native child rows; deduplicated pinned parent retains its mark and success title color.",
+      "Mouse and keyboard line-two live-subagent disclosure expands and collapses native child rows above the parent's line-three context; deduplicated pinned parent retains its mark and success title color.",
+      "Active parent completion remains below both expanded live children and expanded R/B/W context.",
       "Collapsed Pinned sessions retains busy/question summary.",
       "Native recoverable 429 renders a warning retry glyph; terminal 400 renders an error glyph after host idle, independently of completion.",
       "From a separate idle session route, narrow 88x24 browse retains completion and question footer; session menu retains busy/question labels.",
       "Question reply transitions to native permission with mark and collapsed summary retained.",
       "Permission reply clears attention and busy labels without clearing completion.",
+      "Settled children disappear from the live count and disclosure; their terminal error remains discoverable on the parent's status and group summary.",
     ],
     providerRequests,
     captures: frames.map(({ name, frame }) => ({ name, width: frame.width, height: frame.height })),

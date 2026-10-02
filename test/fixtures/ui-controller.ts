@@ -33,6 +33,8 @@ export function syntheticSession(
 /** Public-port fixture; deliberately noncooperative requests exercise disposal guards. */
 export class ControllerHost {
   directory = "/example/one";
+  worktree = "/example/one";
+  branch: string | undefined = "main";
   sessions = [syntheticSession("one")];
   calls = { project: 0, list: 0, status: 0, permissions: 0, questions: 0, create: 0 };
   toasts: { message: string; variant: string }[] = [];
@@ -42,9 +44,12 @@ export class ControllerHost {
   disposers = new Set<() => void | Promise<void>>();
   lifetime = new AbortController();
   lookupSignals: AbortSignal[] = [];
-  projectRead: (directory: string) => Promise<{ id: string }> = async (directory) => ({
-    id: directory.endsWith("two") ? "project-two" : "project-one",
-  });
+  projectRead: (directory: string) => Promise<{ id: string; worktree?: string; vcs?: "git" }> =
+    async (directory) => ({
+      id: directory.endsWith("two") ? "project-two" : "project-one",
+      worktree: directory,
+      vcs: "git",
+    });
   createWrite: () => Promise<Session> = async () => syntheticSession("created");
 
   get api(): TuiPluginApi {
@@ -119,6 +124,12 @@ export class ControllerHost {
           get directory() {
             return host.directory;
           },
+          get worktree() {
+            return host.worktree;
+          },
+        },
+        get vcs() {
+          return { branch: host.branch };
         },
       },
       ui: {
@@ -293,6 +304,9 @@ async function hierarchy() {
       ["parent"],
     );
     assert.equal(controller.childrenFor("parent")[0]!.session.id, "child");
+    assert.equal(controller.liveChildrenFor("parent").length, 0);
+    host.status("child-started", "child", { type: "busy" });
+    assert.equal(controller.liveChildrenFor("parent")[0]!.session.id, "child");
     controller.toggleChildren("parent");
     controller.toggleGroup("pins");
     assert.equal(controller.expandedChildren().has("parent"), true);
@@ -325,6 +339,10 @@ async function hierarchy() {
     assert.equal(controller.groups()[0]!.rows[0]!.session.id, "child");
     assert.equal(controller.document(), before);
 
+    host.status("child-idle", "child", { type: "idle" });
+    assert.equal(controller.liveChildrenFor("parent").length, 0);
+    assert.equal(controller.childrenFor("parent").length, 1);
+
     // Identical native IDs in another scope never inherit disclosure or selection state.
     host.directory = "/example/two";
     host.sessions = [syntheticSession("parent", host.directory, "project-two")];
@@ -334,6 +352,82 @@ async function hierarchy() {
     assert.equal(controller.childrenFor("parent").length, 0);
     assert.equal(controller.activeRow(), undefined);
     assert.deepEqual(controller.laterIds(), []);
+  } finally {
+    await fixture.dispose();
+  }
+}
+
+async function context() {
+  const fixture = await controllerFixture();
+  const { host, controller } = fixture;
+  try {
+    const repository = "/remote/" + "repository-".repeat(25);
+    host.worktree = "/remote/worktrees/feature";
+    host.branch = "feature/" + "context-".repeat(25);
+    host.projectRead = async () => ({ id: "project-one", vcs: "git", worktree: repository });
+    await controller.connect(host.directory);
+    const calls = { ...host.calls };
+    const before = controller.document();
+    assert.deepEqual(controller.context(), {
+      repository,
+      branch: host.branch,
+      worktree: host.worktree,
+    });
+    assert.equal(controller.contextField("one"), "repository");
+    controller.selectContext("one", "branch");
+    assert.equal(controller.contextField("one"), "branch");
+    assert.equal(controller.expandedContext().has("one"), false);
+    controller.toggleContext("one");
+    controller.selectContext("one", "worktree");
+    assert.equal(controller.expandedContext().has("one"), true);
+    assert.equal(controller.contextField("one"), "worktree");
+    controller.toggleContext("one");
+    assert.equal(controller.expandedContext().has("one"), false);
+    assert.equal(controller.contextField("one"), "worktree");
+    controller.selectContext("missing", "branch");
+    controller.toggleContext("missing");
+    assert.equal(controller.contextField("missing"), "repository");
+    assert.equal(controller.expandedContext().size, 0);
+    assert.equal(controller.document(), before);
+    assert.deepEqual(host.navigations, []);
+    assert.deepEqual(host.calls, calls);
+
+    // Missing data retains the requested field and does not invent a fallback value.
+    host.branch = undefined;
+    host.worktree = "";
+    controller.selectContext("one", "branch");
+    assert.equal(controller.contextField("one"), "branch");
+    assert.deepEqual(controller.context(), { repository, branch: null, worktree: null });
+    await controller.refresh();
+    assert.equal(controller.contextField("one"), "branch");
+
+    controller.toggleContext("one");
+    host.emit({
+      id: "one-deleted",
+      type: "session.deleted",
+      properties: { sessionID: "one", info: host.sessions[0]! },
+    });
+    assert.equal(controller.contextField("one"), "repository");
+    assert.equal(controller.expandedContext().size, 0);
+
+    // An arbitrary working directory without host VCS evidence is not a repository.
+    host.directory = "/example/two";
+    host.worktree = "/example/two";
+    host.branch = "stale-branch";
+    assert.deepEqual(controller.context(), { repository: null, branch: null, worktree: null });
+    host.projectRead = async () => ({ id: "project-two", worktree: host.worktree });
+    host.sessions = [syntheticSession("one", host.directory, "project-two")];
+    await controller.connect(host.directory);
+    assert.equal(controller.contextField("one"), "repository");
+    assert.deepEqual(controller.context(), { repository: null, branch: null, worktree: null });
+    controller.selectContext("one", "worktree");
+    controller.toggleContext("one");
+    controller.dispose();
+    controller.selectContext("one", "branch");
+    controller.toggleContext("one");
+    assert.equal(controller.contextField("one"), "repository");
+    assert.equal(controller.expandedContext().size, 0);
+    assert.deepEqual(controller.context(), { repository: null, branch: null, worktree: null });
   } finally {
     await fixture.dispose();
   }
@@ -369,6 +463,7 @@ if (import.meta.main) {
     disposed,
     "bounded-lookup": boundedLookup,
     hierarchy,
+    context,
     options,
   };
   const run = scenario ? scenarios[scenario] : undefined;

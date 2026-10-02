@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
+import type { Renderable } from "@opentui/core";
 import { createFileStorage } from "../src/storage/file.js";
 
 interface Request {
@@ -13,6 +14,8 @@ interface Request {
     | "start"
     | "reply-question"
     | "reply-permission"
+    | "activate-parent"
+    | "activate-current"
     | "start-error";
   readonly command?: string;
 }
@@ -32,6 +35,7 @@ export default {
     const scope = { hostId: "synthetic-sidebar-attention", projectId: project.data.id };
     let parentId: string | undefined;
     let childId: string | undefined;
+    let currentId: string | undefined;
     let lastRequest = 0;
     let running = false;
     let closed = false;
@@ -52,6 +56,31 @@ export default {
       }),
     );
 
+    function geometry() {
+      const result: {
+        id: string;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        visible: boolean;
+      }[] = [];
+      const pending: Renderable[] = [api.renderer.root];
+      while (pending.length && result.length < 2000) {
+        const node = pending.pop()!;
+        result.push({
+          id: node.id,
+          x: node.screenX,
+          y: node.screenY,
+          width: node.width,
+          height: node.height,
+          visible: node.visible,
+        });
+        pending.push(...node.getChildren());
+      }
+      return result;
+    }
+
     async function snapshot() {
       if (promptError) throw promptError;
       const [questions, permissions, statuses, organization] = await Promise.all([
@@ -67,6 +96,8 @@ export default {
         promptFinished,
         events,
         dialogDepth: api.ui.dialog.depth,
+        route: api.route.current,
+        geometry: geometry(),
         palette: Object.fromEntries(
           (["text", "textMuted", "success", "warning", "error"] as const).map((name) => [
             name,
@@ -118,12 +149,21 @@ export default {
             title: "Synthetic current session",
           });
           assert(current.data);
+          currentId = current.data.id;
           api.route.navigate("session", { sessionID: current.data.id });
           return { parentId, childId };
         }
         case "command":
           assert(request.command);
           return api.keymap.dispatchCommand(request.command);
+        case "activate-parent":
+          assert(parentId);
+          api.route.navigate("session", { sessionID: parentId });
+          return { active: parentId };
+        case "activate-current":
+          assert(currentId);
+          api.route.navigate("session", { sessionID: currentId });
+          return { active: currentId };
         case "start":
         case "start-error":
           assert(childId);

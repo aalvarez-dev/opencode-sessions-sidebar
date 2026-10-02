@@ -6,7 +6,14 @@ import type { ActionResult } from "../adapters/opencode-v1";
 import { createOrganizationService, sessionIdFromKey } from "../organization";
 import type { OrganizationAction } from "../organization";
 import { createFileStorage } from "../storage/file";
-import { createSidebarModelBuilder, type Density, type GroupId, type IconMode } from "./model";
+import {
+  createSidebarModelBuilder,
+  type ContextField,
+  type Density,
+  type GroupId,
+  type IconMode,
+  type SidebarContext,
+} from "./model";
 
 export interface SidebarOptions {
   readonly hostId: string;
@@ -60,6 +67,15 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   const [reducedMotion, setReducedMotion] = createSignal(options.reducedMotion ?? false);
   const [collapsed, setCollapsed] = createSignal<ReadonlySet<GroupId>>(new Set());
   const [expandedChildren, setExpandedChildren] = createSignal<ReadonlySet<string>>(new Set());
+  const [expandedContext, setExpandedContext] = createSignal<ReadonlySet<string>>(new Set());
+  const [contextFields, setContextFields] = createSignal<ReadonlyMap<string, ContextField>>(
+    new Map(),
+  );
+  const [projectContext, setProjectContext] = createSignal<{
+    directory: string;
+    repository: string | null;
+    hasVcs: boolean;
+  } | null>(null);
   const [revision, setRevision] = createSignal(0);
   const [connecting, setConnecting] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -76,6 +92,14 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     setExpandedChildren((previous) => {
       const retained = [...previous].filter((id) => adapter?.get(id));
       return retained.length === previous.size ? previous : new Set(retained);
+    });
+    setExpandedContext((previous) => {
+      const retained = [...previous].filter((id) => adapter?.get(id));
+      return retained.length === previous.size ? previous : new Set(retained);
+    });
+    setContextFields((previous) => {
+      const retained = [...previous].filter(([id]) => adapter?.get(id));
+      return retained.length === previous.size ? previous : new Map(retained);
     });
     setRevision((value) => value + 1);
   };
@@ -105,6 +129,18 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   const rows = createMemo(() => model().rows);
   const activeRow = createMemo(() => model().activeRow);
   const childrenFor = (id: string) => model().childrenFor(id);
+  const liveChildrenFor = (id: string) => model().liveChildrenFor(id);
+  const contextField = (id: string): ContextField => contextFields().get(id) ?? "repository";
+  const context = (): SidebarContext => {
+    const project = projectContext();
+    if (!active() || !project?.hasVcs || project.directory !== api.state.path.directory)
+      return { repository: null, branch: null, worktree: null };
+    return {
+      repository: project.repository,
+      branch: api.state.vcs?.branch || null,
+      worktree: api.state.path.worktree || null,
+    };
+  };
   const laterIds = createMemo(() => {
     const current = document();
     return current?.later.map((key) => sessionIdFromKey(current.scope, key)) ?? [];
@@ -127,6 +163,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     if (active()) api.ui.toast({ title: "Sessions sidebar", message, variant });
   }
   function stopScope() {
+    setProjectContext(null);
     lookup?.abort();
     lookup = undefined;
     if (lookupTimer !== undefined) clearTimeout(lookupTimer);
@@ -144,6 +181,8 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     const generation = ++epoch;
     stopScope();
     setExpandedChildren(new Set<string>());
+    setExpandedContext(new Set<string>());
+    setContextFields(new Map<string, ContextField>());
     setCollapsed(new Set<GroupId>());
     setPending(false);
     setConnecting(true);
@@ -178,6 +217,11 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
       }
       if (!active() || generation !== epoch || controller.signal.aborted) return;
       if (!response.data) throw new Error("The host could not identify the current project.");
+      setProjectContext({
+        directory,
+        repository: response.data.vcs === "git" ? response.data.worktree || null : null,
+        hasVcs: response.data.vcs === "git",
+      });
       const scope = {
         hostId: options.hostId,
         projectId: response.data.id,
@@ -318,8 +362,21 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     });
   }
   function toggleChildren(id: string) {
-    if (!active() || childrenFor(id).length === 0) return;
+    if (!active() || liveChildrenFor(id).length === 0) return;
     setExpandedChildren((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function selectContext(id: string, field: ContextField) {
+    if (!active() || !adapter?.get(id) || contextField(id) === field) return;
+    setContextFields((previous) => new Map(previous).set(id, field));
+  }
+  function toggleContext(id: string) {
+    if (!active() || !adapter?.get(id)) return;
+    setExpandedContext((previous) => {
       const next = new Set(previous);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -345,6 +402,11 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     toggleGroup,
     expandedChildren,
     toggleChildren,
+    expandedContext,
+    toggleContext,
+    contextField,
+    selectContext,
+    context,
     state,
     document,
     organizationState,
@@ -352,6 +414,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     rows,
     activeRow,
     childrenFor,
+    liveChildrenFor,
     laterIds,
     unavailableLater,
     unavailablePins,

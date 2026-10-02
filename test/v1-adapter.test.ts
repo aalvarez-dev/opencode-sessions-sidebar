@@ -607,6 +607,37 @@ describe("V1 adapter contract with a fake public host", () => {
     expect(host.calls).toMatchObject({ create: 0, update: 0, delete: 0 });
   });
 
+  test("a route observed before its session arrives becomes selected on scoped host data", async () => {
+    const host = new FakeHost();
+    const adapter = adapterFor(host);
+    await adapter.start();
+    host.currentRoute = { name: "session", params: { sessionID: "late" } };
+    adapter.observeRoute();
+    expect(adapter.state().selectedSessionId).toBeNull();
+    host.emit({
+      id: "foreign-route-target",
+      type: "session.created",
+      properties: { sessionID: "late", info: session("late", { directory: "/different/project" }) },
+    });
+    expect(adapter.state().selectedSessionId).toBeNull();
+    host.emit({
+      id: "route-target-arrived",
+      type: "session.created",
+      properties: { sessionID: "late", info: session("late") },
+    });
+    expect(adapter.state().selectedSessionId).toBe("late");
+    expect(host.navigations).toEqual([]);
+    expect(host.calls.list).toBe(1);
+
+    host.currentRoute = { name: "session", params: { sessionID: "snapshot-target" } };
+    adapter.observeRoute();
+    expect(adapter.state().selectedSessionId).toBeNull();
+    host.sessions = [session("snapshot-target")];
+    await adapter.refresh();
+    expect(adapter.state().selectedSessionId).toBe("snapshot-target");
+    expect(host.navigations).toEqual([]);
+  });
+
   test("reconnect reads the current host client and reconciles after cancelling an old read", async () => {
     const host = new FakeHost();
     host.sessions = [session("a")];

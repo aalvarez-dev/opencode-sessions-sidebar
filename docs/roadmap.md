@@ -19,11 +19,15 @@ persistence, explicit schema migration, guarded manual organization commands, an
 events; see [storage and events](storage-and-events.md) for evidence and limits. Stage 4 now has an
 experimental local TUI entrypoint with sessions, pins, Later, groups, manual marks, context, and
 mouse/keyboard actions. The approved Continuista presentation now adds a deduplicated active-first
-layout, third-line subagent disclosure, independent completion colors, explicit observed error
-state, and a shared visibility-bound animation clock. Its stock-host rendering and input evidence,
-component budget, and remaining release limits are recorded in
-[sidebar validation](sidebar-validation.md). Stages 5–6 remain planned. Publishing a package or
-release is a separate action after the gates pass.
+layout, independent third-line context selectors, live subagent disclosure above context,
+independent completion colors, explicit observed error state, and a shared visibility-bound
+animation clock. Its stock-host rendering and input evidence, component budget, and remaining
+release limits are recorded in [sidebar validation](sidebar-validation.md). Stages 5–6 remain
+planned. Publishing a package or release is a separate action after the gates pass.
+
+The optional [terminal font setup](terminal-fonts.md) pins one licensed mono family for consistent
+text and private-use glyph selection. Native font rendering across macOS/Ghostty and Windows
+Terminal remains a release check; the plugin does not install fonts or change terminal settings.
 
 The [performance requirements](performance.md) apply across these stages: no blocking render-path
 I/O, event-driven updates, minimal idle work, bounded resources, and explicit integrations. The

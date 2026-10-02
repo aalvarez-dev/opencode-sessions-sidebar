@@ -49,11 +49,34 @@ opens its actions. Keyboard Browse opens the same actions. Quick pin/Later contr
 independent memberships; delete requires the host confirmation dialog.
 
 The active session is followed by Later, Pinned sessions, and Other sessions, in that display
-priority. A session has only one full row. Marking it completed turns its title and separate check
-green; **Mark completed** and **Unmark completed** remain yellow actions. The mark never overrides
-activity or attention. A third line shows a parent's child count and available public agent names;
-click it to expand. Explicitly promoted children retain a link to their row's group. Unconfigured
-agent colors stay gray, and no metadata enrichment requests run while rendering.
+priority. A session has only one full row. Its first line contains the independent status indicator,
+title, and completion check. The second line contains pin/Later controls, a yellow live-subagent
+count and disclosure when relevant, the session's primary agent, age, red delete, and actions menu.
+Confirmed idle descendants are excluded from that live count; uncertain activity remains visible.
+Expanding live subagents inserts their rows immediately after the controls and before the parent's
+context line. Explicitly promoted children retain a link to their row's group. Configured public
+agent colors are used when available; unknown colors stay gray.
+
+The third line contains a separate yellow context arrow and **[R][B][W]** selectors for repository,
+branch, and worktree. Selecting a field changes only the inline value; it does not expand context.
+The arrow expands the three values in the same R/B/W order below that line. **Context: show
+repository/branch/worktree** and **Expand/Collapse context** in the shared session menu provide the
+keyboard equivalent. **Session details**, also opened by clicking a context value, exposes full
+values in a scrollable dialog with Up/Down or PgUp/PgDn and Esc to close. Missing public context is
+shown as unavailable; no metadata enrichment requests run while rendering.
+
+Repository means the root reported by OpenCode's public project API. OpenCode 1.18.30 preserves the
+first worktree discovered for that project; when a fresh host first opens a linked worktree,
+Repository and Worktree may therefore report the same path. The plugin does not infer the main Git
+checkout by reading `.git` or running local commands. The distinct-context runtime fixture first
+opens the main checkout through stock OpenCode, then opens its linked worktree with the same
+isolated host state.
+
+Marking a session completed turns its title and separate check green. **Mark completed** and
+**Unmark completed** remain yellow and always appear below everything expanded in the active row,
+including its subagents and context. The mark never overrides activity or attention. Settled child
+errors remain discoverable through the parent's status and summaries after the child leaves the live
+list. Native delete still requires confirmation.
 
 Collapsed groups and parents keep compact descendant activity/attention/uncertainty summaries.
 Questions and permissions are yellow, retry is orange, and a red cross requires an observed
@@ -137,15 +160,57 @@ packaged-release performance validation is pending.
 - Deactivation/reactivation releases owned subscriptions and controls, and stale asynchronous work
   cannot update a newer or disposed scope.
 
-## Recorded results
+## Current context-and-controls revision
 
-The focused probes passed on Linux x86_64 with Bun 1.3.14, official OpenCode 1.18.30, OpenTUI 0.4.5,
-and the host Solid 1.9.10 runtime. The [input/render report](validation/sidebar-runtime.json)
-records hardware, exact source and built-artifact digests, 13 checks, and seven actual
-captured-frame scenarios. Mouse and keyboard CRUD, cancel/confirm delete, organization, Later
-reorder, long-list scrolling, 140×40 and 88×24 layouts, ASCII/Unicode labels, verified light/dark
-host modes, restart, and host deactivation/reactivation passed. Captured colors and text were
-visually inspected.
+The updated probes passed on Linux x86_64 with Bun 1.3.14 and official OpenCode 1.18.30, using
+isolated temporary host state and synthetic data. The
+[current input/render receipt](validation/sidebar-context-runtime.json) records 14 checks and ten
+captured frames. It verifies distinct public repository/worktree paths in a linked checkout, mouse
+and keyboard R/B/W selection without expansion, separate context expansion, completion below
+expanded context, and full-value details. At 88×24, Down, PgDn, PgUp, and Esc operate the details
+dialog, with every character of the wrapped branch retained outside the scrollbar column. CRUD,
+organization, restart, light/dark modes, and ASCII/Unicode checks also pass.
+
+The [current native attention receipt](validation/sidebar-context-attention.json) records nine
+checks and ten frames from five deterministic loopback provider requests, with no external
+inference. Actual retry, child question and permission, resolved idle, and settled error are visible
+independently of completion. Expanded parents use an aggregate status glyph; collapsed groups retain
+textual counts. Mouse and keyboard disclosure show live children between controls and parent
+context. The active parent's completion action stays below both expanded children and context.
+Settled children leave the live count, while their errors remain visible through the parent.
+Switching to the newly created current session also exercises route reconciliation.
+
+| Current probe                                                                      | Observed result                         | Unchanged budget             |
+| ---------------------------------------------------------------------------------- | --------------------------------------- | ---------------------------- |
+| Keyboard input to observed frame                                                   | p95 110.56 ms, ten samples              | ≤250 ms                      |
+| Twenty paced native updates                                                        | 679.05 ms; two keyboard samples overlap | ≤5,000 ms                    |
+| Reactive controller: 250 sessions, 500 activity changes and 500 inert token events | 214.25 ms; zero extra reads             | ≤500 ms and zero extra reads |
+
+Both native probes captured source and built-artifact hashes before launch and verified they were
+unchanged at completion. The [current controller receipt](validation/sidebar-context-component.json)
+records zero token-driven recomputations and zero retained instrumented subscriptions or lifecycle
+callbacks after disposal. Its source hashes were recorded immediately afterward and agree with the
+overlapping native receipts. The
+[ordered input diagnostics](validation/sidebar-context-input-diagnostics.json) preserve every timing
+sample. Ten samples on shared hardware still do not establish stable tail latency or whole-process
+resource overhead.
+
+The [attempt history](validation/sidebar-context-attempts.json) separates outdated harness
+expectations, the sandbox's initial loopback-bind refusal, the cold-linked-project observation, and
+the final passes. Visual inspection found and corrected a scrollbar covering one branch character;
+the final narrow test asserts the complete value. Rendered-cell captures of the final wide context
+and narrow details were visually inspected. The historical receipts below describe the prior
+presentation and remain historical evidence, not proof for this source revision.
+
+## Historical source baseline
+
+The preceding presentation's focused probes passed on Linux x86_64 with Bun 1.3.14, official
+OpenCode 1.18.30, OpenTUI 0.4.5, and the host Solid 1.9.10 runtime. The
+[input/render report](validation/sidebar-runtime.json) records hardware, exact source and
+built-artifact digests, 13 checks, and seven actual captured-frame scenarios. Mouse and keyboard
+CRUD, cancel/confirm delete, organization, Later reorder, long-list scrolling, 140×40 and 88×24
+layouts, ASCII/Unicode labels, verified light/dark host modes, restart, and host
+deactivation/reactivation passed. Captured colors and text were visually inspected.
 
 | Probe                                                                              | Observed result                                        | Predeclared budget           |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------- |

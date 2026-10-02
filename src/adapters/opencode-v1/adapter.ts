@@ -197,6 +197,9 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
       siblings.add(next.id);
       children.set(next.parentId, siblings);
     }
+    // Navigation can precede its created event or snapshot. Reconcile when the
+    // host establishes that the current route's session belongs to this scope.
+    observeRoute();
     changed([...affected, session.id], true);
   }
 

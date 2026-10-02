@@ -1,0 +1,44 @@
+{
+  "scope": "synthetic-reactive-controller",
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "bun": "1.3.14"
+  },
+  "sessionCount": 250,
+  "activityUpdates": 500,
+  "inertTokenEvents": 500,
+  "budget": {
+    "burstMs": 500,
+    "additionalReads": 0
+  },
+  "observed": {
+    "burstMs": 214.251282,
+    "updateP50Ms": 0.338799999999992,
+    "updateP95Ms": 0.7957880000000017,
+    "initialReads": {
+      "project": 1,
+      "list": 1,
+      "status": 1,
+      "permissions": 1,
+      "questions": 1,
+      "create": 0
+    },
+    "additionalReads": 0,
+    "changedRows": 500,
+    "inertRecomputations": 0,
+    "subscriptionsAfterDisposal": 0,
+    "lifecycleCallbacksAfterDisposal": 0
+  },
+  "passed": true,
+  "source": {
+    "sha256": {
+      "src/ui/controller.ts": "4740b9dd9c2a57b960778a479677356708aedb8ebe94f83ac3b73c3e21d7e312",
+      "src/ui/model.ts": "2a0458b7ab2526d0ce46d0baf87dfd4a813141c166fac67eb7259524d3e62e56",
+      "src/adapters/opencode-v1/adapter.ts": "6e4654ee67091232ff9c936baa3fd5e838756d81ddae6bd82a8a0480aee6e177",
+      "test/fixtures/ui-controller.ts": "25f8633ac852266fa4da046d835dbd93358b66cdeb9f3b9cd792b2601815e280",
+      "scripts/benchmark-sidebar.ts": "51f7baa57ef71620ce3cec2ad98489dc217e57b3b13e37e2a706341aff78b4c8"
+    },
+    "receipt": "Captured immediately after the isolated controller benchmark; overlapping controller, model, and adapter digests also match both native receipts."
+  }
+}

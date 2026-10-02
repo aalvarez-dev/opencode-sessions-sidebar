@@ -26,7 +26,8 @@
     "smoke:organization": "bun run scripts/smoke-organization.ts",
     "smoke:sidebar": "bun run scripts/smoke-sidebar.ts",
     "benchmark:sidebar": "bun --conditions=browser scripts/benchmark-sidebar.ts",
-    "smoke:sidebar:attention": "bun run scripts/smoke-sidebar-attention.ts"
+    "smoke:sidebar:attention": "bun run scripts/smoke-sidebar-attention.ts",
+    "fonts:prepare": "bun run scripts/prepare-fonts.ts"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "1.18.30",
