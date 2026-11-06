@@ -2,7 +2,6 @@
 import assert from "node:assert/strict";
 import { watch, type FSWatcher } from "node:fs";
 import { readFile, rename, writeFile } from "node:fs/promises";
-import { basename, dirname } from "node:path";
 import type { TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui";
 import type { Renderable } from "@opentui/core";
 
@@ -24,8 +23,15 @@ async function publish(path: string, value: object) {
   await rename(`${path}.tmp`, path);
 }
 
-function waitForMeasurement(output: string, signal: AbortSignal, ready: object): Promise<void> {
+async function waitForMeasurement(
+  output: string,
+  signal: AbortSignal,
+  ready: object,
+): Promise<void> {
   const completionPath = `${output}.measurement-finished`;
+  // Bun 1.3.14 can drop the destination event of an atomic rename on Linux
+  // (oven-sh/bun#36328). Keep this inode and signal with one append after sampling.
+  await writeFile(completionPath, "", { flag: "wx" });
   return new Promise((resolve, reject) => {
     let watcher: FSWatcher | undefined;
     let settled = false;
@@ -46,11 +52,9 @@ function waitForMeasurement(output: string, signal: AbortSignal, ready: object):
       finish(signal.reason ?? new Error("Resource observer disposed before measurement finished."));
     }
     try {
-      // Watch only this receipt name. No periodic polling, SDK calls, or renderer
-      // inspection occurs while the parent samples. The parent atomically renames
-      // its completed receipt, so the matching event cannot observe a partial write.
-      watcher = watch(dirname(output), { persistent: false }, (_event, filename) => {
-        if (filename?.toString() !== basename(completionPath)) return;
+      // Watch this precreated file, not a rename destination or an entire directory.
+      // No periodic polling, SDK calls, or renderer inspection occurs during sampling.
+      watcher = watch(completionPath, { persistent: false }, () => {
         void readFile(completionPath, "utf8").then((value) => {
           if (value === "measurement-complete\n") finish();
           else finish(new Error("Invalid measurement completion receipt."));
@@ -158,7 +162,7 @@ async function measure(api: TuiPluginApi) {
       pid: process.pid,
       procPid,
       initialFrame,
-      measurementProtocol: "finish-receipt-v1",
+      measurementProtocol: "append-receipt-v2",
     });
     await publish(`${output}.lifecycle-started`, { measurementAcknowledged: true });
     assert.equal(sidebarVisible(), enabled, "Sidebar visibility changed during idle.");

@@ -2,13 +2,13 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
+  appendFile,
   cp,
   mkdir,
   mkdtemp,
   readFile,
   readdir,
   realpath,
-  rename,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -154,7 +154,8 @@ interface Measurement {
     rssMiB: number;
     mainThreadContextSwitches: number;
   }[];
-  probe: ResourceProbeResult;
+  lifecycleStatus: "pending" | "passed" | "failed";
+  probe?: ResourceProbeResult;
 }
 
 const measurements: Measurement[] = [];
@@ -163,7 +164,8 @@ const median = (values: number[]) =>
 const report: Record<string, unknown> = {
   schema: 2,
   kind: diagnostic ? "diagnostic-time-series" : "acceptance-comparison",
-  acceptanceEvaluated: !diagnostic,
+  acceptanceEvaluated: false,
+  completed: false,
   ...(diagnostic ? {} : { passed: false }),
   budgets,
   measurements,
@@ -224,7 +226,7 @@ try {
     repetitions,
     settleMs,
     observationMs,
-    measurementProtocol: "finish-receipt-v1",
+    measurementProtocol: "append-receipt-v2",
     diagnosticIntervalMs: diagnostic ? 1_000 : null,
     clockTicks,
     pageSize,
@@ -352,7 +354,7 @@ try {
           measurementProtocol: string;
         };
         assert.equal(ready.pid, tui.pid);
-        assert.equal(ready.measurementProtocol, "finish-receipt-v1");
+        assert.equal(ready.measurementProtocol, "append-receipt-v2");
         await Bun.sleep(settleMs);
         const started = performance.now();
         const before = await sample(ready.procPid, pageSize);
@@ -394,22 +396,6 @@ try {
             !(await Bun.file(output).exists()),
           "Lifecycle work overlapped the idle sample; discard run.",
         );
-        await writeFile(`${output}.measurement-finished.tmp`, "measurement-complete\n");
-        await rename(`${output}.measurement-finished.tmp`, `${output}.measurement-finished`);
-        await until(
-          async () => {
-            assert(tui.exitCode === null, "TUI exited before lifecycle checks.");
-            return Bun.file(output).exists();
-          },
-          "Lifecycle checks did not finish.",
-          60_000,
-        );
-        const probe = (await Bun.file(output).json()) as ResourceProbeResult;
-        assert(probe.passed, probe.message ?? "Resource observer failed.");
-        assert(
-          probe.measurementAcknowledged,
-          "Observer did not acknowledge measurement completion.",
-        );
         const measurement: Measurement = {
           sessions: size,
           repetition,
@@ -422,9 +408,33 @@ try {
           mainThreadContextSwitches: after.switches - before.switches,
           readyToObservationMs: started - readyReceivedAt,
           ...(diagnostic ? { trace } : {}),
-          probe,
+          lifecycleStatus: "pending",
         };
+        // Retain the completed samples even if the subsequent lifecycle or IPC check fails.
         measurements.push(measurement);
+        if (process.env.SIDEBAR_RESOURCE_REPORT)
+          await writeFile(
+            resolve(process.env.SIDEBAR_RESOURCE_REPORT),
+            `${JSON.stringify(report, null, 2)}\n`,
+          );
+        await appendFile(`${output}.measurement-finished`, "measurement-complete\n");
+        await until(
+          async () => {
+            assert(tui.exitCode === null, "TUI exited before lifecycle checks.");
+            return Bun.file(output).exists();
+          },
+          "Lifecycle checks did not finish.",
+          60_000,
+        );
+        const probe = (await Bun.file(output).json()) as ResourceProbeResult;
+        measurement.probe = probe;
+        measurement.lifecycleStatus =
+          probe.passed && probe.measurementAcknowledged ? "passed" : "failed";
+        assert(probe.passed, probe.message ?? "Resource observer failed.");
+        assert(
+          probe.measurementAcknowledged,
+          "Observer did not acknowledge measurement completion.",
+        );
         console.log(JSON.stringify({ measurement }));
         await stop(tui);
         await rm(data, { recursive: true, force: true });
@@ -468,7 +478,10 @@ try {
     };
   });
   report.results = results;
-  if (!diagnostic) report.passed = results.every((result) => result.passed);
+  if (!diagnostic) {
+    report.acceptanceEvaluated = true;
+    report.passed = results.every((result) => result.passed);
+  }
   report.completed = true;
   report.limitations = [
     diagnostic

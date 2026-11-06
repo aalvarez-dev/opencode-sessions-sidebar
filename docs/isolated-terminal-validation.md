@@ -65,5 +65,16 @@ acceptance window or a replacement for a failed budget result. The first hosted 
 RSS changes within the short window; retain that failed receipt rather than interpreting a later
 trace as a retroactive pass.
 
+The initial completion handshake used an atomic rename and failed to notify the observer under the
+pinned Linux runtime. A focused Bun 1.3.14 reproduction confirmed the known
+[atomic-rename watcher defect](https://github.com/oven-sh/bun/issues/36328): only the temporary
+filename event arrived. The corrected handshake watches a precreated file and appends one completion
+record after sampling, retaining its inode. It performs no periodic polling during measurement.
+Samples and diagnostic traces are checkpointed before lifecycle checks so a later harness failure
+cannot discard them. Incomplete reports retain `passed: false` for the acceptance gate and set
+`acceptanceEvaluated: true` only after all paired comparisons were actually evaluated. Diagnostic
+reports never evaluate acceptance. Earlier failed or incomplete receipts remain evidence of those
+attempts; they are not replaced or reclassified.
+
 This document describes the campaign. Run-specific outcomes are recorded separately after the
 workflow finishes and the screenshots have been reviewed.
