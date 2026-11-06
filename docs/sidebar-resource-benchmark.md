@@ -64,6 +64,25 @@ Temporary synthetic host data and processes are cleaned up, with a six-minute wa
 
 ## Scope and remaining limits
 
+### Additional delayed-start gate
+
+The correction campaign `42285547308` passed the short comparison, but its diagnostic still ended
+with a +131.58 MiB RSS difference at 250 sessions. CPU and RSS in the first five seconds were
+dominated by host startup work. That short pass therefore does not establish stable idle overhead.
+
+Before the next campaign, add an independent, stricter acceptance requirement:
+`SIDEBAR_RESOURCE_DELAYED=true` uses 250 sessions, three alternating baseline/enabled pairs, a fixed
+20-second settling interval and a 10-second observation. The existing 64 MiB RSS / 1.0 CPU point
+median-delta limits are unchanged. The original short gate and separate 30-second diagnostic still
+run and retain their results; this additional gate does not replace or relabel them. The longer
+fixed delay is not itself proof of steady state.
+
+Both treatments now wait for the selected session's native title and Context/0-token frame before
+publishing readiness. A ready route alone could precede native rendering (the old baseline at 250
+sessions reported only 32 initial renderables). The report records this common visible-frame
+condition, then checks it again after measurement. No added observer polling or SDK calls occur
+during sampling.
+
 RSS and aggregate-thread CPU describe the TUI process, not the whole machine or child processes.
 Main-thread context switches are recorded only as context; they are not timer/wakeup counts. The
 observer's public lifecycle checks establish control removal and restoration, not the absence of

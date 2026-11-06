@@ -152,6 +152,53 @@ def apple_string(value):
     return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+def prepare_observer(directory, output):
+    """Compile once, outside the two bounded graphical scenarios."""
+    receipt = {
+        "status": "blocked",
+        "sourceSha256": hashlib.sha256(MACOS_OBSERVER.encode()).hexdigest(),
+        "timeoutSeconds": 120,
+        "platform": platform.platform(),
+    }
+    try:
+        if not (
+            platform.system() == "Darwin"
+            and os.environ.get("GITHUB_ACTIONS") == "true"
+            and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
+        ):
+            raise Blocked("Compile only on an ephemeral GitHub-hosted macOS runner.")
+        directory = directory.resolve()
+        directory.mkdir(parents=True, exist_ok=True)
+        source, binary = directory / "macos-observer.swift", directory / "macos-observer"
+        source.write_text(MACOS_OBSERVER)
+        started = time.monotonic()
+        compiled = run(["/usr/bin/swiftc", str(source), "-o", str(binary)], timeout=120, required=False)
+        receipt["compileMs"] = (time.monotonic() - started) * 1000
+        if compiled.returncode:
+            raise RuntimeError("Public macOS observer compilation failed: " + compiled.stderr[-2000:])
+        receipt.update(status="prepared", binarySha256=hashlib.sha256(binary.read_bytes()).hexdigest())
+        (directory / "macos-observer-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    except (Blocked, subprocess.TimeoutExpired) as error:
+        receipt["reason"] = str(error)
+    except Exception as error:
+        receipt.update(status="failed", reason=str(error))
+    (output / "macos-observer-preparation.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    print(json.dumps(receipt, indent=2))
+    return 0 if receipt["status"] == "prepared" else 1
+
+
+def verified_observer(binary):
+    if not binary:
+        raise Blocked("Prepare the macOS observer once and pass its executable with --observer.")
+    binary = binary.resolve()
+    receipt = json.loads((binary.parent / "macos-observer-receipt.json").read_text())
+    if receipt.get("status") != "prepared" or receipt.get("sourceSha256") != hashlib.sha256(MACOS_OBSERVER.encode()).hexdigest():
+        raise RuntimeError("The prepared macOS observer does not match this script's source.")
+    if hashlib.sha256(binary.read_bytes()).hexdigest() != receipt.get("binarySha256"):
+        raise RuntimeError("The prepared macOS observer binary failed its hash receipt.")
+    return binary, receipt
+
+
 def frame_text(snapshot):
     return "\n".join(
         "".join(span["text"] for span in line) for line in snapshot["frame"]["lines"]
@@ -266,10 +313,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default=".sidebar-lab/macos-graphical")
     parser.add_argument("--font-profile", type=Path, help="Pinned TTF for a uniquely named, non-default Terminal profile on the disposable runner.")
+    parser.add_argument("--prepare-observer", type=Path, help="Compile the public macOS helper once into this temporary directory.")
+    parser.add_argument("--observer", type=Path, help="Prepared macOS helper executable with a matching source/binary receipt.")
     arguments = parser.parse_args()
     repo = Path(__file__).resolve().parent.parent
     output = Path(arguments.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
+    if arguments.prepare_observer:
+        return prepare_observer(arguments.prepare_observer, output)
     report = {
         "schemaVersion": 2,
         "status": "blocked",
@@ -278,6 +329,8 @@ def main():
         "deadlineSeconds": 240,
         "checks": [],
         "captures": [],
+        "transportAcceptanceEvaluated": False,
+        "observedHealthWarnings": [],
         "limitations": [
             "Not a Ghostty acceptance run or a complete macOS interaction suite.",
             "Profile/font receipts plus real pixels require visual review; they do not automatically recognize every displayed glyph.",
@@ -329,6 +382,7 @@ def main():
         if run([bun, "--version"]).stdout.strip() != "1.3.14":
             raise RuntimeError("The pilot requires Bun 1.3.14.")
         report["opencodeVersion"], report["bunVersion"] = "1.18.30", "1.3.14"
+        mac_observer, report["observerPreparation"] = verified_observer(arguments.observer)
         report["revision"] = run(["git", "rev-parse", "HEAD"], cwd=repo).stdout.strip()
         plugin = repo / "dist/tui.js"
         report["sourceHashes"] = {
@@ -425,15 +479,6 @@ def main():
         # permissions; absent window metadata/capture stays explicitly blocked.
         if not window_id:
             phase = "launchservices-fallback"
-            source = fixture / "macos-observer.swift"
-            source.write_text(MACOS_OBSERVER)
-            mac_observer = fixture / "macos-observer"
-            compiled = run([
-                "/usr/bin/swiftc", str(source), "-o", str(mac_observer),
-            ], timeout=45, required=False)
-            if compiled.returncode:
-                raise Blocked("Public CoreGraphics observer could not be prepared: " + compiled.stderr[-1500:])
-
             def visible_windows():
                 observed = run([str(mac_observer)], timeout=10, required=False)
                 if observed.returncode:
@@ -548,16 +593,6 @@ def main():
             raise RuntimeError("Expected native sidebar frame did not appear.")
 
         def capture(name, snapshot, expected_text):
-            nonlocal mac_observer
-            if not mac_observer:
-                source = fixture / "macos-observer.swift"
-                source.write_text(MACOS_OBSERVER)
-                mac_observer = fixture / "macos-observer"
-                compiled = run([
-                    "/usr/bin/swiftc", str(source), "-o", str(mac_observer),
-                ], timeout=45, required=False)
-                if compiled.returncode:
-                    raise Blocked("Screenshot OCR observer unavailable: " + compiled.stderr[-1500:])
             path = output / (name + ".png")
             # The TUI frame assertion can precede Terminal.app's final window paint.
             time.sleep(0.2)
@@ -576,8 +611,12 @@ def main():
             (output / (name + "-ocr.json")).write_text(json.dumps(recognized, indent=2) + "\n")
             if expected not in normalized:
                 raise Blocked("Screenshot needs visual review: native offline OCR did not find expected text: " + expected_text)
+            warnings = [line.strip() for line in frame_text(snapshot).splitlines() if "Session data incomplete" in line]
+            report["observedHealthWarnings"].extend({"capture": name, "text": warning, "snapshotTiming": snapshot.get("timing")} for warning in warnings)
             report["captures"].append({
                 "file": path.name, **stats,
+                "snapshotTiming": snapshot.get("timing"),
+                "visibleHealthWarnings": warnings,
                 "pixelCorrelation": {"method": "macOS Vision offline OCR", "expectedText": expected_text, "matched": True},
             })
             # Raw frame is supporting evidence, never the source of the PNG.
@@ -631,6 +670,9 @@ def main():
         for source_path, expected_hash in report["sourceHashes"].items():
             if hashlib.sha256((repo / source_path).read_bytes()).hexdigest() != expected_hash:
                 raise RuntimeError("A measured source or plugin changed while the pilot was running.")
+        verified_observer(mac_observer)
+        if report["observedHealthWarnings"]:
+            report["limitations"].append("Session-data health warnings appeared without an intentional transport cut. They are retained for investigation; this font/graphics pilot does not pass transport acceptance.")
         report["status"] = "passed"
     except (Blocked, subprocess.TimeoutExpired) as error:
         report["status"], report["reason"] = "blocked", str(error)

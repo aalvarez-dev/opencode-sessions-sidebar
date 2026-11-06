@@ -168,10 +168,17 @@ discarded with it; this is not a client setup operation.
 
 The default-font and selected-font cases retain separate passed/blocked/failed receipts. The job
 requires both cases to pass, so a blocked capability cannot be mistaken for graphical acceptance.
-The profile/archive receipt establishes the requested font selection; genuine PNGs still require
-visual review for missing glyphs and alignment. A larger requested viewport helps expose the group
-order without editing native onboarding state. This pilot remains narrower than full macOS input,
-attention, remote transport or Ghostty acceptance.
+The public Swift observation helper is compiled once in a separate preparation step with a
+120-second limit. Both cases verify its source/binary hash receipt before reuse, keeping cold SDK
+compilation outside their unchanged 240-second graphical deadlines. The first selected-font hosted
+case rendered genuine pinned-font pixels; the preceding default-font case timed out during cold
+compilation. That blocked attempt remains evidence, not an ASCII acceptance result. The
+profile/archive receipt establishes the requested font selection; genuine PNGs still require visual
+review for missing glyphs and alignment. A larger requested viewport helps expose the group order
+without editing native onboarding state. This pilot remains narrower than full macOS input,
+attention, remote transport or Ghostty acceptance. Per-capture observation timings and visible
+session-data health warnings are retained explicitly; warnings are not hidden by retrying until a
+healthy frame appears, and the font pilot never declares transport acceptance.
 
 ## Primary references
 

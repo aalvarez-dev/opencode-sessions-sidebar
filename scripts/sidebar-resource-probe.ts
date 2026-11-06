@@ -10,6 +10,7 @@ export interface ResourceProbeResult {
   message?: string;
   initialFrame?: {
     sidebarVisible: boolean;
+    hostSessionVisible: boolean;
     selectedSession: boolean;
     width: number;
     height: number;
@@ -18,7 +19,14 @@ export interface ResourceProbeResult {
     mountedSessionRows: number;
     sessionRowShells: number;
     heapUsedMiB: number;
+    heapTotalMiB: number;
+    externalMiB: number;
+    arrayBuffersMiB: number;
   };
+  finalFrame?: Omit<
+    NonNullable<ResourceProbeResult["initialFrame"]>,
+    "sidebarVisible" | "hostSessionVisible" | "selectedSession" | "width" | "height"
+  >;
   lifecycle?: { deactivated: boolean; reactivated: boolean; activationMs: number }[];
   measurementAcknowledged?: boolean;
   readyThroughMeasurementFrames?: number;
@@ -159,12 +167,16 @@ async function measure(api: TuiPluginApi) {
       if (node.id.startsWith("sidebar-session-") && node.id.endsWith("-window")) sessionRowShells++;
       pending.push(...node.getChildren());
     }
+    const memory = process.memoryUsage();
     return {
       renderables,
       textBufferRenderables,
       mountedSessionRows,
       sessionRowShells,
-      heapUsedMiB: process.memoryUsage().heapUsed / 1024 ** 2,
+      heapUsedMiB: memory.heapUsed / 1024 ** 2,
+      heapTotalMiB: memory.heapTotal / 1024 ** 2,
+      externalMiB: memory.external / 1024 ** 2,
+      arrayBuffersMiB: memory.arrayBuffers / 1024 ** 2,
     };
   }
 
@@ -226,16 +238,28 @@ async function measure(api: TuiPluginApi) {
       { throwOnError: true },
     );
     assert.equal(sessions.data?.length, expected);
-    assert(sessions.data?.some((session) => session.id === sessionId));
+    const selectedTitle = sessions.data?.find((session) => session.id === sessionId)?.title;
+    assert(selectedTitle);
+    function hostSessionVisible() {
+      const text = api.renderer.currentRenderBuffer
+        .getSpanLines()
+        .map((line) => line.spans.map((span) => span.text).join(""))
+        .join("\n");
+      return text.includes(selectedTitle!) && text.includes("Context") && text.includes("0 tokens");
+    }
     api.route.navigate("session", { sessionID: sessionId });
     await until(
       () => api.state.ready && selected(),
       "Synthetic session route did not become ready.",
     );
+    // Route readiness alone can precede the stock session layout (32 vs 172 nodes).
+    // Require the same native session header/context frame in both treatments.
+    await until(hostSessionVisible, "The native session header/context did not render.");
     if (enabled) await until(sidebarVisible, "Enabled sidebar did not render in the viewport.");
     else assert(!api.plugins.list().some((plugin) => plugin.id === id));
     const initialFrame = {
       sidebarVisible: sidebarVisible(),
+      hostSessionVisible: hostSessionVisible(),
       selectedSession: selected(),
       width: api.renderer.terminalWidth,
       height: api.renderer.terminalHeight,
@@ -256,7 +280,9 @@ async function measure(api: TuiPluginApi) {
       measurementProtocol: "append-receipt-v2",
     });
     const readyThroughMeasurementFrames = api.renderer.frameId - readyFrame;
+    const finalFrame = renderTreeStats();
     await publish(`${output}.lifecycle-started`, { measurementAcknowledged: true });
+    assert(hostSessionVisible(), "The native session header/context disappeared during idle.");
     assert.equal(sidebarVisible(), enabled, "Sidebar visibility changed during idle.");
     if (enabled) {
       const ordered = sessions
@@ -280,6 +306,7 @@ async function measure(api: TuiPluginApi) {
     await publish(output, {
       passed: true,
       initialFrame,
+      finalFrame,
       lifecycle,
       measurementAcknowledged: true,
       readyThroughMeasurementFrames,

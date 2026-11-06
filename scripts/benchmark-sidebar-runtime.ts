@@ -27,10 +27,12 @@ const plugin = await realpath(process.env.SIDEBAR_PLUGIN_FILE ?? join(repository
 // Fixed before measurement; independent of the narrower headless and navigation budgets.
 const budgets = { medianRssDeltaMiB: 64, medianCpuDeltaPoints: 1 };
 const diagnostic = process.env.SIDEBAR_RESOURCE_DIAGNOSTIC === "true";
-const sizes = diagnostic ? [250] : [25, 250];
+const delayed = process.env.SIDEBAR_RESOURCE_DELAYED === "true";
+assert(!(diagnostic && delayed), "Choose either diagnostic or delayed acceptance mode.");
+const sizes = diagnostic || delayed ? [250] : [25, 250];
 const repetitions = diagnostic ? 1 : 3;
-const settleMs = 2_000;
-const observationMs = diagnostic ? 30_000 : 5_000;
+const settleMs = delayed ? 20_000 : 2_000;
+const observationMs = diagnostic ? 30_000 : delayed ? 10_000 : 5_000;
 const root = await mkdtemp(join(tmpdir(), "sidebar-rendered-resources-"));
 const project = join(root, "project");
 const seedConfig = join(root, "seed-config");
@@ -162,8 +164,12 @@ const measurements: Measurement[] = [];
 const median = (values: number[]) =>
   [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]!;
 const report: Record<string, unknown> = {
-  schema: 2,
-  kind: diagnostic ? "diagnostic-time-series" : "acceptance-comparison",
+  schema: 3,
+  kind: diagnostic
+    ? "diagnostic-time-series"
+    : delayed
+      ? "delayed-acceptance-comparison"
+      : "acceptance-comparison",
   acceptanceEvaluated: false,
   completed: false,
   ...(diagnostic ? {} : { passed: false }),
@@ -487,7 +493,7 @@ try {
     diagnostic
       ? "Diagnostic only: one baseline/enabled pair at 250 sessions with per-second traces; no acceptance budgets evaluated or stabilization claimed."
       : "Three pairs per size on shared hardware; no confidence interval or long-running stability guarantee.",
-    "The fixed two-second settle is not proof of steady state; examine resident-memory drift and CPU activity before interpreting idle overhead.",
+    `The fixed ${settleMs / 1000}-second settle is not proof of steady state; examine resident-memory drift and CPU activity before interpreting idle overhead.`,
     "TUI-process RSS and aggregate-thread CPU only; excludes subprocesses, GPU and browser/client terminal.",
     "Main-thread context switches are not timer/wakeup counts; lifecycle visibility does not prove zero retained heap/subscriptions.",
     "Idle synthetic sessions, no prompts or external inference; no event-burst, native font, remote transport or packaged-install claim.",

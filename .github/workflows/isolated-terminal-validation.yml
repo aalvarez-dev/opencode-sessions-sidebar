@@ -141,6 +141,14 @@ jobs:
           SIDEBAR_RESOURCE_REPORT:
             ${{ github.workspace }}/.sidebar-lab/actions/native/resource-diagnostic.json
         run: bun run benchmark:sidebar:runtime
+      - name: Additional delayed-start resource gate
+        id: delayed
+        continue-on-error: true
+        env:
+          SIDEBAR_RESOURCE_DELAYED: "true"
+          SIDEBAR_RESOURCE_REPORT:
+            ${{ github.workspace }}/.sidebar-lab/actions/native/resources-delayed.json
+        run: bun run benchmark:sidebar:runtime
       - name: Retain native reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -156,9 +164,10 @@ jobs:
           REMOTE_RESULT: ${{ steps.remote.outcome }}
           RESOURCE_RESULT: ${{ steps.resources.outcome }}
           DIAGNOSTIC_RESULT: ${{ steps.diagnostic.outcome }}
+          DELAYED_RESULT: ${{ steps.delayed.outcome }}
         run:
           test "$REMOTE_RESULT" = success && test "$RESOURCE_RESULT" = success && test
-          "$DIAGNOSTIC_RESULT" = success
+          "$DIAGNOSTIC_RESULT" = success && test "$DELAYED_RESULT" = success
 
   macos-pilot:
     name: macOS graphical capability pilot
@@ -177,23 +186,29 @@ jobs:
           echo "SIDEBAR_OPENCODE=$RUNNER_TEMP/sidebar-tools/node_modules/.bin/opencode" >> "$GITHUB_ENV"
           echo "SIDEBAR_BUN=$(command -v bun)" >> "$GITHUB_ENV"
           echo "SIDEBAR_MACOS_FONT_FILE=$RUNNER_TEMP/sidebar-fonts/IosevkaNerdFontMono-Regular.ttf" >> "$GITHUB_ENV"
+          echo "SIDEBAR_MACOS_OBSERVER=$RUNNER_TEMP/sidebar-macos-observer/macos-observer" >> "$GITHUB_ENV"
           bun install --frozen-lockfile
           bun run build
           bun run fonts:prepare --download "$RUNNER_TEMP/sidebar-fonts"
           bun run fonts:prepare --install "$RUNNER_TEMP/sidebar-fonts" --apply
           mkdir -p .sidebar-lab/actions/macos
           git rev-parse HEAD > .sidebar-lab/actions/macos/checkout-sha.txt
+      - name: Prepare public macOS observer once
+        run:
+          python3 scripts/macos-graphical-pilot.py --prepare-observer
+          "$RUNNER_TEMP/sidebar-macos-observer" --output .sidebar-lab/actions/macos
       - name: Default-font ASCII graphical pilot
         id: ascii
         continue-on-error: true
         run:
-          python3 scripts/macos-graphical-pilot.py --output .sidebar-lab/actions/macos/ascii-default
+          python3 scripts/macos-graphical-pilot.py --observer "$SIDEBAR_MACOS_OBSERVER" --output
+          .sidebar-lab/actions/macos/ascii-default
       - name: Pinned-font isolated Terminal profile
         id: nerd
         continue-on-error: true
         run:
           python3 scripts/macos-graphical-pilot.py --font-profile "$SIDEBAR_MACOS_FONT_FILE"
-          --output .sidebar-lab/actions/macos/nerd-profile
+          --observer "$SIDEBAR_MACOS_OBSERVER" --output .sidebar-lab/actions/macos/nerd-profile
       - name: Retain pilot outcome and any genuine screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
