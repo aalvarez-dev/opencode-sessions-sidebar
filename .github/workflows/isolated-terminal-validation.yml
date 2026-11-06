@@ -176,14 +176,24 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/sidebar-tools" --no-audit --no-fund opencode-ai@1.18.30
           echo "SIDEBAR_OPENCODE=$RUNNER_TEMP/sidebar-tools/node_modules/.bin/opencode" >> "$GITHUB_ENV"
           echo "SIDEBAR_BUN=$(command -v bun)" >> "$GITHUB_ENV"
+          echo "SIDEBAR_MACOS_FONT_FILE=$RUNNER_TEMP/sidebar-fonts/IosevkaNerdFontMono-Regular.ttf" >> "$GITHUB_ENV"
           bun install --frozen-lockfile
           bun run build
           bun run fonts:prepare --download "$RUNNER_TEMP/sidebar-fonts"
           bun run fonts:prepare --install "$RUNNER_TEMP/sidebar-fonts" --apply
           mkdir -p .sidebar-lab/actions/macos
           git rev-parse HEAD > .sidebar-lab/actions/macos/checkout-sha.txt
-      - name: Probe graphical automation without changing privacy permissions
-        run: python3 scripts/macos-graphical-pilot.py --output .sidebar-lab/actions/macos
+      - name: Default-font ASCII graphical pilot
+        id: ascii
+        continue-on-error: true
+        run:
+          python3 scripts/macos-graphical-pilot.py --output .sidebar-lab/actions/macos/ascii-default
+      - name: Pinned-font isolated Terminal profile
+        id: nerd
+        continue-on-error: true
+        run:
+          python3 scripts/macos-graphical-pilot.py --font-profile "$SIDEBAR_MACOS_FONT_FILE"
+          --output .sidebar-lab/actions/macos/nerd-profile
       - name: Retain pilot outcome and any genuine screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -193,3 +203,13 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
+      - name: Require both explicit graphical receipts
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for mode in ("ascii-default", "nerd-profile"):
+              result = json.loads((Path(".sidebar-lab/actions/macos") / mode / "macos-graphical-result.json").read_text())
+              assert result["status"] == "passed", f"{mode}: {result['status']}: {result.get('reason', '')}"
+          PY

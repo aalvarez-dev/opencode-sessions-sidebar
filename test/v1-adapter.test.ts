@@ -7,6 +7,7 @@ import type {
   SessionStatus,
 } from "@opencode-ai/sdk/v2";
 import { createV1Adapter } from "../src/adapters/opencode-v1";
+import { monitorV1Transport } from "../src/adapters/opencode-v1/transport-health";
 import type { V1HostPort, V1Limits } from "../src/adapters/opencode-v1/types";
 
 const scope = {
@@ -186,6 +187,107 @@ afterEach(() => {
 });
 
 describe("V1 adapter contract with a fake public host", () => {
+  test("a second health failure invalidates a native reconnect without an intervening healthy probe", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a")];
+    const adapter = adapterFor(host);
+    await adapter.start();
+    const scheduled = new Map<() => void, number>();
+    const availability: boolean[] = [];
+    let healthCalls = 0;
+    const healthHost = {
+      lifecycle: host.port.lifecycle,
+      client: {
+        global: {
+          async health() {
+            healthCalls++;
+            throw new Error("transport cut");
+          },
+        },
+      },
+    } as unknown as Parameters<typeof monitorV1Transport>[0];
+    const stop = monitorV1Transport(
+      healthHost,
+      (available) => {
+        availability.push(available);
+        adapter.setTransportAvailable(available);
+      },
+      (run, delay) => {
+        scheduled.set(run, delay);
+        return () => scheduled.delete(run);
+      },
+    );
+    const probe = async () => {
+      const next = [...scheduled].find(([, delay]) => delay === 5_000)!;
+      scheduled.delete(next[0]);
+      next[0]();
+      for (let turn = 0; turn < 4; turn++) await Promise.resolve();
+    };
+    try {
+      await probe();
+      expect(adapter.get("a")?.activity).toBe("unknown");
+      host.emit({ id: "native-between-cuts", type: "server.connected", properties: {} });
+      await adapter.refresh();
+      expect(adapter.get("a")?.activity).toBe("idle");
+      await probe();
+      expect(adapter.get("a")?.activity).toBe("unknown");
+      expect(healthCalls).toBe(2);
+      expect(availability).toEqual([false, false]);
+      let changes = 0;
+      adapter.subscribe(() => changes++);
+      await probe();
+      expect(changes).toBe(0);
+    } finally {
+      stop();
+    }
+    expect(scheduled.size).toBe(0);
+  });
+
+  test("transport loss rejects buffered idle events and stale snapshots until recovery", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a")];
+    const adapter = adapterFor(host);
+    await adapter.start();
+    const snapshot = deferred<Session[]>();
+    host.listRead = () => snapshot.promise;
+    const refresh = adapter.refresh();
+    await Promise.resolve();
+    adapter.setTransportAvailable(false);
+    host.status("buffered-idle", "a", { type: "idle" });
+    snapshot.resolve([session("a", { title: "Obsolete title" })]);
+    await refresh;
+    expect(adapter.get("a")).toMatchObject({ title: "Session a", activity: "unknown" });
+    expect(adapter.state()).toMatchObject({ phase: "stale", attentionCoverage: "unknown" });
+    const calls = host.calls.list;
+    await adapter.refresh();
+    adapter.setTransportAvailable(false);
+    expect(host.calls.list).toBe(calls);
+
+    host.listRead = async () => [session("a", { title: "Current title" })];
+    adapter.setTransportAvailable(true);
+    await adapter.refresh();
+    expect(adapter.get("a")).toMatchObject({ title: "Current title", activity: "idle" });
+    adapter.setTransportAvailable(true);
+    expect(host.calls.list).toBe(calls + 1);
+  });
+
+  test("native server.connected recovers a failed transport probe, disposal revokes it", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a")];
+    const adapter = adapterFor(host);
+    await adapter.start();
+    adapter.setTransportAvailable(false);
+    host.emit({ id: "reconnected", type: "server.connected", properties: {} });
+    await adapter.refresh();
+    expect(adapter.get("a")?.activity).toBe("idle");
+    const calls = host.calls.list;
+    adapter.dispose();
+    adapter.setTransportAvailable(false);
+    adapter.setTransportAvailable(true);
+    expect(adapter.state().phase).toBe("disposed");
+    expect(host.calls.list).toBe(calls);
+  });
+
   test("starts once, scopes snapshots, and infers idle only for covered sessions", async () => {
     const host = new FakeHost();
     host.sessions = [

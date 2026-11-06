@@ -14,13 +14,11 @@ JetBrains Mono profile lacked the retry arrow and Braille characters. Existing s
 actions, and layout are preserved; glyph outlines follow the selected font rather than an
 unspecified system fallback.
 
-The shared
-[icon catalog](https://github.com/aalvarez-labs/opencode-sessions-sidebar/blob/review/sidebar-stability-20261004/src/ui/icons.ts)
-defines symbol text and expected terminal-cell widths. Font preparation verifies its complete union
-of ASCII/Unicode/Nerd glyphs plus ordinary ASCII and UI punctuation. It checks the pinned file hash,
-a bounded TrueType Unicode `cmap`, and `hmtx` glyph advances against the font's Latin `M`. It does
-not trust the name of an installed font as evidence of coverage. No Python, FontTools, font editor,
-or runtime patching is required by this helper.
+The shared [icon catalog](../src/ui/icons.ts) defines symbol text and expected terminal-cell widths.
+Font preparation verifies its complete union of ASCII/Unicode/Nerd glyphs plus ordinary ASCII and UI
+punctuation. It checks the pinned file hash, a bounded TrueType Unicode `cmap`, and `hmtx` glyph
+advances against the font's Latin `M`. It does not trust the name of an installed font as evidence
+of coverage. No Python, FontTools, font editor, or runtime patching is required by this helper.
 
 Font advances are not terminal width negotiation: the Unicode hourglass can occupy two terminal
 cells even though its outline has the same advance as other font glyphs. The icon catalog preserves
@@ -154,8 +152,26 @@ implementation: all **137** currently required codepoints were present with a **
 Fixture tests cover TrueType cmap formats 4/12, missing glyphs, inconsistent advances, malformed
 bounds, offline integrity checks, dry-run, repeated placement, conflicts, and symlink refusal. Tests
 use temporary directories, not the tester's actual font folders. They establish preparation and
-placement behavior. Actual Ubuntu/macOS font selection, terminal rendering, and OS font registration
-still need their platform acceptance results; no universal terminal compatibility is claimed.
+placement behavior. The isolated campaign has captured genuine xterm windows with the pinned font,
+and a macOS Terminal.app pilot with its default font. The latter visibly demonstrates why ASCII is
+needed when the selected font lacks Nerd glyphs. These named configurations do not establish
+universal terminal compatibility.
+
+The macOS workflow also has a separate selected-font scenario. It creates a uniquely named
+`.terminal` profile on a disposable GitHub-hosted runner, archives the resolved AppKit `NSFont`,
+verifies its round trip and CoreText font-file SHA-256, and launches only that profile's synthetic
+command through LaunchServices. It does not replace the default profile or change privacy
+permissions. If ordinary user-font placement has not registered the family, the test can explicitly
+register that same verified file for the current disposable session and unregister only its own
+registration during cleanup. The non-default imported profile belongs to the ephemeral runner and is
+discarded with it; this is not a client setup operation.
+
+The default-font and selected-font cases retain separate passed/blocked/failed receipts. The job
+requires both cases to pass, so a blocked capability cannot be mistaken for graphical acceptance.
+The profile/archive receipt establishes the requested font selection; genuine PNGs still require
+visual review for missing glyphs and alignment. A larger requested viewport helps expose the group
+order without editing native onboarding state. This pilot remains narrower than full macOS input,
+attention, remote transport or Ghostty acceptance.
 
 ## Primary references
 
@@ -163,4 +179,8 @@ still need their platform acceptance results; no universal terminal compatibilit
 - [Ghostty font configuration](https://ghostty.org/docs/config/reference).
 - [GNOME Terminal font selection](https://help.gnome.org/users/gnome-terminal/stable/app-fonts.html.en).
 - [Apple Terminal profile text settings](https://support.apple.com/guide/terminal/change-profiles-text-settings-trmltxt/mac).
+- [Apple Terminal profile documents](https://support.apple.com/guide/terminal/import-and-export-terminal-profiles-trml4299c696/mac).
+- [Apple keyed font archives](<https://developer.apple.com/documentation/foundation/nskeyedarchiver/archiveddata(withrootobject:requiringsecurecoding:)>).
+- [CoreText font-file identity](<https://developer.apple.com/documentation/coretext/ctfontcopyattribute(_:_:)>).
+- [CoreText session registration](https://developer.apple.com/documentation/coretext/ctfontmanagerscope/session).
 - [VS Code terminal appearance](https://code.visualstudio.com/docs/terminal/appearance).

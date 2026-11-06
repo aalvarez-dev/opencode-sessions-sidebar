@@ -2,6 +2,13 @@
 
 ## Unreleased development build
 
+- Keep offscreen session geometry while mounting native text buffers only near the viewport;
+  preserve full-list scrolling, expanded context/children and completion ordering.
+- Detect unavailable TUI HTTP transport with one bounded health check, reject stale snapshots and
+  buffered activity until recovery, and reconcile without manual refresh.
+- Reject malformed host identities and NUL-containing storage paths before starting project lookup.
+- Extend hosted validation with complete-list scroll checks and an isolated macOS font profile.
+
 - Preserve a centralized icon/animation catalog and expose a scrollable Check icons dialog.
 - Keep custom dialogs inside the terminal viewport and isolate their navigation keys from the
   underlying session, including after resize and at scroll boundaries.

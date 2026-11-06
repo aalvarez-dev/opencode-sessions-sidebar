@@ -18,8 +18,10 @@ Run three paired repetitions per dataset, alternating baseline/enabled order. Bo
 the same observer; only the enabled treatment loads the complete built sidebar. The observer
 verifies the selected route, visible sidebar geometry and rendered frame text before marking a
 treatment ready. After two seconds of stabilization, the parent samples process CPU/RSS over five
-seconds. During this interval the observer performs no polling or SDK reads, using one one-shot
-sleep. Its lifecycle checks run afterward.
+seconds. During this interval the observer performs no polling or SDK reads. It watches a precreated
+completion-receipt file, and the parent appends its signal only after sampling. Lifecycle checks run
+after that acknowledgement. Completed samples are checkpointed before those later checks, so an
+incomplete lifecycle run cannot erase the measurements that preceded it.
 
 These budgets are fixed before the first measurement of this harness:
 
@@ -73,6 +75,12 @@ compatibility. Idle sessions also do not exercise busy-row animation or attentio
 load. Keep the existing correctness/input/attention probes and broader release gates separate.
 
 ## Recorded November 6 comparison
+
+This is an earlier development result, not approval of every later revision. The subsequent
+[isolated terminal campaign](isolated-terminal-validation.md) found the 250-session RSS budget
+failing on hosted runners. Keep both results with their exact source hashes; a previous passing
+receipt does not override a later failure. Current PR evidence records the follow-up fixes and their
+new measurements.
 
 The [complete receipt](validation/sidebar-rendered-resources.json) passed all 12 treatments with the
 predeclared budgets unchanged. Both datasets used three pairs, official OpenCode 1.18.30, Bun 1.3.14

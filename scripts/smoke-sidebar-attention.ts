@@ -71,12 +71,14 @@ async function artifactHashes() {
     "src/ui/controller.ts",
     "src/ui/model.ts",
     "src/ui/view.tsx",
+    "src/ui/viewport.ts",
     "src/ui/motion.ts",
     "src/ui/icons.ts",
     "src/extensions/runtime.ts",
     "src/extensions/types.ts",
     "src/adapters/opencode-v1/completion-capabilities.ts",
     "src/adapters/opencode-v1/adapter.ts",
+    "src/adapters/opencode-v1/transport-health.ts",
     "src/adapters/opencode-v1/types.ts",
     "scripts/sidebar-attention-probe.ts",
     "scripts/smoke-sidebar-attention.ts",
@@ -691,6 +693,45 @@ try {
     "Active completion action must be below both expanded children and context.",
   );
   await capture("active-parent-children-context-completion-order", activeExpanded);
+  await request("command", { command: "sessions-sidebar.settings" });
+  await until((snapshot) => snapshot.dialogDepth > 0, "Density settings did not open.");
+  input("Density: comfortable\r");
+  const comfortable = await until(
+    (snapshot) =>
+      snapshot.dialogDepth === 0 && node(snapshot, `${parentPrefix}-window`)?.height === 12,
+    "Comfortable density did not reserve the expanded parent and child height.",
+  );
+  const childWindow = node(comfortable, `${childPrefix}-window`)!;
+  const parentWindow = node(comfortable, `${parentPrefix}-window`)!;
+  assert.equal(
+    childWindow.height,
+    4,
+    "The live child must retain its three lines plus the density gap.",
+  );
+  assert.equal(
+    node(comfortable, `${parentPrefix}-context`)!.y,
+    childWindow.y + childWindow.height,
+    "The parent's context must follow the child's actual Yoga height.",
+  );
+  assert.equal(
+    node(comfortable, `${parentPrefix}-completion`)!.y,
+    node(comfortable, `${parentPrefix}-context-details`)!.y + 3,
+    "Completion must follow the three expanded context lines without overlap.",
+  );
+  assert.equal(
+    parentWindow.y + parentWindow.height,
+    node(comfortable, `${parentPrefix}-completion`)!.y + 2,
+    "The parent shell must end after the completion line and comfortable gap.",
+  );
+  await capture("comfortable-active-parent-children-context", comfortable);
+  await request("command", { command: "sessions-sidebar.settings" });
+  await until((snapshot) => snapshot.dialogDepth > 0, "Density settings did not reopen.");
+  input("Density: balanced\r");
+  await until(
+    (snapshot) =>
+      snapshot.dialogDepth === 0 && node(snapshot, `${parentPrefix}-window`)?.height === 10,
+    "Balanced density did not restore the expanded parent geometry.",
+  );
   await clickNode(`${parentPrefix}-context-disclosure`);
   await request("activate-current");
   await until(
@@ -862,6 +903,7 @@ try {
       "Marked pinned parent retains completion while displaying child busy/question.",
       "Mouse and keyboard line-two live-subagent disclosure expands and collapses native child rows above the parent's line-three context; deduplicated pinned parent retains its mark and success title color.",
       "Active parent completion remains below both expanded live children and expanded R/B/W context.",
+      "Viewport shells match actual child/context/completion geometry in comfortable density and restore balanced density without overlap.",
       "Collapsed Pinned sessions retains busy/question summary.",
       "Native recoverable 429 renders a warning retry glyph; terminal 400 renders an error glyph after host idle, independently of completion.",
       "From a separate idle session route, narrow 88x24 browse retains completion and question footer; session menu retains busy/question labels.",

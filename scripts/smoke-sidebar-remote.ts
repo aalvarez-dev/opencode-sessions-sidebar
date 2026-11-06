@@ -34,6 +34,7 @@ const budgets = {
   totalMs: 150_000,
   outageMs: 10_000,
   reconnectMs: 20_000,
+  liveEventMs: 2_000,
   observerResponseMs: 2_000,
 };
 let online = true;
@@ -518,8 +519,8 @@ try {
   }
   try {
     recovered = await until(
-      reconciled,
-      "Native reconnect did not reconcile renamed, created and deleted sessions.",
+      (snapshot) => reconciled(snapshot) && proxyActivity.eventStreams >= 2,
+      "Automatic recovery did not reconcile sessions and reopen the native event stream.",
       budgets.reconnectMs,
     );
     reconnectElapsedMs = performance.now() - restored;
@@ -544,6 +545,19 @@ try {
     proxyActivity.eventStreams >= 2,
     `Observed ${proxyActivity.eventStreams} forwarded event subscriptions.`,
   );
+  if (recovered) {
+    await client.session.update(
+      { directory: project, sessionID: gamma.data.id, title: "Remote Gamma live after restore" },
+      sdkOptions,
+    );
+    await until(
+      (snapshot) =>
+        sidebarRowText(snapshot, gamma.data!.id).includes("Remote Gamma live after restore"),
+      "Restored native events did not deliver a new update without a refresh.",
+      budgets.liveEventMs,
+    );
+    record("restored native events deliver new changes without a refresh", true);
+  }
   if (!recovered) {
     await request("command", { command: "sessions-sidebar.refresh" });
     await until(reconciled, "Explicit recovery refresh also failed.", 10_000);
@@ -590,7 +604,10 @@ try {
         "src/ui/controller.ts",
         "src/ui/model.ts",
         "src/ui/view.tsx",
+        "src/ui/viewport.ts",
         "src/adapters/opencode-v1/adapter.ts",
+        "src/adapters/opencode-v1/transport-health.ts",
+        "src/adapters/opencode-v1/transport-health.ts",
         "scripts/sidebar-remote-probe.ts",
         "scripts/smoke-sidebar-remote.ts",
         "scripts/lib/graphical-terminal.ts",

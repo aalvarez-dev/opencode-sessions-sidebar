@@ -3,6 +3,7 @@ import {
   Index,
   Show,
   createEffect,
+  createMemo,
   createSignal,
   onCleanup,
   onMount,
@@ -10,6 +11,7 @@ import {
 } from "solid-js";
 import { RGBA, type Renderable, type ScrollBoxRenderable } from "@opentui/core";
 import { createSidebarMotion } from "./motion";
+import { createSidebarViewport, sidebarRowHeights } from "./viewport";
 import { iconGlyph, iconModes, iconProofRows, type IconName } from "./icons";
 import { useTerminalDimensions, type JSX } from "@opentui/solid";
 import type { TuiDialogSelectOption, TuiPluginApi } from "@opencode-ai/plugin/tui";
@@ -633,6 +635,8 @@ export function SidebarView(props: {
   const theme = () => props.api.theme.current;
   const motion = createSidebarMotion(props.api.renderer);
   onCleanup(motion.dispose);
+  const viewport = createSidebarViewport(props.api.renderer);
+  onCleanup(viewport.dispose);
   const symbol = (name: IconName) => iconGlyph(name, c.icons());
   // Derived from the host palette; retry stays distinct from a terminal error.
   const retryColor = () =>
@@ -693,9 +697,46 @@ export function SidebarView(props: {
           ? `${Math.floor(minutes / 60)}h`
           : `${Math.floor(minutes / 1440)}d`;
   };
-  const topLevel = (id: string) =>
-    c.activeRow()?.session.id === id ||
-    c.groups().some((group) => group.rows.some((row) => row.session.id === id));
+  const topLevelIds = createMemo(
+    () =>
+      new Set([
+        ...(c.activeRow() ? [c.activeRow()!.session.id] : []),
+        ...c.groups().flatMap((group) => group.rows.map((row) => row.session.id)),
+      ]),
+  );
+  const topLevel = (id: string) => topLevelIds().has(id);
+  const rowHeights = createMemo(() =>
+    sidebarRowHeights({
+      rows: c.rows(),
+      activeId: c.activeRow()?.session.id,
+      topLevel: topLevelIds(),
+      expandedContext: c.expandedContext(),
+      expandedChildren: c.expandedChildren(),
+      comfortable: c.density() === "comfortable",
+      childrenFor: c.liveChildrenFor,
+    }),
+  );
+  function WindowedRow(p: { row: SidebarRow; depth?: number; active?: boolean }) {
+    const [mounted, setMounted] = createSignal(false);
+    let shell: Renderable | undefined;
+    const stop = viewport.track({ element: () => shell, mounted: setMounted });
+    onCleanup(stop);
+    return (
+      <box
+        id={`sidebar-session-${p.row.session.id}-window`}
+        ref={(element) => {
+          shell = element;
+        }}
+        flexDirection="column"
+        flexShrink={0}
+        height={rowHeights().get(p.row.session.id) ?? 3}
+      >
+        <Show when={mounted()}>
+          <SessionRow row={p.row} depth={p.depth ?? 0} active={p.active ?? false} />
+        </Show>
+      </box>
+    );
+  }
   function SessionRow(p: { row: SidebarRow; depth?: number; active?: boolean }) {
     const row = () => p.row;
     const children = () => c.liveChildrenFor(row().session.id);
@@ -857,7 +898,7 @@ export function SidebarView(props: {
                       </text>
                     }
                   >
-                    <SessionRow row={child} depth={(p.depth ?? 0) + 1} />
+                    <WindowedRow row={child} depth={(p.depth ?? 0) + 1} />
                   </Show>
                 )}
               </For>
@@ -973,7 +1014,7 @@ export function SidebarView(props: {
             </text>
           }
         >
-          {(row: Accessor<SidebarRow>) => <SessionRow row={row()} active />}
+          {(row: Accessor<SidebarRow>) => <WindowedRow row={row()} active />}
         </Show>
         <Show when={c.error()}>
           <text fg={theme().warning} wrapMode="word">
@@ -1022,7 +1063,7 @@ export function SidebarView(props: {
                 </text>
               </Show>
               <Show when={!c.collapsed().has(group().id)}>
-                <For each={group().rows}>{(row) => <SessionRow row={row} />}</For>
+                <For each={group().rows}>{(row) => <WindowedRow row={row} />}</For>
               </Show>
               <Show when={group().id === "later" && c.unavailableLater().length > 0}>
                 <text fg={theme().warning} wrapMode="word" onMouseUp={() => props.actions.later()}>

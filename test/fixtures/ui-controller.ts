@@ -58,6 +58,7 @@ export class ControllerHost {
     // fields envelope used here; production compatibility is checked against its full type.
     return {
       client: {
+        global: { health: async () => ({ data: { healthy: true, version: "test" } }) },
         project: {
           current: async (parameters: { directory: string }, options: { signal: AbortSignal }) => {
             host.calls.project++;
@@ -441,6 +442,13 @@ async function options() {
     reducedMotion: true,
   };
   assert.deepEqual(parseSidebarOptions(valid), valid);
+  for (const hostId of ["test\0host", "test\nhost", "test\thost", "test\u007fhost"]) {
+    assert.throws(() => parseSidebarOptions({ ...valid, hostId }), /hostId/);
+  }
+  assert.throws(
+    () => parseSidebarOptions({ ...valid, storageDirectory: "/example/sto\0rage" }),
+    /storageDirectory/,
+  );
   assert.throws(() => parseSidebarOptions({ ...valid, reducedMotion: "false" }), /boolean/);
   assert.throws(() => parseSidebarOptions({ ...valid, icons: "invalid" }), /icons/);
   for (const icons of [["nerd"], { toString: () => "ascii" }, null]) {

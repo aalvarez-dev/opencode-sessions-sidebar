@@ -7,6 +7,7 @@ import {
   type V1CompletionPolicy,
 } from "../adapters/opencode-v1";
 import type { ActionResult } from "../adapters/opencode-v1";
+import { monitorV1Transport } from "../adapters/opencode-v1/transport-health";
 import { createOrganizationService, sessionIdFromKey } from "../organization";
 import type { OrganizationAction } from "../organization";
 import { createFileStorage } from "../storage/file";
@@ -39,7 +40,9 @@ export function parseSidebarOptions(input: Record<string, unknown> | undefined):
     typeof input.hostId !== "string" ||
     !input.hostId.trim() ||
     input.hostId.length > 512 ||
+    /[\u0000-\u001f\u007f]/.test(input.hostId) ||
     typeof input.storageDirectory !== "string" ||
+    input.storageDirectory.includes("\0") ||
     !isAbsolute(input.storageDirectory)
   )
     throw new TypeError("Configure a stable hostId and an absolute local storageDirectory.");
@@ -99,6 +102,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   let adapter: ReturnType<typeof createV1Adapter> | undefined;
   let organization: ReturnType<typeof createOrganizationService> | undefined;
   let unsubscribe: (() => void) | undefined;
+  let stopTransport: (() => void) | undefined;
   let lookup: AbortController | undefined;
   let lookupInFlight = false;
   let lookupTimer: ReturnType<typeof setTimeout> | undefined;
@@ -184,6 +188,8 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     if (active()) api.ui.toast({ title: "Sessions sidebar", message, variant });
   }
   function stopScope() {
+    stopTransport?.();
+    stopTransport = undefined;
     extensions.detach();
     setProjectContext(null);
     lookup?.abort();
@@ -260,6 +266,9 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
       await Promise.all([adapter.start(), organization.start()]);
       if (!active() || generation !== epoch) return;
       const currentAdapter = adapter;
+      stopTransport = monitorV1Transport(api, (available) => {
+        if (active() && generation === epoch) currentAdapter.setTransportAvailable(available);
+      });
       extensions.attach(organization, (id) => {
         const record = currentAdapter?.get(id);
         return record

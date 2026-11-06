@@ -38,8 +38,10 @@ terminal and operating system.
 - The transport observer must still capture while the API is unavailable. It must not call the
   adapter's invalidation method or fabricate a disconnection event on the adapter's behalf.
 - The macOS pilot never changes privacy permissions or the TCC database. An unavailable graphical
-  session or denied automation/capture is **blocked**, not a passing macOS visual test. A green
-  capability-pilot job alone is not graphical acceptance; read its receipt.
+  session or denied automation/capture is **blocked**, not a passing macOS visual test. The workflow
+  now requires explicit passing receipts for both the default-font ASCII case and a uniquely named
+  Terminal profile selecting the pinned font. Profile/font receipts supplement real PNG review; they
+  are not automatic recognition of every glyph and do not certify Ghostty.
 - Xvfb is a virtual display. Successful xterm tests demonstrate this named configuration, not
   Ghostty, GNOME Terminal, all Linux distributions or a user's SSH/network path.
 - Short paired resource observations do not establish sustained-load or leak-free operation.

@@ -41,6 +41,37 @@ histories. Any future external reporting requires a separately documented opt-in
 
 ## Controlled comparison before release
 
+### Bounded TUI transport health fallback
+
+OpenCode 1.18.30's public TUI event API does not expose transport loss. Its local worker also
+buffers SDK fetch responses with `response.text()`, so an additional indefinite SSE subscription
+cannot be used safely for both local and attached clients. The TUI integration therefore owns one
+public `global.health` check per active scope, scheduled five seconds after the preceding check
+settles, with a two-second deadline and at most one request in flight. Stable healthy responses do
+not invalidate session data, fetch session metadata, or trigger UI updates. No request is made per
+row.
+
+A failed request, invalid response, or deadline marks transport-dependent activity uncertain. A
+confirmed recovery reconciles the snapshot. Disposal and scope replacement remove the timer, abort
+the pending request, and reject late responses. If a non-cooperative transport ignores cancellation,
+the UI still becomes uncertain at the deadline; another request is not started until that request
+settles. This prevents an unbounded pile-up.
+
+This fallback establishes HTTP server reachability. It does not prove that an independently broken
+event stream is healthy while HTTP remains available, and it does not infer a failure from normal
+session inactivity. The headless adapter still has no polling: its caller owns transport state. The
+complete rendered-sidebar CPU/RSS comparison includes this TUI fallback under the unchanged budgets.
+It is an explicit exception to the preference for event-driven idle work.
+
+Primary pinned implementation references:
+
+- [Public TUI API](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/plugin/src/tui.ts).
+- [Native event-stream owner](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/tui/src/context/sdk.tsx).
+- [Local RPC response buffering](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/cli/tui/worker.ts).
+- [Public health endpoint](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/sdk/js/src/v2/gen/sdk.gen.ts).
+
+### Comparison procedure
+
 Before accepting the V1 adapter, define the benchmark environment, workload, and release budgets.
 Record the OS, hardware, terminal and dimensions, OpenCode and dependency versions, plugin commit,
 configuration, enabled integrations, warm/cold cache conditions, measurement tools, and repetitions.

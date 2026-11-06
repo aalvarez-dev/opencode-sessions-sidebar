@@ -62,6 +62,21 @@ adapter's component and stock-TUI probes have explicitly limited workloads. Thei
 not establish the rendered sidebar's responsiveness or the storage layer's performance. The sidebar
 has a separate focused smoke; broad release performance and remote-host validation remain pending.
 
+The November 6 hosted campaign exposed excessive offscreen text buffers and confirmed idle activity
+during a real native transport cut. The follow-up now mounts row content only near the viewport,
+retains complete scroll geometry, and adds a bounded TUI HTTP health monitor with explicit transport
+availability at the adapter boundary. Focused stock-host checks verify wide/narrow navigation,
+expanded child/context geometry in both balanced and comfortable density, unknown activity during
+the cut, automatic recovery and a fresh event after reconnection. A double-cut regression also
+covers native recovery between two failed health checks. Full rendered resource budgets are still
+evaluated independently; these functional checks do not substitute for their exact receipts.
+
+Hosted macOS validation now separates the ASCII/default-font case from a uniquely named Terminal
+profile selecting the pinned font. Both require explicit passing receipts, followed by real pixel
+review. The [isolated campaign](isolated-terminal-validation.md) describes provenance and limits;
+run-specific results are attached to the validation PR. There is no universal-terminal or Ghostty
+acceptance claim, and an SSE-only fault with healthy HTTP remains outside the health fallback.
+
 ## Required runtime scenarios
 
 - Mark/unmark an idle session; restart and recover the correct state.

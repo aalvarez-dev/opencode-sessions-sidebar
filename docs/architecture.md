@@ -150,6 +150,12 @@ cancel cooperative work, and prevent late responses from updating a disposed ins
 and refresh must reconcile current host state without pretending that every missed transition was
 observed.
 
+The rendered V1 integration owns a bounded HTTP health fallback because its public event API has no
+transport-loss notification. The headless adapter only accepts explicit transport availability from
+its owner and suppresses stale events/snapshots while unavailable. See the exact cadence, deadline,
+cleanup and stream-only limitation in
+[performance](performance.md#bounded-tui-transport-health-fallback).
+
 ## Resource and responsiveness boundaries
 
 Render paths consume normalized state without disk, Git, network, or process operations. Schedule

@@ -61,6 +61,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
   let selectedSessionId: string | null = null;
   let started = false;
   let disposed = false;
+  let transportUnavailable = false;
   let epoch = 0;
   let actionPending = false;
   let refreshPromise: Promise<void> | undefined;
@@ -373,10 +374,14 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
         event.properties.directory !== scope.directory
       )
         return;
+      if (event.type === "server.connected") transportUnavailable = false;
       invalidate();
       void refresh();
       return;
     }
+    // The host may still flush buffered events after a failed transport probe.
+    // They cannot restore certainty before a confirmed connection and snapshot.
+    if (transportUnavailable) return;
     record(event);
     batch(() => {
       apply(event);
@@ -426,7 +431,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
   }
 
   async function readSnapshot() {
-    if (disposed) return;
+    if (disposed || transportUnavailable) return;
     const capturedEpoch = epoch;
     phase = "loading";
     refreshing = true;
@@ -526,6 +531,14 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
         refreshPromise = undefined;
       });
     return refreshPromise;
+  }
+
+  /** A transport owner supplies actual failure/recovery evidence; no idle timer here. */
+  function setTransportAvailable(available: boolean) {
+    if (disposed || transportUnavailable === !available) return;
+    transportUnavailable = !available;
+    invalidate();
+    if (available) void refresh();
   }
 
   function observeRoute() {
@@ -711,6 +724,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     start,
     refresh,
     invalidate,
+    setTransportAvailable,
     dispose,
     get,
     summary,

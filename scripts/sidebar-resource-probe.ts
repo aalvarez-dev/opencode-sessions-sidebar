@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { watch, type FSWatcher } from "node:fs";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import type { TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui";
-import type { Renderable } from "@opentui/core";
+import type { Renderable, ScrollBoxRenderable } from "@opentui/core";
 
 export interface ResourceProbeResult {
   passed: boolean;
@@ -13,9 +13,21 @@ export interface ResourceProbeResult {
     selectedSession: boolean;
     width: number;
     height: number;
+    renderables: number;
+    textBufferRenderables: number;
+    mountedSessionRows: number;
+    sessionRowShells: number;
+    heapUsedMiB: number;
   };
   lifecycle?: { deactivated: boolean; reactivated: boolean; activationMs: number }[];
   measurementAcknowledged?: boolean;
+  readyThroughMeasurementFrames?: number;
+  viewport?: {
+    totalRows: number;
+    mountedAtTop: number;
+    mountedAtBottom: number;
+    returnedToTop: boolean;
+  };
 }
 
 async function publish(path: string, value: object) {
@@ -80,6 +92,7 @@ async function measure(api: TuiPluginApi) {
   const id = "opencode-sessions-sidebar";
   const marker = `sidebar-session-${sessionId}-completion`;
   const lifecycle: NonNullable<ResourceProbeResult["lifecycle"]> = [];
+  let viewport: ResourceProbeResult["viewport"];
 
   function visible(node: Renderable): boolean {
     let left = Math.max(0, node.screenX);
@@ -131,6 +144,81 @@ async function measure(api: TuiPluginApi) {
     return route.name === "session" && route.params?.sessionID === sessionId;
   }
 
+  function renderTreeStats() {
+    const pending: Renderable[] = [api.renderer.root];
+    let renderables = 0;
+    let textBufferRenderables = 0;
+    let mountedSessionRows = 0;
+    let sessionRowShells = 0;
+    while (pending.length > 0) {
+      const node = pending.pop()!;
+      renderables++;
+      if ("plainText" in node && "textLength" in node) textBufferRenderables++;
+      if (node.id.startsWith("sidebar-session-") && node.id.endsWith("-status"))
+        mountedSessionRows++;
+      if (node.id.startsWith("sidebar-session-") && node.id.endsWith("-window")) sessionRowShells++;
+      pending.push(...node.getChildren());
+    }
+    return {
+      renderables,
+      textBufferRenderables,
+      mountedSessionRows,
+      sessionRowShells,
+      heapUsedMiB: process.memoryUsage().heapUsed / 1024 ** 2,
+    };
+  }
+
+  function find(id: string) {
+    const pending: Renderable[] = [api.renderer.root];
+    while (pending.length > 0) {
+      const current = pending.pop()!;
+      if (current.id === id) return current;
+      pending.push(...current.getChildren());
+    }
+  }
+
+  async function checkViewport(lastId: string) {
+    const initial = renderTreeStats();
+    const bound = Math.ceil((api.renderer.terminalHeight + 24) / 3) + 2;
+    assert.equal(
+      initial.sessionRowShells,
+      expected,
+      "The full list must retain its scroll geometry.",
+    );
+    assert(
+      initial.mountedSessionRows > 0 && initial.mountedSessionRows <= bound,
+      "Too many offscreen rows remain mounted.",
+    );
+    const active = find(marker);
+    assert(active);
+    let ancestor = active.parent;
+    while (ancestor && !("scrollTo" in ancestor && "scrollHeight" in ancestor))
+      ancestor = ancestor.parent;
+    assert(ancestor, "Native sidebar scrollbox was not found.");
+    const scroll = ancestor as ScrollBoxRenderable;
+    scroll.scrollTo(scroll.scrollHeight);
+    const target = `sidebar-session-${lastId}-status`;
+    await until(() => {
+      const element = find(target);
+      return Boolean(element && visible(element));
+    }, "The final session did not mount after scrolling to the bottom.");
+    const bottom = renderTreeStats();
+    assert.equal(bottom.sessionRowShells, expected);
+    assert(
+      bottom.mountedSessionRows > 0 && bottom.mountedSessionRows <= bound,
+      "Bottom viewport retained too many mounted rows.",
+    );
+    if (expected >= 250) assert(!find(marker), "Offscreen active content was retained.");
+    scroll.scrollTo(0);
+    await until(sidebarVisible, "The active row did not remount after returning to the top.");
+    viewport = {
+      totalRows: expected,
+      mountedAtTop: initial.mountedSessionRows,
+      mountedAtBottom: bottom.mountedSessionRows,
+      returnedToTop: true,
+    };
+  }
+
   try {
     assert.equal(api.app.version, "1.18.30");
     const sessions = await api.client.session.list(
@@ -151,6 +239,7 @@ async function measure(api: TuiPluginApi) {
       selectedSession: selected(),
       width: api.renderer.terminalWidth,
       height: api.renderer.terminalHeight,
+      ...renderTreeStats(),
     };
     assert.equal(initialFrame.sidebarVisible, enabled);
     assert.equal(initialFrame.width, 140);
@@ -158,15 +247,23 @@ async function measure(api: TuiPluginApi) {
     const proc = await readFile("/proc/self/status", "utf8");
     const procPid = Number(proc.match(/^Pid:\s+(\d+)/m)?.[1]);
     assert(Number.isSafeInteger(procPid) && procPid > 0);
+    // Two counter reads outside sampling; includes the parent's ready/settle interval.
+    const readyFrame = api.renderer.frameId;
     await waitForMeasurement(output, api.lifecycle.signal, {
       pid: process.pid,
       procPid,
       initialFrame,
       measurementProtocol: "append-receipt-v2",
     });
+    const readyThroughMeasurementFrames = api.renderer.frameId - readyFrame;
     await publish(`${output}.lifecycle-started`, { measurementAcknowledged: true });
     assert.equal(sidebarVisible(), enabled, "Sidebar visibility changed during idle.");
     if (enabled) {
+      const ordered = sessions
+        .data!.filter((session) => session.id !== sessionId)
+        .sort((a, b) => b.time.updated - a.time.updated || (a.id < b.id ? -1 : 1));
+      assert(ordered.at(-1));
+      await checkViewport(ordered.at(-1)!.id);
       for (let cycle = 0; cycle < 2; cycle++) {
         const deactivated = await api.plugins.deactivate(id);
         assert(deactivated);
@@ -185,6 +282,8 @@ async function measure(api: TuiPluginApi) {
       initialFrame,
       lifecycle,
       measurementAcknowledged: true,
+      readyThroughMeasurementFrames,
+      ...(viewport ? { viewport } : {}),
     } satisfies ResourceProbeResult);
   } catch (error) {
     await publish(output, { passed: false, message: String(error), lifecycle });

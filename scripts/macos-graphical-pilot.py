@@ -29,6 +29,8 @@ class Blocked(Exception):
 
 MACOS_OBSERVER = r'''
 import Foundation
+import AppKit
+import CoreText
 import CoreGraphics
 import Vision
 import Darwin
@@ -38,8 +40,69 @@ func emit(_ value: Any) throws {
     print(String(data: data, encoding: .utf8)!)
 }
 
+var ownedFontRegistration: URL?
 do {
-    if CommandLine.arguments.count > 2 && CommandLine.arguments[1] == "ocr" {
+    if CommandLine.arguments.count == 5 && CommandLine.arguments[1] == "profile" {
+        let input = URL(fileURLWithPath: CommandLine.arguments[2])
+        let command = CommandLine.arguments[3]
+        let output = URL(fileURLWithPath: CommandLine.arguments[4])
+        guard let descriptors = CTFontManagerCreateFontDescriptorsFromURL(input as CFURL) as? [CTFontDescriptor],
+              let descriptor = descriptors.first,
+              let requestedName = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute) as? String else {
+            throw NSError(domain: "SidebarPilot", code: 1, userInfo: [NSLocalizedDescriptionKey: "The pinned font has no CoreText PostScript descriptor."])
+        }
+        var sessionRegistrationCreated = false
+        if NSFont(name: requestedName, size: 12) == nil {
+            var registrationError: Unmanaged<CFError>?
+            sessionRegistrationCreated = CTFontManagerRegisterFontsForURL(input as CFURL, .session, &registrationError)
+            if sessionRegistrationCreated { ownedFontRegistration = input }
+            if let registrationError { _ = registrationError.takeRetainedValue() }
+        }
+        guard let font = NSFont(name: requestedName, size: 12), font.fontName == requestedName else {
+            throw NSError(domain: "SidebarPilot", code: 1, userInfo: [NSLocalizedDescriptionKey: "The installed pinned font did not resolve through AppKit."])
+        }
+        let resolved = CTFontCreateWithName(font.fontName as CFString, font.pointSize, nil)
+        guard let resolvedURL = CTFontCopyAttribute(resolved, kCTFontURLAttribute) as? URL else {
+            throw NSError(domain: "SidebarPilot", code: 2, userInfo: [NSLocalizedDescriptionKey: "CoreText did not identify the selected font file."])
+        }
+        let archive = try NSKeyedArchiver.archivedData(withRootObject: font, requiringSecureCoding: true)
+        guard let decoded = try NSKeyedUnarchiver.unarchivedObject(ofClass: NSFont.self, from: archive),
+              decoded.fontName == requestedName, decoded.pointSize == font.pointSize else {
+            throw NSError(domain: "SidebarPilot", code: 3, userInfo: [NSLocalizedDescriptionKey: "The Terminal profile font archive did not round-trip."])
+        }
+        func color(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat) throws -> Data {
+            try NSKeyedArchiver.archivedData(withRootObject: NSColor(srgbRed: red, green: green, blue: blue, alpha: 1), requiringSecureCoding: true)
+        }
+        let profile: [String: Any] = [
+            "name": output.deletingPathExtension().lastPathComponent,
+            "type": "Window Settings", "ProfileCurrentVersion": 2.07,
+            "Font": archive, "FontAntialias": true,
+            "columnCount": 140, "rowCount": 48,
+            "CommandString": command, "RunCommandAsShell": false,
+            "BackgroundColor": try color(0.035, 0.035, 0.035),
+            "TextColor": try color(0.92, 0.92, 0.92),
+            "CursorColor": try color(0.92, 0.92, 0.92),
+            "SelectionColor": try color(0.20, 0.30, 0.45),
+            "ShowWindowSettingsNameInTitle": true,
+            "ShowDimensionsInTitle": true,
+            "shellExitAction": 1,
+        ]
+        let data = try PropertyListSerialization.data(fromPropertyList: profile, format: .xml, options: 0)
+        try data.write(to: output, options: .atomic)
+        try emit(["postScriptName": requestedName, "family": font.familyName ?? "",
+                  "pointSize": font.pointSize, "resolvedFontFile": resolvedURL.path,
+                  "fontArchiveRoundTrip": true, "requestedColumns": 140, "requestedRows": 48,
+                  "sessionRegistrationCreated": sessionRegistrationCreated,
+                  "profile": output.lastPathComponent])
+        // Successful setup hands cleanup responsibility back to the Python owner.
+        ownedFontRegistration = nil
+    } else if CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "unregister-font" {
+        let input = URL(fileURLWithPath: CommandLine.arguments[2])
+        var registrationError: Unmanaged<CFError>?
+        let removed = CTFontManagerUnregisterFontsForURL(input as CFURL, .session, &registrationError)
+        if let registrationError { _ = registrationError.takeRetainedValue() }
+        try emit(["sessionRegistrationRemoved": removed])
+    } else if CommandLine.arguments.count > 2 && CommandLine.arguments[1] == "ocr" {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.recognitionLanguages = ["en-US"]
@@ -58,6 +121,9 @@ do {
         })
     }
 } catch {
+    if let ownedFontRegistration {
+        CTFontManagerUnregisterFontsForURL(ownedFontRegistration as CFURL, .session, nil)
+    }
     fputs("Public window/OCR observation failed: \(error)\n", stderr)
     exit(1)
 }
@@ -199,21 +265,22 @@ def png_stats(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default=".sidebar-lab/macos-graphical")
+    parser.add_argument("--font-profile", type=Path, help="Pinned TTF for a uniquely named, non-default Terminal profile on the disposable runner.")
     arguments = parser.parse_args()
     repo = Path(__file__).resolve().parent.parent
     output = Path(arguments.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "status": "blocked",
         "platform": platform.platform(),
-        "scope": "macOS Terminal.app graphical feasibility pilot; ASCII configuration",
+        "scope": "macOS Terminal.app graphical pilot; " + ("pinned Nerd font profile" if arguments.font_profile else "ASCII/default font configuration"),
         "deadlineSeconds": 240,
         "checks": [],
         "captures": [],
         "limitations": [
             "Not a Ghostty acceptance run or a complete macOS interaction suite.",
-            "Default Terminal.app font; pinned Nerd Font rendering is not certified by this pilot.",
+            "Profile/font receipts plus real pixels require visual review; they do not automatically recognize every displayed glyph.",
             "Synthetic sessions and public plugin commands; no model inference.",
         ],
     }
@@ -221,6 +288,7 @@ def main():
     window_id = None
     pid_file = None
     mac_observer = None
+    registered_font = None
     terminal_before = set()
     phase = "environment"
     request_id = 0
@@ -285,7 +353,7 @@ def main():
                 [plugin.as_uri(), {
                     "hostId": "synthetic-sidebar-runtime",
                     "storageDirectory": str(storage),
-                    "icons": "ascii",
+                    "icons": "nerd" if arguments.font_profile else "ascii",
                     "density": "balanced",
                 }],
                 observer.as_uri(),
@@ -316,7 +384,7 @@ def main():
             + "cd " + shlex.quote(str(project)) + "\n"
             # Public terminal control sequences: a unique title and optional
             # window-size request. Actual geometry is read back from the TUI.
-            + "printf '\\033]2;" + fixture.name + "\\007\\033[8;40;140t'\n"
+            + "printf '\\033]2;" + fixture.name + "\\007\\033[8;" + ("48" if arguments.font_profile else "40") + ";140t'\n"
             + "exec /usr/bin/env -i "
             + " ".join(shlex.quote(key + "=" + value) for key, value in environment.items())
             + " " + shlex.quote(executable) + "\n"
@@ -329,6 +397,10 @@ def main():
             + "\nreturn id of front window\nend tell"
         )
         try:
+            if arguments.font_profile:
+                # The selected-font case uses a named document/profile directly.
+                # It must not accidentally inherit an existing/default window.
+                raise Blocked("Use LaunchServices with the owned .terminal profile.")
             result = run(["/usr/bin/osascript", "-e", launch_script], timeout=20, required=False)
             if result.returncode or not result.stdout.strip().isdigit():
                 report["appleEvents"] = {"status": "unavailable", "reason": result.stderr[-1500:]}
@@ -344,6 +416,8 @@ def main():
                 report["geometryRequested"] = {"columns": 140, "rows": 40, "accepted": geometry.returncode == 0}
         except subprocess.TimeoutExpired:
             report["appleEvents"] = {"status": "unavailable", "reason": "The normal Apple Events request timed out; no permission was granted or modified."}
+        except Blocked:
+            report["appleEvents"] = {"status": "not-used", "reason": "Pinned font scenario opens its own .terminal profile through LaunchServices."}
 
         # Standard LaunchServices document opening does not require scripting
         # Terminal.app. It is a separate supported launch route, not a change to
@@ -367,13 +441,45 @@ def main():
                 return json.loads(observed.stdout)
 
             before = {window["id"] for window in visible_windows()}
+            launch_document = launcher
+            if arguments.font_profile:
+                phase = "pinned-terminal-profile"
+                font_file = arguments.font_profile.resolve()
+                manifest = json.loads((repo / "assets/fonts/manifest.json").read_text())
+                candidates = [entry for entry in manifest["files"] if entry["name"] == font_file.name]
+                if len(candidates) != 1:
+                    raise RuntimeError("The requested profile font is not the package's pinned font.")
+                expected_hash = candidates[0]["sha256"]
+                if hashlib.sha256(font_file.read_bytes()).hexdigest() != expected_hash:
+                    raise RuntimeError("The requested profile font failed its pinned hash check.")
+                launch_document = fixture / (fixture.name + ".terminal")
+                profile = run([str(mac_observer), "profile", str(font_file), "/bin/bash " + shlex.quote(str(launcher)), str(launch_document)], timeout=20, required=False)
+                if profile.returncode:
+                    raise Blocked("The selected Terminal font profile could not be prepared: " + profile.stderr[-1500:])
+                font_receipt = json.loads(profile.stdout)
+                if font_receipt.get("sessionRegistrationCreated"):
+                    registered_font = font_file
+                resolved_file = Path(font_receipt["resolvedFontFile"])
+                if hashlib.sha256(resolved_file.read_bytes()).hexdigest() != expected_hash:
+                    raise RuntimeError("AppKit/CoreText selected a different font file than the pinned bundle.")
+                report["fontProfile"] = {
+                    **font_receipt, "sha256": expected_hash,
+                    "profileSha256": hashlib.sha256(launch_document.read_bytes()).hexdigest(),
+                    "source": "Uniquely named .terminal document opened through LaunchServices",
+                    "defaultProfileChanged": False,
+                    "pixelReviewRequired": True,
+                    "selectionEvidence": "The owned native process starts from this profile's unique CommandString; the NSFont archive resolves to the hash-verified installed file.",
+                }
+                # Preserve exact generated bytes for the hash receipt. The .plist
+                # extension avoids treating this evidence file as a launchable document.
+                shutil.copy2(launch_document, output / "terminal-profile.plist")
             # Do not launch a duplicate native client if the first route managed
             # to start the owned command before its Apple Event response hung.
             if not pid_file.exists():
-                opened = run(["/usr/bin/open", "-a", "Terminal", str(launcher)], timeout=10, required=False)
+                opened = run(["/usr/bin/open", "-a", "Terminal", str(launch_document)], timeout=10, required=False)
                 if opened.returncode:
                     raise Blocked("LaunchServices could not open the owned command: " + opened.stderr[-1500:])
-                report["launchMethod"] = "LaunchServices: open owned .command"
+                report["launchMethod"] = "LaunchServices: open owned .terminal profile" if arguments.font_profile else "LaunchServices: open owned .command"
             else:
                 report["launchMethod"] = "Apple Events started command; CoreGraphics observation"
             started = time.monotonic()
@@ -382,7 +488,12 @@ def main():
                     launch_pid = int(pid_file.read_text().strip())
                     ancestors = process_ancestors(launch_pid)
                     owned = [window for window in visible_windows() if window["pid"] in ancestors]
-                    candidates = [window for window in owned if window["id"] not in before or fixture.name in window["title"]]
+                    # Opening Terminal can also create its ordinary startup
+                    # window. Prefer the unique fixture/profile title before
+                    # considering newly created windows from the same app PID.
+                    candidates = [window for window in owned if fixture.name in window["title"]]
+                    if len(candidates) != 1:
+                        candidates = [window for window in owned if window["id"] not in before]
                     if not candidates and len(owned) == 1:
                         candidates = owned
                     if len(candidates) == 1:
@@ -481,6 +592,8 @@ def main():
         request("seed")
         snapshot = until(lambda current: current["route"].get("params", {}).get("sessionID") == current["initialIds"][0])
         report["actualGeometry"] = {"columns": snapshot["frame"]["width"], "rows": snapshot["frame"]["height"]}
+        if arguments.font_profile:
+            report["checks"].append("The owned .terminal profile launches the native process with a round-tripped NSFont archive resolving to the pinned file hash.")
         report["checks"].extend([
             "Stock OpenCode loaded the actual sidebar plugin in Terminal.app.",
             "Synthetic sessions rendered in the native session route.",
@@ -504,6 +617,10 @@ def main():
             report["limitations"].append("Terminal resize was not established at 140 columns; this macOS pilot covers Browse and icons, not wide-sidebar row geometry.")
             initial_capture = "macos-terminal-browse"
         phase = "window-capture"
+        report["nativeOnboardingVisible"] = "Getting started" in frame_text(snapshot)
+        report["visibleGroupLabels"] = [name for name in ("Later", "Pinned sessions", "Other sessions") if name in frame_text(snapshot)]
+        if report["nativeOnboardingVisible"]:
+            report["limitations"].append("Native Getting started remains visible; its panel can reduce the sidebar viewport. No host onboarding state was edited.")
         capture(initial_capture, snapshot, "Synthetic Alpha")
         phase = "icon-dialog"
         request("command", command="sessions-sidebar.check-icons")
@@ -511,6 +628,9 @@ def main():
         phase = "window-capture"
         capture("macos-terminal-icon-dialog", snapshot, "Check sidebar icons")
         report["checks"].append("The actual icon comparison dialog opened through its public command.")
+        for source_path, expected_hash in report["sourceHashes"].items():
+            if hashlib.sha256((repo / source_path).read_bytes()).hexdigest() != expected_hash:
+                raise RuntimeError("A measured source or plugin changed while the pilot was running.")
         report["status"] = "passed"
     except (Blocked, subprocess.TimeoutExpired) as error:
         report["status"], report["reason"] = "blocked", str(error)
@@ -558,6 +678,12 @@ def main():
                         os.kill(pid, signal.SIGTERM)
                     except ProcessLookupError:
                         pass
+            except Exception as error:
+                report.setdefault("cleanupWarnings", []).append(str(error))
+        if mac_observer and registered_font:
+            try:
+                removed = run([str(mac_observer), "unregister-font", str(registered_font)], timeout=10, required=False)
+                report["fontRegistrationCleanup"] = json.loads(removed.stdout) if removed.returncode == 0 else {"error": removed.stderr[-1000:]}
             except Exception as error:
                 report.setdefault("cleanupWarnings", []).append(str(error))
         if fixture:

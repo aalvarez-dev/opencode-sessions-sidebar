@@ -23,6 +23,12 @@ V1** through its public APIs. The minimum supported release will be published af
 runtime testing. A future V2 adapter can live in this repository and share the domain model; V2
 support is not currently implemented.
 
+The UI retains the entire session list but mounts native row contents only near the viewport to
+bound offscreen buffers. The pinned V1 TUI has no public disconnect signal, so its integration uses
+the [bounded transport health fallback](docs/performance.md#bounded-tui-transport-health-fallback).
+It detects unavailable HTTP transport; a silent event-stream-only fault is not certified by that
+check. The headless adapter does not poll.
+
 For an isolated browser-terminal trial, see the [Codespaces lab](docs/codespaces-lab.md). Its
 development container pins the tested toolchain and provides verification and separate scratch
 profiles without installing tools on the Mac. Actual Codespaces browser validation remains pending.
