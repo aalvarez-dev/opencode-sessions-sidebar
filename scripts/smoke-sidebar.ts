@@ -5,6 +5,7 @@ import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from
 import { arch, cpus, release, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { startGraphicalTerminal, type GraphicalTerminal } from "./lib/graphical-terminal";
 
 const expectedVersion = "1.18.30";
 const binary = process.env.OPENCODE_BIN;
@@ -24,12 +25,19 @@ const extensionOutput = join(root, "extension-report.json");
 const extensionEvents = join(root, "extension-events.jsonl");
 const lifetime = new AbortController();
 let child: ReturnType<typeof Bun.spawn> | undefined;
+let graphical: GraphicalTerminal | undefined;
+const graphicalOutput = process.env.SIDEBAR_GRAPHICAL_DIR;
+const graphicalReports: ReturnType<GraphicalTerminal["metadata"]>[] = [];
+let graphicalLaunches = 0;
 let requestId = 0;
 let outputTail = "";
-const deadline = setTimeout(() => {
-  lifetime.abort(new Error("Rendered sidebar smoke exceeded 180 seconds."));
-  child?.kill("SIGKILL");
-}, 180_000);
+const deadline = setTimeout(
+  () => {
+    lifetime.abort(new Error("Rendered sidebar smoke exceeded its bounded deadline."));
+    child?.kill("SIGKILL");
+  },
+  graphicalOutput ? 300_000 : 180_000,
+);
 
 // Declared before the first runtime measurement. Snapshot round trips include
 // the test observer's 10ms polling, one public host list read, and a local file receipt.
@@ -89,6 +97,7 @@ const sourceFiles = [
   "scripts/build.ts",
   "scripts/sidebar-probe.ts",
   "scripts/smoke-sidebar.ts",
+  "scripts/lib/graphical-terminal.ts",
   "dist/tui.js",
 ];
 async function artifactHashes() {
@@ -113,6 +122,13 @@ async function pause(ms = 20) {
   await Bun.sleep(ms);
 }
 async function stopChild() {
+  if (graphical) {
+    graphicalReports.push(graphical.metadata());
+    await graphical.close();
+    graphical = undefined;
+    child = undefined;
+    return;
+  }
   if (!child) return;
   child.kill("SIGKILL");
   await child.exited;
@@ -221,10 +237,12 @@ async function until(
   throw new Error(`${description}\n${last ? text(last) : outputTail}`);
 }
 function resize(cols: number, rows: number) {
+  if (graphical) return graphical.resize(cols, rows);
   assert(child?.terminal);
   child.terminal.resize(cols, rows);
 }
 function input(sequence: string) {
+  if (graphical) return graphical.input(sequence);
   assert(child?.terminal);
   child.terminal.write(sequence);
 }
@@ -234,7 +252,7 @@ async function click(label: string, occurrence = 0) {
   for (const [row, line] of lines(snapshot).entries()) {
     const column = line.indexOf(label);
     if (column < 0 || found++ !== occurrence) continue;
-    assert(child?.terminal);
+    assert(child);
     const x = column + Math.min(2, label.length);
     const y = row + 1;
     input(`\u001b[<0;${x};${y}M\u001b[<0;${x};${y}m`);
@@ -252,6 +270,7 @@ async function capture(name: string, theme: string, icons: string) {
   // Synthetic paths are temporary test details, not reproducible visual metadata.
   const sanitized = JSON.parse(JSON.stringify(snapshot.frame).replaceAll(root, "/synthetic"));
   frames.push({ name, theme, icons, frame: sanitized });
+  if (graphical) await graphical.capture(name);
   await writeFile(
     process.env.SIDEBAR_SMOKE_FRAMES ?? join(root, "frames.json"),
     JSON.stringify(frames),
@@ -437,35 +456,58 @@ throw new Error("Disabled modules must never be imported");`,
     await rm(`${exchange}.ready.json`, { force: true });
     await rm(`${exchange}.request.json`, { force: true });
     outputTail = "";
-    child = Bun.spawn([executable], {
-      cwd: currentDirectory,
-      env: {
-        ...env,
-        TERM: "xterm-256color",
-        LANG: "C.UTF-8",
-        SIDEBAR_SMOKE_EXCHANGE: exchange,
-        SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
-        SIDEBAR_SMOKE_STORAGE: storage,
-        SIDEBAR_SMOKE_GEOMETRY: process.env.SIDEBAR_SMOKE_GEOMETRY ?? "false",
-      },
-      terminal: {
+    const launchEnv = {
+      ...env,
+      TERM: "xterm-256color",
+      LANG: "C.UTF-8",
+      SIDEBAR_SMOKE_EXCHANGE: exchange,
+      SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
+      SIDEBAR_SMOKE_STORAGE: storage,
+      SIDEBAR_SMOKE_GEOMETRY: process.env.SIDEBAR_SMOKE_GEOMETRY ?? "false",
+    };
+    if (graphicalOutput) {
+      graphical = await startGraphicalTerminal({
+        executable,
+        cwd: currentDirectory,
+        env: launchEnv,
         cols: 140,
         rows: 40,
-        data(terminal, data) {
-          const output = new TextDecoder().decode(data);
-          outputTail = (outputTail + output).slice(-12_000);
-          if (output.includes("\u001b]10;?"))
-            terminal.write(
-              `\u001b]10;rgb:${theme === "light" ? "0000/0000/0000" : "ffff/ffff/ffff"}\u001b\\`,
-            );
-          if (output.includes("\u001b]11;?"))
-            terminal.write(
-              `\u001b]11;rgb:${theme === "dark" ? "0000/0000/0000" : "ffff/ffff/ffff"}\u001b\\`,
-            );
-          if (output.includes("\u001b[6n")) terminal.write("\u001b[1;1R");
+        theme,
+        directory: graphicalOutput,
+        label: `sidebar-${++graphicalLaunches}`,
+      });
+      child = graphical.process;
+    } else {
+      child = Bun.spawn([executable], {
+        cwd: currentDirectory,
+        env: {
+          ...env,
+          TERM: "xterm-256color",
+          LANG: "C.UTF-8",
+          SIDEBAR_SMOKE_EXCHANGE: exchange,
+          SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
+          SIDEBAR_SMOKE_STORAGE: storage,
+          SIDEBAR_SMOKE_GEOMETRY: process.env.SIDEBAR_SMOKE_GEOMETRY ?? "false",
         },
-      },
-    });
+        terminal: {
+          cols: 140,
+          rows: 40,
+          data(terminal, data) {
+            const output = new TextDecoder().decode(data);
+            outputTail = (outputTail + output).slice(-12_000);
+            if (output.includes("\u001b]10;?"))
+              terminal.write(
+                `\u001b]10;rgb:${theme === "light" ? "0000/0000/0000" : "ffff/ffff/ffff"}\u001b\\`,
+              );
+            if (output.includes("\u001b]11;?"))
+              terminal.write(
+                `\u001b]11;rgb:${theme === "dark" ? "0000/0000/0000" : "ffff/ffff/ffff"}\u001b\\`,
+              );
+            if (output.includes("\u001b[6n")) terminal.write("\u001b[1;1R");
+          },
+        },
+      });
+    }
     const started = performance.now();
     while (!(await Bun.file(`${exchange}.ready.json`).exists())) {
       assert(child.exitCode === null, `Stock TUI exited during plugin loading: ${outputTail}`);
@@ -672,6 +714,26 @@ throw new Error("Disabled modules must never be imported");`,
     "completed title uses theme success, completion action uses theme warning, active/pin/Later primary row is deduplicated",
   );
   await capture("wide-organized", "dark", "ascii");
+  if (graphical) {
+    for (const [mode, pin] of [
+      ["nerd", "\uEBA0"],
+      ["unicode", "◆"],
+      ["ascii", "P"],
+    ] as const) {
+      await request("command", { command: "sessions-sidebar.settings" });
+      await until((snapshot) => snapshot.dialogDepth > 0, "Icon settings did not open.");
+      input(`Icons: ${mode}\r`);
+      const changed = await until(
+        (snapshot) => snapshot.dialogDepth === 0 && nodeText(snapshot, controlsId).includes(pin),
+        `${mode} icons did not render in the organized active session.`,
+      );
+      assert.deepEqual(changed.organization, current.organization);
+      if (mode !== "ascii") await capture(`wide-organized-${mode}`, "dark", mode);
+    }
+    checks.push(
+      "real xterm pixels capture ASCII, Unicode and Nerd icons without changing organization",
+    );
+  }
   await click("v Pinned sessions");
   await until(
     (snapshot) => text(snapshot).includes("> Pinned sessions"),
@@ -1131,8 +1193,10 @@ throw new Error("Disabled modules must never be imported");`,
       receipt:
         "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions.",
     },
-    scope:
-      "Actual stock TUI rendering, public native CRUD, real PTY keyboard/mouse; no model inference.",
+    graphical: graphicalReports,
+    scope: graphicalOutput
+      ? "Actual stock TUI in xterm, public native CRUD, XTEST keyboard/mouse and real window PNG captures; no model inference."
+      : "Actual stock TUI rendering, public native CRUD, real PTY keyboard/mouse; no model inference.",
     budgets,
     results: {
       checks,
@@ -1161,6 +1225,9 @@ throw new Error("Disabled modules must never be imported");`,
   console.log(
     `Stock OpenCode ${expectedVersion}: rendered sidebar smoke passed (${checks.length} checks, ${frames.length} actual frames, input observation p95 ${p95.toFixed(1)}ms).`,
   );
+} catch (error) {
+  if (graphical) await graphical.capture("failure").catch(() => undefined);
+  throw error;
 } finally {
   clearTimeout(deadline);
   lifetime.abort();

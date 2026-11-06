@@ -5,6 +5,7 @@ import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from
 import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { startGraphicalTerminal, type GraphicalTerminal } from "./lib/graphical-terminal";
 
 const expectedVersion = "1.18.30";
 assert(process.env.OPENCODE_BIN, "Set OPENCODE_BIN to stock OpenCode 1.18.30.");
@@ -17,15 +18,20 @@ const storageDirectory = join(root, "sidebar-state");
 const exchange = join(root, "exchange");
 const lifetime = new AbortController();
 let child: ReturnType<typeof Bun.spawn> | undefined;
+let graphical: GraphicalTerminal | undefined;
+const graphicalOutput = process.env.SIDEBAR_GRAPHICAL_DIR;
 let fixture: ReturnType<typeof Bun.serve> | undefined;
 let providerError: unknown;
 let providerRequests = 0;
 let requestId = 0;
 let outputTail = "";
-const deadline = setTimeout(() => {
-  lifetime.abort(new Error("Rendered attention smoke exceeded 90 seconds."));
-  child?.kill("SIGKILL");
-}, 90_000);
+const deadline = setTimeout(
+  () => {
+    lifetime.abort(new Error("Rendered attention smoke exceeded its bounded deadline."));
+    child?.kill("SIGKILL");
+  },
+  graphicalOutput ? 180_000 : 90_000,
+);
 
 type Span = { text: string; width: number; fg: number[]; bg: number[]; attributes: number };
 type Geometry = {
@@ -74,6 +80,7 @@ async function artifactHashes() {
     "src/adapters/opencode-v1/types.ts",
     "scripts/sidebar-attention-probe.ts",
     "scripts/smoke-sidebar-attention.ts",
+    "scripts/lib/graphical-terminal.ts",
     "dist/tui.js",
   ];
   return Object.fromEntries(
@@ -170,6 +177,7 @@ async function until(check: (value: Snapshot) => boolean, description: string, b
   throw new Error(`${description}\n${last ? text(last) : outputTail}`);
 }
 function input(sequence: string) {
+  if (graphical) return graphical.input(sequence);
   assert(child?.terminal);
   child.terminal.write(sequence);
 }
@@ -275,6 +283,7 @@ async function capture(name: string, snapshot: Snapshot) {
     JSON.stringify(snapshot.frame).replaceAll(root, "/synthetic"),
   ) as Snapshot["frame"];
   frames.push({ name, frame });
+  if (graphical) await graphical.capture(name);
   if (process.env.SIDEBAR_ATTENTION_FRAMES)
     await writeFile(resolve(process.env.SIDEBAR_ATTENTION_FRAMES), JSON.stringify(frames));
 }
@@ -484,20 +493,35 @@ try {
   });
   assert.equal((await new Response(version.stdout).text()).trim(), expectedVersion);
   assert.equal(await version.exited, 0);
-  child = Bun.spawn([executable], {
-    cwd: directory,
-    env,
-    terminal: {
+  if (graphicalOutput) {
+    graphical = await startGraphicalTerminal({
+      executable,
+      cwd: directory,
+      env,
       cols: 140,
       rows: 40,
-      data(terminal, data) {
-        const output = new TextDecoder().decode(data);
-        outputTail = (outputTail + output).slice(-12_000);
-        if (output.includes("\u001b]11;?")) terminal.write("\u001b]11;rgb:0000/0000/0000\u001b\\");
-        if (output.includes("\u001b[6n")) terminal.write("\u001b[1;1R");
+      theme: "dark",
+      directory: graphicalOutput,
+      label: "attention",
+    });
+    child = graphical.process;
+  } else {
+    child = Bun.spawn([executable], {
+      cwd: directory,
+      env,
+      terminal: {
+        cols: 140,
+        rows: 40,
+        data(terminal, data) {
+          const output = new TextDecoder().decode(data);
+          outputTail = (outputTail + output).slice(-12_000);
+          if (output.includes("\u001b]11;?"))
+            terminal.write("\u001b]11;rgb:0000/0000/0000\u001b\\");
+          if (output.includes("\u001b[6n")) terminal.write("\u001b[1;1R");
+        },
       },
-    },
-  });
+    });
+  }
   const started = performance.now();
   while (!(await Bun.file(`${exchange}.ready.json`).exists())) {
     assert(child.exitCode === null, `Stock TUI exited loading plugins: ${outputTail}`);
@@ -589,6 +613,18 @@ try {
     "Unicode line-two disclosure did not render.",
   );
   await capture("unicode-marked-parent-second-line-question", unicode);
+  if (graphical) {
+    await request("command", { command: "sessions-sidebar.settings" });
+    await until((snapshot) => snapshot.dialogDepth > 0, "Nerd icon settings did not open.");
+    input("Icons: nerd\r");
+    const nerd = await until(
+      (snapshot) =>
+        snapshot.dialogDepth === 0 &&
+        nodeText(snapshot, `${parentPrefix}-controls`).includes("\uEBA0"),
+      "Nerd pin icon did not render for the marked parent.",
+    );
+    await capture("nerd-marked-parent-second-line-question", nerd);
+  }
   await request("command", { command: "sessions-sidebar.settings" });
   await until(
     (snapshot) => snapshot.dialogDepth > 0,
@@ -690,8 +726,11 @@ try {
   );
   assertVisible(collapsed, "questions", true);
   await capture("marked-parent-collapsed-question", collapsed);
-  assert(child.terminal);
-  child.terminal.resize(88, 24);
+  if (graphical) graphical.resize(88, 24);
+  else {
+    assert(child.terminal);
+    child.terminal.resize(88, 24);
+  }
   await until((snapshot) => snapshot.frame.width === 88, "Narrow resize missing.");
   await request("command", { command: "sessions-sidebar.browse" });
   await until((snapshot) => snapshot.dialogDepth > 0, "Narrow browse dialog missing.");
@@ -711,7 +750,11 @@ try {
   );
   input("\u001b");
   await until((snapshot) => snapshot.dialogDepth === 0, "Narrow menu did not close.");
-  child.terminal.resize(140, 40);
+  if (graphical) graphical.resize(140, 40);
+  else {
+    assert(child.terminal);
+    child.terminal.resize(140, 40);
+  }
   const wide = await until(
     (snapshot) => snapshot.frame.width === 140 && text(snapshot).includes("> Pinn"),
     "Wide collapsed group did not return.",
@@ -811,8 +854,10 @@ try {
       receipt:
         "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions. The uncommitted source hashes identify this validation build.",
     },
-    scope:
-      "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
+    graphical: graphical?.metadata() ?? null,
+    scope: graphicalOutput
+      ? "Actual stock TUI in xterm with real X input and window PNGs; native retry, child question/permission and terminal error from deterministic loopback provider."
+      : "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
     checks: [
       "Marked pinned parent retains completion while displaying child busy/question.",
       "Mouse and keyboard line-two live-subagent disclosure expands and collapses native child rows above the parent's line-three context; deduplicated pinned parent retains its mark and success title color.",
@@ -839,10 +884,14 @@ try {
   console.log(
     `Stock OpenCode ${expectedVersion}: marked parent and collapsed-group native question/permission rendering passed (${providerRequests} loopback provider requests).`,
   );
+} catch (error) {
+  if (graphical) await graphical.capture("failure").catch(() => undefined);
+  throw error;
 } finally {
   clearTimeout(deadline);
   lifetime.abort();
-  if (child) {
+  if (graphical) await graphical.close();
+  else if (child) {
     child.kill("SIGKILL");
     await child.exited;
     child.terminal?.close();
