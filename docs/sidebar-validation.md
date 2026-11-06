@@ -1,13 +1,53 @@
 # Experimental sidebar validation
 
 The development TUI entrypoint targets stock OpenCode **1.18.30**. This is one tested baseline, not
-a minimum-version or V2 compatibility claim. The package remains private; public release and
-packaged-installation validation are separate roadmap work.
+a minimum-version or V2 compatibility claim. The package remains private. Fresh package validation
+is documented separately in [release validation](release.md); a passing development probe does not
+declare a public V1 release.
 
 The [Codespaces lab](codespaces-lab.md) provides a pinned development container, isolated
 interactive profiles, and a command to run both stock-host probes. Preparing that environment does
 not establish Codespaces browser-terminal compatibility; follow its manual checklist and record that
 evidence separately.
+
+## November 6: portable icons, local extensions and clean packaging
+
+The current source passes `bun run check`: **181 tests / 1,177 assertions**, formatting, both
+type-check boundaries and the build. The pinned font profile was downloaded explicitly and verified
+against its hashes and all **137** required codepoints, including every animation frame. No user
+font installation or terminal configuration change was performed. See
+[terminal fonts](terminal-fonts.md) for the Ubuntu/macOS installation procedure and client-rendering
+limits.
+
+The [stock-host receipt](validation/sidebar-portability-runtime.json) records **17 checks and 13
+frames** on OpenCode 1.18.30 / Bun 1.3.14. Keyboard-to-observed-frame p95 was **140.01 ms** against
+the unchanged 250 ms budget; twenty paced native updates completed in **907.28 ms** against 5,000
+ms. The new scenarios load an explicitly configured local extension, receive committed user events,
+run guarded no-op actions from both menus and the actual Ctrl+P palette, and verify that a disabled
+module is never imported. Check icons remains usable after resizing to 88×24 and scrolling through
+the final animation sample; repeated PgDn at the boundary keeps the dialog open.
+
+This native probe exposed a host interaction: session PageUp/PageDown commands clear dialogs unless
+the custom modal owns those keys. The three custom scrollable dialogs now register and clean up
+modal navigation bindings. Their viewport height also accounts for the host's top-quarter dialog
+placement, keeping the footer inside the terminal. Native-cell reconstructions of the two icon views
+and extension menu were reviewed with the verified font. These reconstructions do not prove
+macOS/Ubuntu terminal font selection, shaping or remote keyboard transport.
+
+The [attention receipt](validation/sidebar-portability-attention.json) records nine checks, ten
+frames and five loopback provider requests. Marked-parent questions, permissions, retry, descendant
+disclosure and terminal errors remain visible independently of completion. No external inference was
+used. The source and runtime digests identify the tested working tree based on `16ffcf0`; earlier
+dated receipts below apply to their own source revisions.
+
+The [installed-package receipt](validation/sidebar-package-runtime.json) separately passes the empty
+consumer and both native probes against the packaged TUI. Its source hashes include the final
+smoke-harness type declaration; the earlier local-run receipt predates that type-only annotation.
+See [release validation](release.md) for archive identity and scope. The complete
+[rendered resource comparison](sidebar-resource-benchmark.md) also passes its predeclared paired
+CPU/RSS budgets for 25 and 250 idle sessions; it is separate from input timing and attention checks.
+Execution-correlated automatic/custom completion, native client font/input acceptance, supported
+remote/disconnect behavior, and a host compatibility range remain open release gates.
 
 ## Load the local development build
 
@@ -48,12 +88,12 @@ storage. Keep the package private until the separate release gates pass.
 ## Use the sidebar
 
 Open the host command palette (Ctrl+P with the stock bindings) and choose **Sessions sidebar:
-browse**, **create session**, **refresh**, or **settings**. Browse is also available on the home
-screen and in the sidebar header menu. Clicking a session title opens it directly. Non-active rows
-have an ellipsis for their actions; the active row omits it and keeps Mark/Unmark completed at the
-bottom. Browse exposes the full actions for every session, including the active one. The global
-header menu stays available. Quick pin/Later controls retain independent memberships; delete
-requires the host confirmation dialog.
+browse**, **create session**, **refresh**, **settings**, **check icons**, **extension actions**, or
+**extension status**. Browse is also available on the home screen and in the sidebar header menu.
+Clicking a session title opens it directly. Non-active rows have an ellipsis for their actions; the
+active row omits it and keeps Mark/Unmark completed at the bottom. Browse exposes the full actions
+for every session, including the active one. The global header menu stays available. Quick pin/Later
+controls retain independent memberships; delete requires the host confirmation dialog.
 
 The active session is followed by Later, Pinned sessions, and Other sessions, in that display
 priority. A session has only one full row. Its first line contains the independent status indicator,
@@ -69,8 +109,9 @@ branch, and worktree. Selecting a field changes only the inline value; it does n
 The arrow expands the three values in the same R/B/W order below that line. **Context: show
 repository/branch/worktree** and **Expand/Collapse context** in the shared session menu provide the
 keyboard equivalent. **Session details**, also opened by clicking a context value, exposes full
-values in a scrollable dialog with Up/Down or PgUp/PgDn and Esc to close. Missing public context is
-shown as unavailable; no metadata enrichment requests run while rendering.
+values in a scrollable dialog with Up/Down or PgUp/PgDn and Esc to close. Custom dialogs own those
+scroll keys while mounted, including at their boundaries, and release their bindings on close.
+Missing public context is shown as unavailable; no metadata enrichment requests run while rendering.
 
 Repository means the root reported by OpenCode's public project API. OpenCode 1.18.30 preserves the
 first worktree discovered for that project; when a fresh host first opens a linked worktree,

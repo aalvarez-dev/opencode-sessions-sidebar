@@ -1,122 +1,166 @@
-# Optional terminal font setup
+# Portable terminal icons on Ubuntu and macOS
 
-Use the same **JetBrainsMono Nerd Font Mono** files and sidebar icon mode on each computer to reduce
-differences between terminals. The pinned family combines monospaced text and Nerd symbols in each
-style, avoiding a separate icon fallback for the sidebar's private-use glyphs. Fonts belong on the
-computer that displays the terminal: installing them on an SSH server or inside WSL does not
-configure the Windows Terminal window.
+The sidebar renders text characters, not embedded images. The terminal that displays them chooses
+font glyphs and cell metrics. A font installed only on an SSH server or in Docker does not configure
+the client terminal. Install/select the verified font on **the computer displaying the terminal**.
+The setup below is optional; plugin activation never downloads fonts or edits terminal settings.
 
-This remains an experimental development plugin. The plugin cannot select the terminal's font or
-guarantee identical pixels. Font rendering, display scaling, cell metrics, color profiles, host
-themes, and some fallback glyphs still vary. Use the same OpenCode theme, density, icon mode, and
-font files for a useful comparison; tune terminal font size for each display.
+## Complete font profile
 
-## Choose an icon mode
+The pinned profile now uses **Iosevka Nerd Font Mono Regular**, base **33.2.1**, patched by Nerd
+Fonts **3.4.0**. One unchanged upstream TTF is approximately **13.1 MB**. The regular face covers
+all sidebar controls, status symbols, Braille animation frames, and ordinary ASCII. The old optional
+JetBrains Mono profile lacked the retry arrow and Braille characters. Existing symbol codepoints,
+actions, and layout are preserved; glyph outlines follow the selected font rather than an
+unspecified system fallback.
 
-| Setting              | Font requirement                                   | Intended use                                                                |
-| -------------------- | -------------------------------------------------- | --------------------------------------------------------------------------- |
-| `"icons": "unicode"` | A font/terminal with the displayed Unicode symbols | Default, without a required font installation.                              |
-| `"icons": "nerd"`    | A compatible Nerd Font                             | Consistent private-use pin, Later, and delete icons with the pinned family. |
-| `"icons": "ascii"`   | Ordinary terminal text support                     | Fallback when glyphs are missing or widths disagree.                        |
+The shared
+[icon catalog](https://github.com/aalvarez-labs/opencode-sessions-sidebar/blob/review/sidebar-stability-20261004/src/ui/icons.ts)
+defines symbol text and expected terminal-cell widths. Font preparation verifies its complete union
+of ASCII/Unicode/Nerd glyphs plus ordinary ASCII and UI punctuation. It checks the pinned file hash,
+a bounded TrueType Unicode `cmap`, and `hmtx` glyph advances against the font's Latin `M`. It does
+not trust the name of an installed font as evidence of coverage. No Python, FontTools, font editor,
+or runtime patching is required by this helper.
 
-Put the option in the existing sidebar options in `tui.json`, as shown in
-[sidebar setup](sidebar-validation.md). Display settings can change the icon mode during the current
-activation. Meaningful activity and attention also have text labels in Browse/session actions; the
-optional font is not required to organize sessions. `reducedMotion: true` freezes activity
-animations if preferred.
+Font advances are not terminal width negotiation: the Unicode hourglass can occupy two terminal
+cells even though its outline has the same advance as other font glyphs. The icon catalog preserves
+that distinction. Terminals can also draw Braille or other symbols themselves, synthesize styles, or
+use emoji presentation. Complete font coverage does not guarantee identical pixels on every
+terminal, display, theme, or scaling setting.
 
-## Prepare the pinned files
+Only the regular face is distributed, keeping the optional download small compared with a full style
+family. Current icon runs use regular text. The terminal may synthesize bold/italic text; check
+styled text in your terminal rather than assuming native style rendering has been certified.
 
-From the development checkout, with Bun **1.3.14**, choose a **new** output directory whose parent
-already exists. The same command syntax works in a POSIX shell and PowerShell:
+| Sidebar option       | Use                                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `"icons": "nerd"`    | Uses the pinned font's private-use pin, Later, and delete icons, with the common status/animation symbols.      |
+| `"icons": "unicode"` | Retains the default Unicode controls. The pinned font covers these as well.                                     |
+| `"icons": "ascii"`   | Explicit fallback for icon/animation compatibility; other UI text and session titles can still contain Unicode. |
+
+Put the option in the sidebar settings in `tui.json`, following
+[sidebar setup](sidebar-validation.md). A menu selection only lasts for the current activation; put
+your desired initial mode in configuration. Font setup does not silently change the icon mode.
+
+## Prepare or transfer the bundle
+
+From a development checkout, use Bun **1.3.14** and a **new** directory with an existing parent:
 
 ```sh
 bun run fonts:prepare --download ./sidebar-fonts
 bun run fonts:prepare --verify ./sidebar-fonts
 ```
 
-The first command downloads four styles, approximately 10 MB in total, from commit-addressed
-official Nerd Fonts URLs. Each response has a size bound, a timeout, and an SHA-256 check. All font
-and license bytes must verify before the destination is created. Existing destinations are rejected;
-use `--verify` to check one again without network access. If a disk write fails after directory
-creation, the incomplete folder remains for inspection and cannot pass verification.
+The download is explicit, commit-addressed, timeout/size-bounded, and SHA-256 checked. All font and
+license bytes and required glyphs verify before creating the destination. Existing destinations are
+refused. Verification is offline and also compares the prepared manifest with this package's
+manifest. A failed write can leave an incomplete directory for inspection; it never passes
+verification or gets silently overwritten.
 
-Running `bun run fonts:prepare` without arguments only shows help. This optional preparation command
-does not register fonts, refresh system caches, run a downloaded script, or change terminal
-settings. Normal plugin activation, `bun install`, build, and tests never invoke it. No automatic
-update is performed. Sources, hashes, and unchanged licenses are in
-[the font manifest and notices](../assets/fonts/README.md).
+The resulting directory contains the font, exact manifest, and unchanged upstream licenses. You can
+transfer the whole directory to another computer and verify it there. Keep the notices with the
+font. Nothing is installed by downloading or copying this bundle. The source repository and ordinary
+package contain the manifest/helper/notices, not the 13.1 MB font binary; an offline installation
+needs this separately prepared bundle.
 
-## Install the prepared fonts explicitly
+The packaged helper is available at `dist/prepare-fonts.js`. Its equivalent invocation is
+`bun /path/to/package/dist/prepare-fonts.js --verify /path/to/sidebar-fonts`; it does not require
+this repository's development dependencies.
 
-- **macOS:** open the four `.ttf` files in Font Book and install them for your user.
-- **Windows:** select the four `.ttf` files in File Explorer and use **Install** for your user.
-  Install on Windows itself when the shell runs inside WSL.
-- **Linux:** use your desktop's font installer, or explicitly copy the four `.ttf` files to a user
-  font directory such as `~/.local/share/fonts/sidebar/` and refresh the font cache with
-  `fc-cache -f` if your environment uses fontconfig.
+## Preview and install for your user
 
-Keep the prepared license files with the downloaded originals. If the family is already installed
-from a different release, resolve duplicate versions in your OS font manager before comparing
-terminals. Restart the terminal after installation and confirm its font selector sees the family.
-These are manual setup instructions, not steps performed by the plugin or preparation command.
+Run on the display computer, as its ordinary desktop user:
 
-## Ghostty example
-
-Add these entries deliberately to your Ghostty configuration:
-
-```ini
-font-family = ""
-font-family = "JetBrainsMono Nerd Font Mono"
-font-size = 12
+```sh
+bun run fonts:prepare --install ./sidebar-fonts
+bun run fonts:prepare --install ./sidebar-fonts --apply
 ```
 
-The empty value resets an earlier fallback list before selecting this family. Its regular, bold,
-italic, and bold-italic files are supplied together. Check `ghostty +list-fonts` if the family is
-not found; some font tools display its legacy name, `JetBrainsMono NFM`. Open a new window after
-changing font configuration. Ghostty also supports `font-codepoint-map` for explicit symbol
-overrides; the single patched family above does not need a separate Nerd symbol mapping.
+The first command verifies the bundle and prints a plan without creating directories. `--apply`
+explicitly copies the verified bytes, licenses, manifest, and a receipt into a versioned user
+folder:
 
-## Windows Terminal example
+| System       | Font destination                                              |
+| ------------ | ------------------------------------------------------------- |
+| Ubuntu/Linux | `~/.local/share/fonts/opencode-sessions-sidebar/<bundle-id>/` |
+| macOS        | `~/Library/Fonts/opencode-sessions-sidebar/<bundle-id>/`      |
 
-In the target profile's Appearance settings, select **JetBrainsMono Nerd Font Mono**. Equivalently,
-merge this `font` object into that profile in `settings.json`:
+The helper never uses `sudo`, installs system-wide fonts, overwrites a different/partial bundle, or
+changes terminal preferences. A matching installation is reused. Directory and file symlinks are
+refused. A custom Linux `XDG_DATA_HOME` is left to your desktop font manager instead of guessing a
+font location. The receipt identifies installed file hashes and confirms terminal settings were not
+edited. For removal, close applications using the font and remove only this versioned bundle through
+your font manager or file manager; leave other user fonts alone.
 
-```json
-{
-  "font": {
-    "face": "JetBrainsMono Nerd Font Mono",
-    "size": 12,
-    "weight": "normal"
-  }
-}
+An SSH session is refused unless you explicitly add `--display-machine`, acknowledging that the
+current computer also displays the terminal. That option does **not** install anything on an SSH
+client. For a Mac connected to Ubuntu, run setup on the Mac. Container placement alone is likewise
+insufficient.
+
+On Linux, explicitly refresh only this directory's font cache if necessary:
+
+```sh
+bun run fonts:prepare --install ./sidebar-fonts --apply --refresh-cache
 ```
 
-Use the exact installed family shown by the font selector; the legacy name may be shown as
-**JetBrainsMono NFM**. Applying the example to one profile leaves other profiles under their
-existing settings. Windows Terminal may fall back to Consolas when a requested family cannot be
-found, so seeing ordinary text alone does not prove the selected font loaded.
+This invokes `fc-cache` directly with a bounded timeout. If it is unavailable or fails, the verified
+font files remain installed and the command reports that cache refresh still needs attention. On
+macOS, reopen the terminal after placement. If Font Book has not registered the font, open the
+prepared `.ttf` in Font Book and install it for your user. Native OS registration remains part of
+the platform acceptance checklist below.
 
-## Verification and remaining limits
+## Select your terminal's font
 
-The pinned font metadata reports JetBrains Mono 2.304 and Nerd Fonts 3.4.0. Each of the four styles
-contains the current private-use icon codepoints `U+EBA0`, `U+EB2B`, `U+F4E3`, `U+F451`, and
-`U+F48E`. The helper's hashes verify exact files, not a terminal's active font choice.
+The helper prints settings or instructions without applying them:
 
-The family does **not** contain the Unicode retry arrow `U+21BB` or Braille animation range
-`U+2800–U+28FF` used by the current presentation, including Nerd mode. These can come from terminal
-drawing or fallback fonts, so choosing this family alone cannot standardize every status glyph.
-ASCII mode remains available if a terminal displays boxes, double-width symbols, or misalignment.
-Nerd and Unicode modes retain their existing behavior; preparing a font changes no plugin state.
+```sh
+bun run fonts:prepare --config ghostty
+bun run fonts:prepare --config gnome
+bun run fonts:prepare --config terminal
+bun run fonts:prepare --config vscode
+```
 
-After selecting a font, check normal/completed/busy/retry rows, active/inactive pins and Later
-controls, disclosure arrows, and a long title. Resize the terminal and confirm the visible controls
-stay aligned and clickable. Compare the same host theme and density on each platform. Do not infer
-macOS/Ghostty or Windows Terminal visual compatibility from a Linux download/hash check: actual
-cross-platform rendering and OS font registration remain release-validation work.
+- **Ghostty (Ubuntu/macOS):** explicitly select `Iosevka Nerd Font Mono`. The generated full-profile
+  snippet resets an earlier fallback list, so review it before adding it. `ghostty +list-fonts`
+  helps confirm the installed family. Alternatively, Ghostty's `font-codepoint-map` can assign just
+  the sidebar symbols to this family while preserving your preferred text font. Open a new window
+  after applying font settings.
+- **GNOME Terminal (Ubuntu):** Preferences → your profile → Text → Custom font; choose the family
+  and your preferred size. Apply to the profile you actually use.
+- **Terminal (macOS):** Settings → Profiles → Text → Font → Change; select the family, then open a
+  window using that profile.
+- **VS Code:** set `terminal.integrated.fontFamily` to `'Iosevka Nerd Font Mono', monospace` in the
+  appropriate user/profile settings. The font must exist where the terminal is rendered. A browser
+  Codespace does not acquire local fonts by installing them in its remote container.
+
+Some selectors show the legacy family **Iosevka NFM**. Resolve duplicate versions of this family in
+your OS font manager before comparing terminals. Do not infer that the intended font loaded merely
+because ordinary text is readable.
+
+## Verify the actual terminal
+
+Open **Sessions sidebar: check icons** through the command palette or the sidebar menu. The sample
+shows controls, state glyphs, every animation frame, and cell guides side by side for all three
+modes. Choose a mode explicitly if glyphs are missing or alignment differs. This is visual
+verification by the person viewing the terminal, not automatic discovery of its font.
+
+Then verify normal/completed/busy/retry rows; active/inactive pin and Later controls; disclosure,
+menu, and delete; long titles; and narrow/wide layouts. Confirm icons and click targets stay aligned
+and attention remains visible. Keep the same OpenCode theme, density, and icon mode when comparing
+platforms. `reducedMotion: true` provides static activity glyphs.
+
+The bundled parser was independently checked against the official font with FontTools during
+implementation: all **137** currently required codepoints were present with a **500-unit** advance.
+Fixture tests cover TrueType cmap formats 4/12, missing glyphs, inconsistent advances, malformed
+bounds, offline integrity checks, dry-run, repeated placement, conflicts, and symlink refusal. Tests
+use temporary directories, not the tester's actual font folders. They establish preparation and
+placement behavior. Actual Ubuntu/macOS font selection, terminal rendering, and OS font registration
+still need their platform acceptance results; no universal terminal compatibility is claimed.
 
 ## Primary references
 
-- [Nerd Fonts pinned JetBrains Mono files](https://github.com/ryanoasis/nerd-fonts/tree/fa7b859994228a9c8759f99c55a8d31ee92a1b5e/patched-fonts/JetBrainsMono).
-- [Ghostty configuration reference](https://ghostty.org/docs/config/reference).
-- [Microsoft Windows Terminal profile appearance](https://learn.microsoft.com/en-us/windows/terminal/customize-settings/profile-appearance).
+- [Pinned upstream Iosevka font and license](https://github.com/ryanoasis/nerd-fonts/tree/fa7b859994228a9c8759f99c55a8d31ee92a1b5e/patched-fonts/Iosevka).
+- [Ghostty font configuration](https://ghostty.org/docs/config/reference).
+- [GNOME Terminal font selection](https://help.gnome.org/users/gnome-terminal/stable/app-fonts.html.en).
+- [Apple Terminal profile text settings](https://support.apple.com/guide/terminal/change-profiles-text-settings-trmltxt/mac).
+- [VS Code terminal appearance](https://code.visualstudio.com/docs/terminal/appearance).

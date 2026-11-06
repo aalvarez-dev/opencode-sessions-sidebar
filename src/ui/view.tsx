@@ -1,6 +1,16 @@
-import { For, Index, Show, createEffect, createSignal, onCleanup, type Accessor } from "solid-js";
-import { RGBA, type Renderable } from "@opentui/core";
+import {
+  For,
+  Index,
+  Show,
+  createEffect,
+  createSignal,
+  onCleanup,
+  onMount,
+  type Accessor,
+} from "solid-js";
+import { RGBA, type Renderable, type ScrollBoxRenderable } from "@opentui/core";
 import { createSidebarMotion } from "./motion";
+import { iconGlyph, iconModes, iconProofRows, type IconName } from "./icons";
 import { useTerminalDimensions, type JSX } from "@opentui/solid";
 import type { TuiDialogSelectOption, TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { SidebarController } from "./controller";
@@ -16,6 +26,39 @@ import {
 const contextFields = ["repository", "branch", "worktree"] as const;
 const contextLabels = { repository: "Repository", branch: "Branch", worktree: "Worktree" };
 const contextSymbols = { repository: "R", branch: "B", worktree: "W" };
+// Stock V1 dialogs start one quarter down the terminal. Reserve heading, gaps and footer too.
+const dialogScrollHeight = (height: number) => Math.max(1, height - Math.ceil(height / 4) - 6);
+function dialogScrollRef(api: TuiPluginApi) {
+  let scroll: ScrollBoxRenderable | undefined;
+  let unregister: (() => void) | undefined;
+  let focusTimer: ReturnType<typeof setTimeout> | undefined;
+  onMount(() => {
+    // The host palette restores the previous input asynchronously after clearing itself.
+    focusTimer = setTimeout(() => {
+      if (scroll && !scroll.isDestroyed) scroll.focus();
+    }, 1);
+  });
+  onCleanup(() => {
+    if (focusTimer !== undefined) clearTimeout(focusTimer);
+    unregister?.();
+  });
+  return (value: ScrollBoxRenderable) => {
+    scroll = value;
+    unregister?.();
+    // Session PageUp/PageDown commands otherwise run first and clear the dialog.
+    // The mounted modal owns these keys, including at either scroll boundary.
+    unregister = api.keymap.registerLayer({
+      mode: "modal",
+      priority: 100,
+      bindings: [
+        { key: "up", cmd: () => value.scrollBy(-1) },
+        { key: "down", cmd: () => value.scrollBy(1) },
+        { key: "pageup", cmd: () => value.scrollBy(-Math.max(1, value.viewport.height - 1)) },
+        { key: "pagedown", cmd: () => value.scrollBy(Math.max(1, value.viewport.height - 1)) },
+      ],
+    });
+  };
+}
 // Details preserve the full host value while removing terminal controls and direction overrides.
 const fullLabel = (value: string) =>
   value.replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/gu, " ");
@@ -99,14 +142,16 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
     if (!row) return;
     replace(() => {
       const dimensions = useTerminalDimensions();
+      const scrollRef = dialogScrollRef(api);
       return (
         <box flexDirection="column" paddingLeft={2} paddingRight={2} gap={1}>
           <text fg={api.theme.current.text} attributes={1}>
             Session details
           </text>
           <scrollbox
+            ref={scrollRef}
             id={`sidebar-session-${id}-details-scroll`}
-            height={Math.max(1, dimensions().height - 12)}
+            height={dialogScrollHeight(dimensions().height)}
             focused
           >
             <box flexDirection="column" gap={1} paddingRight={2}>
@@ -216,6 +261,17 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
           ]
         : []),
       option("Session details", () => details(id)),
+      ...controller.extensionActions(id).map((action) => ({
+        ...option(
+          action.title,
+          () => {
+            clear();
+            void controller.runExtension(action.id, id);
+          },
+          !action.enabled,
+        ),
+        category: `Extension: ${action.extensionId}`,
+      })),
       option("Rename", () => rename(row), controller.pending()),
       option("Delete session…", () => remove(row), controller.pending()),
     ];
@@ -310,8 +366,147 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
       });
     });
   }
+  function extensions() {
+    const id = controller.state()?.selectedSessionId;
+    if (!id) {
+      controller.notify("Open a session to use extension actions.");
+      return;
+    }
+    const actions = controller.extensionActions(id);
+    if (actions.length === 0) {
+      controller.notify("No enabled extension actions are available for this session.");
+      return;
+    }
+    select("Session extension actions", () =>
+      actions.map((action) => ({
+        title: action.title,
+        description: action.extensionId,
+        disabled: !action.enabled,
+        value: controller.guard(() => {
+          clear();
+          void controller.runExtension(action.id, id);
+        }),
+      })),
+    );
+  }
+  function extensionStatus() {
+    replace(() => {
+      const dimensions = useTerminalDimensions();
+      const scrollRef = dialogScrollRef(api);
+      return (
+        <box flexDirection="column" paddingLeft={2} paddingRight={2} gap={1}>
+          <text fg={api.theme.current.text} attributes={1}>
+            Extension status
+          </text>
+          <scrollbox
+            ref={scrollRef}
+            id="sidebar-extension-status-scroll"
+            height={dialogScrollHeight(dimensions().height)}
+            focused
+          >
+            <box flexDirection="column" gap={1} paddingRight={2}>
+              <Show
+                when={controller.extensionDiagnostics().length > 0}
+                fallback={
+                  <text fg={api.theme.current.textMuted}>No local extensions configured.</text>
+                }
+              >
+                <For each={controller.extensionDiagnostics()}>
+                  {(entry, index) => (
+                    <box flexDirection="column" flexShrink={0}>
+                      <text
+                        fg={
+                          entry.state === "failed"
+                            ? api.theme.current.warning
+                            : api.theme.current.text
+                        }
+                      >
+                        {entry.id ?? `Configured module ${index() + 1}`}: {entry.state}
+                      </text>
+                      <Show when={entry.message}>
+                        <text fg={api.theme.current.textMuted} wrapMode="word">
+                          {entry.message}
+                        </text>
+                      </Show>
+                    </box>
+                  )}
+                </For>
+              </Show>
+              <text fg={api.theme.current.textMuted} wrapMode="word">
+                Only explicitly enabled local modules are loaded. Restart OpenCode after editing a
+                module or fixing a failure. Module paths and exception details are not displayed
+                here.
+              </text>
+            </box>
+          </scrollbox>
+          <text fg={api.theme.current.textMuted}>
+            Up/Down or PgUp/PgDn to scroll · Esc to close
+          </text>
+        </box>
+      );
+    });
+  }
+  function checkIcons() {
+    // This is a visual check on the displaying client, never a claim to detect its active font.
+    const rows = iconProofRows();
+    replace(() => {
+      const dimensions = useTerminalDimensions();
+      const scrollRef = dialogScrollRef(api);
+      return (
+        <box flexDirection="column" paddingLeft={2} paddingRight={2} gap={1}>
+          <text fg={api.theme.current.text} attributes={1}>
+            Check sidebar icons
+          </text>
+          <scrollbox
+            ref={scrollRef}
+            id="sidebar-icon-check-scroll"
+            height={dialogScrollHeight(dimensions().height)}
+            focused
+          >
+            <box flexDirection="column" gap={1} paddingRight={2}>
+              <text fg={api.theme.current.text} wrapMode="word">
+                Current mode: {controller.icons()}. Compare every symbol and animation frame.
+                Right-hand bars should align; symbols should not appear as empty boxes.
+              </text>
+              <text fg={api.theme.current.warning} wrapMode="word">
+                The font belongs to the computer displaying this terminal. Installing it inside
+                Docker or on an SSH server does not configure your client. This check cannot detect
+                which font your terminal uses.
+              </text>
+              <box flexDirection="column" flexShrink={0}>
+                <text fg={api.theme.current.textMuted} wrapMode="none">
+                  {"Symbol           Unicode ASCII   Nerd"}
+                </text>
+                <For each={rows}>
+                  {(row) => (
+                    <text
+                      id={`sidebar-icon-check-${row.id}`}
+                      fg={api.theme.current.text}
+                      wrapMode="char"
+                    >
+                      {row.text}
+                    </text>
+                  )}
+                </For>
+              </box>
+              <text fg={api.theme.current.textMuted} wrapMode="word">
+                Animation frames above are static samples. Choose Icons in Display settings, or set
+                icons in tui.json to retain the choice after restarting. Nerd mode needs the
+                prepared font selected in the client terminal. ASCII substitutes the icons only;
+                session titles can still contain Unicode.
+              </text>
+            </box>
+          </scrollbox>
+          <text fg={api.theme.current.textMuted} wrapMode="word">
+            Up/Down or PgUp/PgDn or mouse wheel to scroll. Esc to close.
+          </text>
+        </box>
+      );
+    });
+  }
   function settings() {
     select("Sidebar display — this activation", () => [
+      { title: "Extension status", value: extensionStatus },
       ...(["compact", "balanced", "comfortable"] as const).map((value: Density) => ({
         title: `Density: ${value}`,
         value: () => {
@@ -320,7 +515,7 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
         },
         footer: controller.density() === value ? "Selected" : "",
       })),
-      ...(["unicode", "ascii", "nerd"] as const).map((value: IconMode) => ({
+      ...iconModes.map((value: IconMode) => ({
         title: `Icons: ${value}`,
         value: () => {
           controller.setIcons(value);
@@ -342,6 +537,7 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
           clear();
         },
       })),
+      { title: "Check icons", value: checkIcons },
       { title: "Manage unavailable pins", value: unavailablePins },
       {
         title: "Refresh sessions and organization",
@@ -396,6 +592,7 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
       { title: "Browse all sessions", value: browse },
       { title: "Manage Later list", value: later },
       { title: "Display settings", value: settings },
+      { title: "Extension actions", value: extensions },
       {
         title: "Refresh sessions and organization",
         value: () => {
@@ -410,7 +607,10 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
     create,
     session,
     browse,
+    extensions,
+    extensionStatus,
     settings,
+    checkIcons,
     later,
     menu,
     quick,
@@ -433,8 +633,7 @@ export function SidebarView(props: {
   const theme = () => props.api.theme.current;
   const motion = createSidebarMotion(props.api.renderer);
   onCleanup(motion.dispose);
-  const symbol = (unicode: string, ascii: string, nerd = unicode) =>
-    c.icons() === "ascii" ? ascii : c.icons() === "nerd" ? nerd : unicode;
+  const symbol = (name: IconName) => iconGlyph(name, c.icons());
   // Derived from the host palette; retry stays distinct from a terminal error.
   const retryColor = () =>
     RGBA.fromValues(
@@ -519,15 +718,15 @@ export function SidebarView(props: {
     onCleanup(animation.dispose);
     const status = () => {
       const s = row().summary;
-      if (s.permissions > 0) return { glyph: "!", color: theme().warning };
-      if (s.questions > 0) return { glyph: "?", color: theme().warning };
-      if (s.retry > 0) return { glyph: symbol("↻", "~"), color: retryColor() };
-      if (s.busy > 0) return { glyph: motionGlyph() || symbol("⠋", "-"), color: theme().text };
-      if ((s.errors ?? 0) > 0) return { glyph: symbol("×", "x"), color: theme().error };
+      if (s.permissions > 0) return { glyph: symbol("permission"), color: theme().warning };
+      if (s.questions > 0) return { glyph: symbol("question"), color: theme().warning };
+      if (s.retry > 0) return { glyph: symbol("retry"), color: retryColor() };
+      if (s.busy > 0) return { glyph: motionGlyph() || symbol("busy"), color: theme().text };
+      if ((s.errors ?? 0) > 0) return { glyph: symbol("error"), color: theme().error };
       if (s.unknown > 0 && c.state()?.refreshing)
-        return { glyph: motionGlyph() || symbol("⠤⠄", "..."), color: theme().text };
+        return { glyph: motionGlyph() || symbol("checking"), color: theme().text };
       return {
-        glyph: s.unknown > 0 ? symbol("◌", "?") : symbol("·", "."),
+        glyph: s.unknown > 0 ? symbol("unknown") : symbol("idle"),
         color: theme().text,
       };
     };
@@ -571,7 +770,7 @@ export function SidebarView(props: {
             <Show when={row().done}>
               <text fg={theme().success} flexShrink={0}>
                 {" "}
-                {symbol("✓", "+")}
+                {symbol("completion")}
               </text>
             </Show>
           </box>
@@ -586,13 +785,13 @@ export function SidebarView(props: {
               fg={row().pinned ? theme().text : mutedIcon()}
               onMouseUp={stop(() => props.actions.quick(row().session.id, "pin"))}
             >
-              {row().pinned ? symbol("◆", "P", "\uEBA0") : symbol("◇", "p", "\uEB2B")}
+              {row().pinned ? symbol("pinActive") : symbol("pinInactive")}
             </text>
             <text
               fg={row().later ? theme().text : mutedIcon()}
               onMouseUp={stop(() => props.actions.quick(row().session.id, "later"))}
             >
-              {row().later ? symbol("⌛", "L", "\uF4E3") : symbol("≡", "l", "\uF451")}
+              {row().later ? symbol("laterActive") : symbol("laterInactive")}
             </text>
             <Show when={children().length > 0}>
               <text
@@ -601,7 +800,7 @@ export function SidebarView(props: {
                 flexShrink={0}
                 onMouseUp={stop(() => c.toggleChildren(row().session.id))}
               >
-                {expanded() ? symbol("▾", "v") : symbol("▸", ">")} {children().length}
+                {expanded() ? symbol("expanded") : symbol("collapsed")} {children().length}
               </text>
             </Show>
             <text
@@ -622,7 +821,7 @@ export function SidebarView(props: {
               flexShrink={0}
               onMouseUp={stop(() => props.actions.remove(row().session.id))}
             >
-              {symbol("⌫", "del", "\uF48E")}
+              {symbol("delete")}
             </text>
             <Show when={!p.active}>
               <text
@@ -631,7 +830,7 @@ export function SidebarView(props: {
                 flexShrink={0}
                 onMouseUp={stop(() => props.actions.session(row().session.id))}
               >
-                {symbol("…", "...")}
+                {symbol("menu")}
               </text>
             </Show>
           </box>
@@ -649,7 +848,7 @@ export function SidebarView(props: {
                         wrapMode="none"
                         onMouseUp={() => c.open(child.session.id)}
                       >
-                        {symbol("↗", ">>")} {safeLabel(child.session.title)} — shown in{" "}
+                        {symbol("promoted")} {safeLabel(child.session.title)} — shown in{" "}
                         {c.activeRow()?.session.id === child.session.id
                           ? "Active"
                           : child.later
@@ -678,7 +877,9 @@ export function SidebarView(props: {
                 flexShrink={0}
                 onMouseUp={stop(() => c.toggleContext(row().session.id))}
               >
-                {c.expandedContext().has(row().session.id) ? symbol("▾", "v") : symbol("▸", ">")}
+                {c.expandedContext().has(row().session.id)
+                  ? symbol("expanded")
+                  : symbol("collapsed")}
               </text>
               <For each={contextFields}>
                 {(field) => (
@@ -758,11 +959,11 @@ export function SidebarView(props: {
             Active session:
           </text>
           <text id="sidebar-menu" fg={theme().textMuted} onMouseUp={() => props.actions.menu()}>
-            {symbol("…", "...")}
+            {symbol("menu")}
           </text>
         </box>
         <text fg={theme().warning} onMouseUp={() => props.actions.create()}>
-          new session +
+          new session {iconGlyph("create", props.controller.icons())}
         </text>
         <Show
           when={c.activeRow()}
@@ -811,7 +1012,7 @@ export function SidebarView(props: {
                   truncate
                   wrapMode="none"
                 >
-                  {c.collapsed().has(group().id) ? symbol("▸", ">") : symbol("▾", "v")}{" "}
+                  {c.collapsed().has(group().id) ? symbol("collapsed") : symbol("expanded")}{" "}
                   {group().title}
                 </text>
               </box>
@@ -848,7 +1049,7 @@ export function SidebarHome(props: {
           Browse sessions
         </text>
         <text fg={props.api.theme.current.warning} onMouseUp={() => props.actions.create()}>
-          new session +
+          new session {iconGlyph("create", props.controller.icons())}
         </text>
       </box>
     </Show>

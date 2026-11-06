@@ -1,11 +1,17 @@
 import { isAbsolute } from "node:path";
 import { createMemo, createSignal } from "solid-js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
-import { createV1Adapter } from "../adapters/opencode-v1";
+import {
+  createV1Adapter,
+  parseV1CompletionPolicy,
+  type V1CompletionPolicy,
+} from "../adapters/opencode-v1";
 import type { ActionResult } from "../adapters/opencode-v1";
 import { createOrganizationService, sessionIdFromKey } from "../organization";
 import type { OrganizationAction } from "../organization";
 import { createFileStorage } from "../storage/file";
+import { createExtensionRuntime, parseExtensionConfigs } from "../extensions";
+import type { SidebarExtensionConfig } from "../extensions";
 import {
   createSidebarModelBuilder,
   type ContextField,
@@ -22,6 +28,8 @@ export interface SidebarOptions {
   readonly density?: Density;
   readonly icons?: IconMode;
   readonly reducedMotion?: boolean;
+  readonly completionPolicy?: V1CompletionPolicy;
+  readonly extensions?: readonly SidebarExtensionConfig[];
 }
 
 /** Storage is explicitly local; no host-reported directory becomes a local I/O path. */
@@ -53,6 +61,8 @@ export function parseSidebarOptions(input: Record<string, unknown> | undefined):
     throw new TypeError("icons must be unicode, ascii, or nerd.");
   if (input.reducedMotion !== undefined && typeof input.reducedMotion !== "boolean")
     throw new TypeError("reducedMotion must be a boolean.");
+  const completionPolicy = parseV1CompletionPolicy(input.completionPolicy);
+  const extensions = parseExtensionConfigs(input.extensions);
   return {
     hostId: input.hostId,
     storageDirectory: input.storageDirectory,
@@ -60,6 +70,8 @@ export function parseSidebarOptions(input: Record<string, unknown> | undefined):
     ...(input.density === undefined ? {} : { density: input.density as Density }),
     ...(input.icons === undefined ? {} : { icons: input.icons as IconMode }),
     ...(input.reducedMotion === undefined ? {} : { reducedMotion: input.reducedMotion }),
+    ...(input.completionPolicy === undefined ? {} : { completionPolicy }),
+    ...(input.extensions === undefined ? {} : { extensions }),
   };
 }
 
@@ -108,6 +120,11 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     setRevision((value) => value + 1);
   };
   const buildModel = createSidebarModelBuilder();
+  const extensions = createExtensionRuntime({
+    configs: options.extensions ?? [],
+    changed,
+    notify: (message, failed) => notify(message, failed ? "warning" : "info"),
+  });
   const state = createMemo(() => {
     revision();
     return adapter?.state();
@@ -167,6 +184,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     if (active()) api.ui.toast({ title: "Sessions sidebar", message, variant });
   }
   function stopScope() {
+    extensions.detach();
     setProjectContext(null);
     lookup?.abort();
     lookup = undefined;
@@ -241,6 +259,19 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
       changed();
       await Promise.all([adapter.start(), organization.start()]);
       if (!active() || generation !== epoch) return;
+      const currentAdapter = adapter;
+      extensions.attach(organization, (id) => {
+        const record = currentAdapter?.get(id);
+        return record
+          ? {
+              id: record.id,
+              title: record.title,
+              activity: record.activity,
+              permissions: record.permissions,
+              questions: record.questions,
+            }
+          : undefined;
+      });
       changed();
     } catch {
       if (active() && generation === epoch)
@@ -390,6 +421,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   function dispose() {
     if (!active()) return;
     setActive(false);
+    extensions.dispose();
     ++epoch;
     stopScope();
     changed();
@@ -431,6 +463,15 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     native,
     open,
     notify,
+    extensionActions: (sessionId: string) => {
+      revision();
+      return extensions.actions(sessionId);
+    },
+    runExtension: (id: string, sessionId: string) => extensions.run(id, sessionId),
+    extensionDiagnostics: () => {
+      revision();
+      return extensions.diagnostics();
+    },
     dispose,
     guard: <Args extends unknown[]>(fn: (...args: Args) => void) => {
       const generation = epoch;

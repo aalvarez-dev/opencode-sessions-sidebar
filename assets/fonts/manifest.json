@@ -1,47 +1,25 @@
 {
-  "family": "JetBrainsMono Nerd Font Mono",
-  "baseVersion": "2.304",
+  "id": "iosevka-33-2-1-nerd-3-4-0",
+  "family": "Iosevka Nerd Font Mono",
+  "legacyFamily": "Iosevka NFM",
+  "baseVersion": "33.2.1",
   "nerdFontsVersion": "3.4.0",
   "repository": "https://github.com/ryanoasis/nerd-fonts",
   "commit": "fa7b859994228a9c8759f99c55a8d31ee92a1b5e",
   "files": [
     {
-      "name": "JetBrainsMonoNerdFontMono-Regular.ttf",
-      "path": "patched-fonts/JetBrainsMono/Ligatures/Regular/JetBrainsMonoNerdFontMono-Regular.ttf",
-      "sha256": "f01031f40e48dc29e1112e6b0b0450a2c6cd097f3f35cfff05c55cb311f8034c",
-      "bytes": 2470116
-    },
-    {
-      "name": "JetBrainsMonoNerdFontMono-Bold.ttf",
-      "path": "patched-fonts/JetBrainsMono/Ligatures/Bold/JetBrainsMonoNerdFontMono-Bold.ttf",
-      "sha256": "5bdd4a873f3cd32f882d2c55545089123926e27707d5880fc9eaf84eb01b6686",
-      "bytes": 2473884
-    },
-    {
-      "name": "JetBrainsMonoNerdFontMono-Italic.ttf",
-      "path": "patched-fonts/JetBrainsMono/Ligatures/Italic/JetBrainsMonoNerdFontMono-Italic.ttf",
-      "sha256": "ccd88b36d325e6a905edc8dd3f2522718d9690d9bed3fbb4684c7e746c34f846",
-      "bytes": 2472232
-    },
-    {
-      "name": "JetBrainsMonoNerdFontMono-BoldItalic.ttf",
-      "path": "patched-fonts/JetBrainsMono/Ligatures/BoldItalic/JetBrainsMonoNerdFontMono-BoldItalic.ttf",
-      "sha256": "d931df2928b3216892d35980cddcad9edade1b9c9cd2e09a6c2937139f474742",
-      "bytes": 2475144
+      "name": "IosevkaNerdFontMono-Regular.ttf",
+      "path": "patched-fonts/Iosevka/IosevkaNerdFontMono-Regular.ttf",
+      "sha256": "208be07f3155b7f1d0b33deaff4d675ae1fa1f59fb7d660b39279e21bcecf06a",
+      "bytes": 13135052
     }
   ],
   "licenses": [
     {
-      "name": "JetBrainsMono-OFL.txt",
-      "path": "src/unpatched-fonts/JetBrainsMono/OFL.txt",
-      "sha256": "30f0c136e3c88e422d0791acd97238870f9054a9729bc34cf2ff0d4ed8cac4ad",
-      "bytes": 4399
-    },
-    {
-      "name": "JetBrainsMono-AUTHORS.txt",
-      "path": "src/unpatched-fonts/JetBrainsMono/AUTHORS.txt",
-      "sha256": "33f99c94ef0a0909d7584a5d4bde1fb9b1630daa620f5a788c28c43327e79412",
-      "bytes": 350
+      "name": "Iosevka-LICENSE.txt",
+      "path": "patched-fonts/Iosevka/LICENSE.md",
+      "sha256": "7484961b97b41985d54c21700e53f7142a7007d72401acbd32c0b9c6a5a0b558",
+      "bytes": 4493
     },
     {
       "name": "NerdFonts-LICENSE.txt",

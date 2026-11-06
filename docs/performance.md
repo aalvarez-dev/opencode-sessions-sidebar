@@ -157,3 +157,15 @@ Their predeclared budgets, exact measured results, source digests, and limitatio
 and public rendered frames; the controller sample uses synthetic host ports and no terminal. Neither
 extends the headless CPU/RSS comparison to the rendered plugin. Full packaged-release performance,
 larger rendered datasets, long idle observation, and remote-host behavior remain gates.
+
+## Complete rendered-sidebar process comparison
+
+The [rendered-sidebar harness](sidebar-resource-benchmark.md) compares the actual built TUI plugin
+with stock OpenCode using the same 25/250-session datasets and three paired repetitions. Its
+predeclared allowances are a median paired RSS increase of 64 MiB and a median paired CPU increase
+of one percentage point of one core for each dataset. These apply to the complete rendered plugin,
+not the smaller headless adapter. The harness verifies visible controls and public deactivation/
+reactivation separately from the idle sampling window.
+
+See that document for the procedure, recorded evidence and limits. This bounded workload does not
+close sustained-load, native-client font, remote/disconnect, or general leak-detection gates.

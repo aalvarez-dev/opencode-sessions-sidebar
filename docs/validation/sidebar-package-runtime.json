@@ -1,0 +1,388 @@
+{
+  "kind": "fresh-local-package-install",
+  "status": "passed",
+  "runtimeRequested": true,
+  "platform": "linux",
+  "arch": "x64",
+  "bun": "1.3.14",
+  "checks": [
+    "explicit-package-contents",
+    "offline-consumer-install-without-development-dependencies",
+    "packaged-export-targets-and-independent-headless-imports",
+    "packaged-font-helper-without-checkout",
+    "stock-host-sidebar-from-installed-package",
+    "stock-host-attention-from-installed-package"
+  ],
+  "archive": {
+    "name": "opencode-sessions-sidebar-0.1.0-dev.0.tgz",
+    "sha256": "2e4c048ca4a9b1eda2b68ff78393bd595379cd1609f027b901cf8101770e337a",
+    "files": 82
+  },
+  "package": {
+    "name": "opencode-sessions-sidebar",
+    "version": "0.1.0-dev.0",
+    "files": {
+      "CHANGELOG.md": "b77357f78231e7be64dd7d3f2833f7036b77ce324df30d8582af7449d8eb925d",
+      "LICENSE": "b3bc36daed22079022d3e986ab3bde4bfc19da1ffa92bd7a36eebd7ba37c5c22",
+      "README.md": "9fee65935afcf099445d64e2b2128331b044629e742d0ff35881340f8de34ccc",
+      "assets/fonts/README.md": "8a44930bdb26c3d43db46ed0f6680571c084ad54c1cbba43b2edc3ed3ab5c7ee",
+      "assets/fonts/licenses/Iosevka-LICENSE.txt": "7484961b97b41985d54c21700e53f7142a7007d72401acbd32c0b9c6a5a0b558",
+      "assets/fonts/licenses/JetBrainsMono-AUTHORS.txt": "33f99c94ef0a0909d7584a5d4bde1fb9b1630daa620f5a788c28c43327e79412",
+      "assets/fonts/licenses/JetBrainsMono-OFL.txt": "30f0c136e3c88e422d0791acd97238870f9054a9729bc34cf2ff0d4ed8cac4ad",
+      "assets/fonts/licenses/NerdFonts-LICENSE.txt": "1f6ad4edae6479aaace3112ede5279a23284ae54b2a34db66357aef5f64df160",
+      "assets/fonts/manifest.json": "7e1dfe1bb3117fe6b44bde9b3d1f074b00937913e199fa09712eec5d1cebc501",
+      "dist/adapters/opencode-v1/adapter.d.ts": "cca1ac18ae730b30dba379fb7a6dba3e3174a5ad2002e5a2a9cdc48941b3006f",
+      "dist/adapters/opencode-v1/completion-capabilities.d.ts": "066fb2b51b1be2af7875cec27b8f97189161093c6592bbee3dfe4e45e33e2677",
+      "dist/adapters/opencode-v1/index.d.ts": "ec73468301e314ff81e7103b2575a6e9c8c34bd61e015405705fc11b3dd2eb30",
+      "dist/adapters/opencode-v1/index.js": "7c3c5b57d8d91edeaa96bfecaace47360eab537d008878428f5f8561a948fb17",
+      "dist/adapters/opencode-v1/index.js.map": "6db788a8f4c9c79baee2bbc76bcd3f52ef53eb0977ada87219ee8d5114b51933",
+      "dist/adapters/opencode-v1/types.d.ts": "785845aae6543c345e31608e9b845a5e156bd0a827f68b01dd5fdaaf2e43f6b7",
+      "dist/core/completion.d.ts": "34c394a206d08041f74cff845f78898f6979d8e584f3789899e9d2675285c3a3",
+      "dist/core/index.d.ts": "a1b8a3ef7fbeef1226202757f1280cfcee74ecaad80be1294d0af82d79bb588f",
+      "dist/core/queue.d.ts": "509815e0521844863dbf15f35867c7f3a15dbc4fcbd3e1800f409a43e2aaf49f",
+      "dist/core/types.d.ts": "ea1dc058787359d6f4438e8112b416027d962a05c72e8eb46220cf0dfd20bae7",
+      "dist/extensions/index.d.ts": "84baa6fed43c8f29f2da276ca34998fe5feb7930fcf017ea3796ba88cb82da51",
+      "dist/extensions/index.js": "bf1fa2968df9b43c18c5c1753bdb753a9c4d032cb7ca2584e770af071b6b574c",
+      "dist/extensions/index.js.map": "caf83ea0e4b1e2e2c259dc72339527b5837fdb83aa11b3f5456936984f06426d",
+      "dist/extensions/runtime.d.ts": "26c5ae539cbb5ffbdb1c75f65b8a227233abb5d69a0e89bd1f4d076847f40ee6",
+      "dist/extensions/types.d.ts": "de1acbc1276df321efcb81acc183ef5056a7aed5f26b9cba5b343430c61fb1d0",
+      "dist/index.d.ts": "b0d1b1116b12eca4e77e91ae5e2c735823473fa4b482409b7b831304d155a9b8",
+      "dist/index.js": "ae5926ddf99e66f6eca9bbe08f43967250c5e5df2ee4af8f1f82133ae46148a6",
+      "dist/index.js.map": "622161f082988e742af37b750facb8772b715f9e757c46da48093d6f8f92c8b6",
+      "dist/organization/index.d.ts": "34fcbcac941e36707c96f887747dfb24b91975ae5ce32d60878646829320a860",
+      "dist/organization/index.js": "3d424d86a0b97b535c42c4e688bce42e73600f3215c04e34a29ba608c81df88c",
+      "dist/organization/index.js.map": "f41c63b40666757a1ea67aeeacf5a3dd7b5ada399c53e39fac19d0e5c1b19997",
+      "dist/organization/schema.d.ts": "3bcc1a95b07ed9e3d163b5477e969af7db057173356f4bff1df96b302569da8e",
+      "dist/organization/service.d.ts": "d90ee4a3998b343e9cf7e9bd81d62f7fe248d1213f60431e8f10e72b5bcc334d",
+      "dist/organization/types.d.ts": "7bcc75852007e4b82e06c99a8508d71bd2580b9522cdecd772fa34da3b3a705b",
+      "dist/prepare-fonts.js": "424a4b3203b3a2aa450622e43342cbc561279f528ee8bd131ab0e7eda3687b32",
+      "dist/prepare-fonts.js.map": "5cde4dca77313fa7d60e2b03c8f19ac80ba90eb3005ff3d5dfbb0e115d733879",
+      "dist/storage/file.d.ts": "39069ce337e2b18a332dd79b8d5674424341928e257fa3f4e63013b17346505d",
+      "dist/storage/file.js": "f369d735452cc7c2146799ba866d4f4715dd6644ec171c651cb2a50522823073",
+      "dist/storage/file.js.map": "cb19c3d7cfebb8a74f0f3c89918d99b8b1173ccf2fcdc30e4de986337427eaab",
+      "dist/tui.d.ts": "a99531eeedb8c50e8e0d89618f769814c9e282f1a6d14f3274129d56ddea887c",
+      "dist/tui.js": "ccdaf35ffc5a8fbf3b29b5a95513c6953d4472448b3632f9d8b819746819b0a6",
+      "dist/tui.js.map": "0cbdc3bf057916a3ea7b5738e2ecbcefda7825c57732cd62d83f02c0279af1b7",
+      "dist/ui/controller.d.ts": "0b3fe4737488989e8f785a5253d6c6e22b5f11c511fc73497670c49334675a9b",
+      "dist/ui/icons.d.ts": "5a64580797a929bf6388283d0628d2f0e8971f3a1e4619b3c44457762bb14af6",
+      "dist/ui/model.d.ts": "f739a8a85e5efb77e78845428207d76671c8838a8ce246d87b702ecaabfb7ec1",
+      "dist/ui/motion.d.ts": "fca6d9cd9fb26a1ea845a90f11e9e2438ad61de54963a860ed4b7ff1e19e4b41",
+      "dist/ui/view.d.ts": "f520e48b690e1a747bfb39f1336957d8bf519a3dcb5a99897f9cc7e9eea801fd",
+      "docs/architecture.md": "15df249460f79f5c77fd83a469ebefc121c7e783dc9e77f56ad18e91a1d35269",
+      "docs/codespaces-lab.md": "7da9b46f44d02c7b9ee1d32b2168659529d693014639c4dfb58d02a4ce021ff3",
+      "docs/execution-correlation.md": "ff400e2641d7c9de8a18d557c910491b65eeae22350744754af16e7a4fa5cbb4",
+      "docs/extensions.md": "73cbd5469161d3208a97fd672730198622f59ebdf75de394654cbce1d1cf5b75",
+      "docs/performance.md": "fcb8cc401ee1b6f0d8d6589f4e28cfcc97bdac4e771602234deb53398abf32cd",
+      "docs/release.md": "c5ba79efea5feab2a548de771adf1df1b8e6c6b199c93a4501cdb7f3312c7482",
+      "docs/roadmap.md": "8481fe8524c4392df8ce39b2989a5c9faf3f7cdab111abd128d16fd05bc2c76c",
+      "docs/sidebar-resource-benchmark.md": "0260fad11d74728c0dc94320c9afd016075d1dd89ae445e35aeb40a86c176c7c",
+      "docs/sidebar-validation.md": "5d4fb0dba701022b6cf65d1c6a8b359aa7169f5e68691aaaca1e1088ff62bc16",
+      "docs/specification.md": "3410f70a47c3d94e44ffe3f06b4ea6335e64c7b1a61f217a8d5c252f03523832",
+      "docs/storage-and-events.md": "4d08e0e81f2016e4b54e8e6dd3c6e962617dfd042f73a1ac7b331681c29b39ca",
+      "docs/terminal-fonts.md": "29eddb20a97ce4cef5e25e7ada01053561251bbf5eaa6feca4ccbea1c57e12cb",
+      "docs/v1-adapter-validation.md": "4cdb94223ba66a8a41386f1994198c70242c6b032dc27751fbfb2d77fc721158",
+      "docs/validation/sidebar-active-menu-runtime.json": "d1cbb1bc29bbfc7918842c4b83ce736d0f7bc1de5d6b6839f0c2fca9f18dcafd",
+      "docs/validation/sidebar-attention.json": "835461e914bbb007120ecdcd91a8bccafdeb6b25316ac759578ba2cffcb1d5b7",
+      "docs/validation/sidebar-component.json": "9a4cd74817968438a198c6e10593751b9bbeaff750ba872c41505ee726a44e10",
+      "docs/validation/sidebar-context-attempts.json": "83f5a6fc4e0a43735aded79d64b6217e45921cc3089b7cd3a7fd13f1b67d9353",
+      "docs/validation/sidebar-context-attention.json": "96f347dc02c32bf67a609f73dd810fd2322191a639021fd1c4bcc5e522fc39c9",
+      "docs/validation/sidebar-context-component.json": "673abc0381c1f10dee76f7b063bb31738ffa004377e0dcdcca640a8c5a6a1d7e",
+      "docs/validation/sidebar-context-input-diagnostics.json": "5917ac75f3c49dec61bb3e058c159451f511adac477323ff4f8990f19dde0ad9",
+      "docs/validation/sidebar-context-runtime.json": "b835e96dd376c0741db50fc7499cf84b2a8ae3226342e777a02276e72d9dbcbf",
+      "docs/validation/sidebar-input-diagnostics.json": "2534ffedf5fda33553142960820c70228212a6964602c1ebe0d215c44b764aad",
+      "docs/validation/sidebar-palette-lab-runtime.json": "954ecb4da42d875a66df8ad2a5b612d0bbf027202826da486815e81a38b7d76c",
+      "docs/validation/sidebar-portability-attention.json": "a65ce8f6837f9837f7a75325dfb8dfafe2050571054a14514ba716b4b2b2336e",
+      "docs/validation/sidebar-portability-runtime.json": "6c2a64a6120cc64901387279de6c62b42aaf4159cb2a8c1a0f4017d7a06c8644",
+      "docs/validation/sidebar-rendered-resources-incomplete.json": "1766763f06710c002456a5f560fa696f7e6ac66a25c246ff5dbe53514fb2a45a",
+      "docs/validation/sidebar-rendered-resources.json": "dcee7e993ce7d3bd6a97248bdb2fccd7f513b7c6e330d2e261ad9ede0b4349ac",
+      "docs/validation/sidebar-review-attention.json": "ac8674adc5779b7b4e9b68efac90b21e05ddde2e6ce8182af03c9aa356413844",
+      "docs/validation/sidebar-review-component.json": "f295eef089d5b2839f746a99087da53f15aed8b16811e5ba66b25fd5b88c5153",
+      "docs/validation/sidebar-review-runtime.json": "11de0ae58876bba9717ec7c671525055bca1dc3ed88a4e20111156971e5d0d01",
+      "docs/validation/sidebar-runtime.json": "6b7f2e8eb270f5685b1f315471f04ce4b09bc839043a60a2050b97fd6bc53c0f",
+      "docs/validation/v1-runtime-baseline.json": "a471a51062d3455dcd381690e0595d741d10b014539aa1030970dc1b01e09b07",
+      "examples/README.md": "8da5fcdd88945fe7aa3d6e4492ce49b5d56a615d673938fe016e5da1131f142b",
+      "examples/completion-observer.mjs": "414e676b137fe5d2c7f70d3895bde7f1a1fe9970fae2b2abbfaf513050ba6e86",
+      "examples/report-preview.mjs": "12fea5564c6c21305051b2d1c96c9d20a52df3dd5147d0c6d1b45d4cfc45ef38",
+      "package.json": "60f00c67bbce7481d0685a4fa88cae6673b3a3a2b91f3dd009cb2027e97f6a7d"
+    }
+  },
+  "checkoutBaseCommit": "16ffcf03bf59da6144df09c80c5f9f2b34dabb1e",
+  "native": {
+    "sidebar": {
+      "schema": 1,
+      "runtime": {
+        "opencode": "1.18.30",
+        "opentui": "0.4.5",
+        "solid": "1.9.10",
+        "bun": "1.3.14"
+      },
+      "environment": {
+        "platform": "linux",
+        "architecture": "x64",
+        "osRelease": "6.18.57",
+        "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+        "visibleLogicalCpus": 9,
+        "visibleMemoryBytes": 10451427328,
+        "isolatedHome": true,
+        "workload": {
+          "initialSessions": 20,
+          "transientCreatedSessions": 1,
+          "nativeUpdateEvents": 20,
+          "externalModelInference": false
+        }
+      },
+      "source": {
+        "baseCommit": "16ffcf03bf59da6144df09c80c5f9f2b34dabb1e",
+        "pluginSource": "external packaged artifact",
+        "sha256": {
+          "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+          "src/ui/controller.ts": "1c2929ad895638d6317a0b79c7e2b0ceb251577c656d5d4df70ca1a0e5f14148",
+          "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+          "src/ui/view.tsx": "d197515986ffe02e250a26509d9eb4ef22e3874cc32c2ce0d0296fba1f0db856",
+          "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+          "src/ui/icons.ts": "282462844fba21031e03edd2160d903e85d92e661a9aa57a5f8b2a79bfd4a71e",
+          "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+          "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+          "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+          "src/adapters/opencode-v1/adapter.ts": "642ce987bf5de829a5dd8ecae1de4fbf50ace7b4f3b2696c4dd693042eaf593c",
+          "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+          "scripts/build.ts": "f5a8d2341516851345e08298a5927c020b3119c6d5662d51459a9ade8c8e8289",
+          "scripts/sidebar-probe.ts": "0d7ce90277fa99aa9c110a39992546ce18dcab837ffb813ee2fb9ca078bc4caf",
+          "scripts/smoke-sidebar.ts": "267132473e7718df0b4a34b04844359e76af4033b8c16a5e6cca04ce56f2db48",
+          "dist/tui.js": "ccdaf35ffc5a8fbf3b29b5a95513c6953d4472448b3632f9d8b819746819b0a6",
+          "runtimePlugin": "ccdaf35ffc5a8fbf3b29b5a95513c6953d4472448b3632f9d8b819746819b0a6"
+        },
+        "receipt": "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions."
+      },
+      "scope": "Actual stock TUI rendering, public native CRUD, real PTY keyboard/mouse; no model inference.",
+      "budgets": {
+        "inputToObservedFrameP95Ms": 250,
+        "nativeCrudBurst20Ms": 5000
+      },
+      "results": {
+        "checks": [
+          "real mouse wheel scrolls many long-title rows and restores the sidebar top",
+          "actual built plugin loaded in stock session sidebar; synthetic host sessions rendered",
+          "line-two controls and line-three context stay separate; mouse and keyboard R/B/W selection does not expand context, separate disclosure expands R/B/W in order, completion stays last, Session details retains distinct repository root and linked worktree plus the full branch value",
+          "real keyboard mark/pin/Later actions persisted without changing native selection",
+          "completed title uses theme success, completion action uses theme warning, active/pin/Later primary row is deduplicated",
+          "real mouse collapses and expands Pinned with its activity summary retained",
+          "real keyboard Later reordering persisted",
+          "real keyboard open observed on native route; Later membership retained",
+          "active row omits its ellipsis and direct completion unmarks without a dialog, navigation, or Later change; switching sessions transfers the menu to the non-active row, whose shared actions remain usable",
+          "native create/rename/delete via real keyboard, cancellation preserves session and explicit mouse confirmation deletes",
+          "narrow 88x24 keyboard browse/action fallback and Session details remain usable; Down/PgDn/PgUp scroll to full worktree context and Esc closes",
+          "explicit local extension loads in stock host, receives committed user events once, runs guarded no-op actions from menu and palette, and disabled modules are never imported",
+          "Check icons is reachable through real Ctrl+P and supports narrow scrolling and Esc; captured cells do not certify the client's font",
+          "real Ctrl+P, palette filtering, and Enter open the sidebar Browse dialog",
+          "stock plugin deactivation/reactivation restores committed organization",
+          "20 paced native updates overlap real keyboard filtering; observed frames pass the declared p95 budget",
+          "new stock process hydrates organization; light terminal and Unicode browse render"
+        ],
+        "nativeCrudBurst20Ms": 850.4265579999992,
+        "inputObservationSamples": 10,
+        "overlappingInputSamples": 3,
+        "nativeBurstFixtureSpacingMs": 10,
+        "inputToObservedFrameP95Ms": 132.44674399999712
+      },
+      "limitations": [
+        "Observer polling and public list reads add overhead; timing is an input-to-observed-frame upper bound, not isolated renderer latency.",
+        "This smoke does not create native busy, retry, permission or question events. See the separate attention probe and model tests for their explicitly stated scope.",
+        "No slow optional metadata provider is enabled; no Git or filesystem enrichment is performed by the UI.",
+        "No baseline CPU/memory, power-loss durability, remote transport or cross-platform rendering claim."
+      ],
+      "captures": [
+        {
+          "name": "wide-initial",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "wide-scrolled",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "wide-context-expanded",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "wide-session-details",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "wide-organized",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "wide-collapsed",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "delete-confirmation",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "narrow-session-menu",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 88,
+          "height": 24
+        },
+        {
+          "name": "narrow-session-details-scrolled",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 88,
+          "height": 24
+        },
+        {
+          "name": "wide-extension-actions",
+          "theme": "dark",
+          "icons": "ascii",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "wide-icon-check",
+          "theme": "dark",
+          "icons": "all three modes",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "narrow-icon-check-scrolled",
+          "theme": "dark",
+          "icons": "all three modes",
+          "width": 88,
+          "height": 24
+        },
+        {
+          "name": "light-restart-browse",
+          "theme": "light",
+          "icons": "unicode",
+          "width": 140,
+          "height": 40
+        }
+      ]
+    },
+    "attention": {
+      "schema": 1,
+      "runtime": {
+        "opencode": "1.18.30",
+        "platform": "linux",
+        "bun": "1.3.14"
+      },
+      "artifact": {
+        "baseGitRevision": "16ffcf03bf59da6144df09c80c5f9f2b34dabb1e",
+        "pluginSource": "external packaged artifact",
+        "sha256": {
+          "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+          "src/ui/controller.ts": "1c2929ad895638d6317a0b79c7e2b0ceb251577c656d5d4df70ca1a0e5f14148",
+          "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+          "src/ui/view.tsx": "d197515986ffe02e250a26509d9eb4ef22e3874cc32c2ce0d0296fba1f0db856",
+          "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+          "src/ui/icons.ts": "282462844fba21031e03edd2160d903e85d92e661a9aa57a5f8b2a79bfd4a71e",
+          "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+          "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+          "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+          "src/adapters/opencode-v1/adapter.ts": "642ce987bf5de829a5dd8ecae1de4fbf50ace7b4f3b2696c4dd693042eaf593c",
+          "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+          "scripts/sidebar-attention-probe.ts": "88a885e96cfba11d83d61ac9ad94ecfbf2064059676c09c436001f463ceffea6",
+          "scripts/smoke-sidebar-attention.ts": "b18a1734f8c264691484f008401a827e691c60280d942a59c42df8794003f7b6",
+          "dist/tui.js": "ccdaf35ffc5a8fbf3b29b5a95513c6953d4472448b3632f9d8b819746819b0a6",
+          "runtimePlugin": "ccdaf35ffc5a8fbf3b29b5a95513c6953d4472448b3632f9d8b819746819b0a6"
+        },
+        "receipt": "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions. The uncommitted source hashes identify this validation build."
+      },
+      "scope": "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
+      "checks": [
+        "Marked pinned parent retains completion while displaying child busy/question.",
+        "Mouse and keyboard line-two live-subagent disclosure expands and collapses native child rows above the parent's line-three context; deduplicated pinned parent retains its mark and success title color.",
+        "Active parent completion remains below both expanded live children and expanded R/B/W context.",
+        "Collapsed Pinned sessions retains busy/question summary.",
+        "Native recoverable 429 renders a warning retry glyph; terminal 400 renders an error glyph after host idle, independently of completion.",
+        "From a separate idle session route, narrow 88x24 browse retains completion and question footer; session menu retains busy/question labels.",
+        "Question reply transitions to native permission with mark and collapsed summary retained.",
+        "Permission reply clears attention and busy labels without clearing completion.",
+        "Settled children disappear from the live count and disclosure; their terminal error remains discoverable on the parent's status and group summary."
+      ],
+      "providerRequests": 5,
+      "captures": [
+        {
+          "name": "marked-parent-native-retry",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "marked-parent-second-line-question",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "unicode-marked-parent-second-line-question",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "marked-parent-expanded-child-question",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "active-parent-children-context-completion-order",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "marked-parent-collapsed-question",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "narrow-marked-parent-question",
+          "width": 88,
+          "height": 24
+        },
+        {
+          "name": "marked-parent-collapsed-permission",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "marked-parent-settled-no-live-subagents",
+          "width": 140,
+          "height": 40
+        },
+        {
+          "name": "marked-parent-final-error",
+          "width": 140,
+          "height": 40
+        }
+      ],
+      "limitations": [
+        "No external provider or model inference; native host tool handling receives synthetic loopback completion chunks.",
+        "No remote disconnect, cross-platform render, or performance claim from this focused smoke."
+      ]
+    }
+  }
+}

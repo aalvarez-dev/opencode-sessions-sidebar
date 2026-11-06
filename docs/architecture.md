@@ -120,8 +120,9 @@ security sandbox.
 
 The OpenCode event API carries host events, not arbitrary sidebar events. Keep the sidebar's
 extension contract explicit rather than assuming an undocumented global bus or a shared singleton
-across separately bundled packages. The loader and distribution mechanism for extensions remain
-future implementation work.
+across separately bundled packages. Explicit local-file manifests now provide the experimental
+[extension surface](extensions.md), with scope-bound commands and cleanup. Native execution
+correlation and the stable public contract remain future acceptance work.
 
 ## Local and remote operation
 

@@ -95,12 +95,14 @@ if (command === "fresh") {
     SIDEBAR_ATTENTION_REPORT: join(report, "attention.json"),
     SIDEBAR_SMOKE_FRAMES: join(report, "sidebar-frames.json"),
     SIDEBAR_ATTENTION_FRAMES: join(report, "attention-frames.json"),
+    SIDEBAR_PACKAGE_REPORT: join(report, "package.json"),
   };
   await mkdir(env.HOME!, { recursive: true });
   console.log(`Lab verification reports: ${report}`);
   await run([process.execPath, "run", "check"], env);
   await run([process.execPath, "run", "smoke:sidebar"], env);
   await run([process.execPath, "run", "smoke:sidebar:attention"], env);
+  await run([process.execPath, "run", "smoke:package"], env);
   console.log(`Lab verification passed. Reports: ${report}`);
   console.log(
     "This checks the stock host in a PTY; manually check the browser terminal separately.",

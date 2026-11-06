@@ -97,7 +97,9 @@ optional and must not silently change these defaults.
 
 Domain events belong to this plugin. They must not be presented as arbitrary events that OpenCode's
 own typed event bus accepts. The adapter translates supported host events into domain inputs;
-extensions subscribe through the plugin API.
+extensions subscribe through the plugin API. The implemented experimental subset is documented in
+[extensions](extensions.md); the broader families below remain proposed unless explicitly
+implemented.
 
 The proposed versioned envelope contains:
 

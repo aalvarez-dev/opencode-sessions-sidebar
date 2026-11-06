@@ -56,6 +56,9 @@ type Snapshot = {
 };
 const frames: { name: string; frame: Snapshot["frame"] }[] = [];
 const repository = resolve(import.meta.dir, "..");
+const plugin = await realpath(
+  process.env.SIDEBAR_PLUGIN_FILE ?? resolve(repository, "dist/tui.js"),
+);
 async function artifactHashes() {
   const paths = [
     "src/tui.tsx",
@@ -63,6 +66,10 @@ async function artifactHashes() {
     "src/ui/model.ts",
     "src/ui/view.tsx",
     "src/ui/motion.ts",
+    "src/ui/icons.ts",
+    "src/extensions/runtime.ts",
+    "src/extensions/types.ts",
+    "src/adapters/opencode-v1/completion-capabilities.ts",
     "src/adapters/opencode-v1/adapter.ts",
     "src/adapters/opencode-v1/types.ts",
     "scripts/sidebar-attention-probe.ts",
@@ -70,14 +77,18 @@ async function artifactHashes() {
     "dist/tui.js",
   ];
   return Object.fromEntries(
-    await Promise.all(
-      paths.map(async (path) => [
+    await Promise.all([
+      ...paths.map(async (path) => [
         path,
         createHash("sha256")
           .update(await readFile(join(repository, path)))
           .digest("hex"),
       ]),
-    ),
+      readFile(plugin).then((bytes) => [
+        "runtimePlugin",
+        createHash("sha256").update(bytes).digest("hex"),
+      ]),
+    ]),
   );
 }
 
@@ -428,7 +439,6 @@ try {
   });
   assert(built.success && built.outputs[0]);
   await Bun.write(observer, built.outputs[0]);
-  const plugin = resolve(import.meta.dir, "../dist/tui.js");
   assert(await Bun.file(plugin).exists(), "Build the TUI entrypoint before this smoke.");
   await writeFile(
     join(config, "opencode", "tui.json"),
@@ -794,6 +804,9 @@ try {
     runtime: { opencode: expectedVersion, platform: process.platform, bun: Bun.version },
     artifact: {
       baseGitRevision,
+      pluginSource: process.env.SIDEBAR_PLUGIN_FILE
+        ? "external packaged artifact"
+        : "local development build",
       sha256: measuredHashes,
       receipt:
         "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions. The uncommitted source hashes identify this validation build.",

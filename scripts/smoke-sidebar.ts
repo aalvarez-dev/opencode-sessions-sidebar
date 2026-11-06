@@ -11,12 +11,17 @@ const binary = process.env.OPENCODE_BIN;
 assert(binary, "Set OPENCODE_BIN to stock OpenCode 1.18.30.");
 assert(process.platform !== "win32", "The rendered stock TUI smoke requires a POSIX PTY.");
 const executable = await realpath(binary);
+const plugin = await realpath(
+  process.env.SIDEBAR_PLUGIN_FILE ?? resolve(import.meta.dir, "../dist/tui.js"),
+);
 const root = await mkdtemp(join(tmpdir(), "sidebar-ui-smoke-"));
 const project = join(root, "project");
 const repositoryDirectory = join(root, "main-repository");
 const config = join(root, "config");
 const storage = join(root, "sidebar-state");
 const exchange = join(root, "exchange");
+const extensionOutput = join(root, "extension-report.json");
+const extensionEvents = join(root, "extension-events.jsonl");
 const lifetime = new AbortController();
 let child: ReturnType<typeof Bun.spawn> | undefined;
 let requestId = 0;
@@ -37,6 +42,7 @@ type Geometry = {
   width: number;
   height: number;
   visible: boolean;
+  text?: string;
 };
 type Snapshot = {
   version: string;
@@ -74,6 +80,10 @@ const sourceFiles = [
   "src/ui/model.ts",
   "src/ui/view.tsx",
   "src/ui/motion.ts",
+  "src/ui/icons.ts",
+  "src/extensions/runtime.ts",
+  "src/extensions/types.ts",
+  "src/adapters/opencode-v1/completion-capabilities.ts",
   "src/adapters/opencode-v1/adapter.ts",
   "src/adapters/opencode-v1/types.ts",
   "scripts/build.ts",
@@ -83,14 +93,18 @@ const sourceFiles = [
 ];
 async function artifactHashes() {
   return Object.fromEntries(
-    await Promise.all(
-      sourceFiles.map(async (file) => [
+    await Promise.all([
+      ...sourceFiles.map(async (file) => [
         file,
         createHash("sha256")
           .update(await readFile(resolve(import.meta.dir, "..", file)))
           .digest("hex"),
       ]),
-    ),
+      readFile(plugin).then((bytes) => [
+        "runtimePlugin",
+        createHash("sha256").update(bytes).digest("hex"),
+      ]),
+    ]),
   );
 }
 
@@ -192,12 +206,16 @@ function dialogText(snapshot: Snapshot) {
     .map((line) => line.slice(0, snapshot.frame.width - 42))
     .join("\n");
 }
-async function until(check: (value: Snapshot) => boolean, description: string, budget = 5_000) {
+async function until(
+  check: (value: Snapshot) => boolean | Promise<boolean>,
+  description: string,
+  budget = 5_000,
+) {
   const started = performance.now();
   let last: Snapshot | undefined;
   do {
     last = await request<Snapshot>("snapshot");
-    if (check(last)) return last;
+    if (await check(last)) return last;
     await pause();
   } while (performance.now() - started < budget);
   throw new Error(`${description}\n${last ? text(last) : outputTail}`);
@@ -350,8 +368,45 @@ try {
   });
   assert(built.success && built.outputs[0], "Could not build the stock-TUI observer.");
   await Bun.write(observer, built.outputs[0]);
-  const plugin = resolve(import.meta.dir, "../dist/tui.js");
   assert(await Bun.file(plugin).exists(), "Build the sidebar TUI entrypoint before the smoke.");
+  const extension = join(root, "synthetic-extension.mjs");
+  await writeFile(
+    extension,
+    `
+import { appendFile, rename, writeFile } from "node:fs/promises";
+export default {
+  apiVersion: 1,
+  id: "synthetic-review",
+  actions: [{ id: "report", title: "Synthetic extension report", async run(context) {
+    const key = JSON.stringify([context.scope.hostId, context.scope.projectId, context.session.id]);
+    const result = await context.dispatch({ type: "set-pin", sessionId: context.session.id,
+      pinned: context.organization.pins.includes(key) });
+    await writeFile(${JSON.stringify(extensionOutput + ".tmp")}, JSON.stringify({
+      sessionId: context.session.id, revision: context.organization.revision, status: result.status
+    }));
+    await rename(${JSON.stringify(extensionOutput + ".tmp")}, ${JSON.stringify(extensionOutput)});
+  }}],
+  async onEvent(event) {
+    await appendFile(${JSON.stringify(extensionEvents)}, JSON.stringify({
+      id: event.id, type: event.type, origin: event.origin.type, revision: event.revision
+    }) + "\\n");
+  }
+};
+`,
+  );
+  const disabledExtension = join(root, "disabled-extension.mjs");
+  const disabledMarker = join(root, "disabled-imported");
+  await writeFile(
+    disabledExtension,
+    `import { writeFileSync } from "node:fs";
+writeFileSync(${JSON.stringify(disabledMarker)}, "unexpected");
+throw new Error("Disabled modules must never be imported");`,
+  );
+  const fixtureBuild = await Bun.build({ entrypoints: [extension], target: "bun", format: "esm" });
+  assert(
+    fixtureBuild.success,
+    "The synthetic extension fixture must parse before launching the native smoke.",
+  );
 
   async function launch(
     theme: "dark" | "light",
@@ -369,6 +424,10 @@ try {
               storageDirectory: storage,
               icons,
               density: "balanced",
+              extensions: [
+                { module: pathToFileURL(extension).href },
+                { module: pathToFileURL(disabledExtension).href, enabled: false },
+              ],
             },
           ],
           pathToFileURL(observer).href,
@@ -791,6 +850,132 @@ try {
   resize(140, 40);
   await until((snapshot) => snapshot.frame.width === 140, "Wide resize was not applied.");
 
+  const beforeExtension = (await request<Snapshot>("snapshot")).organization;
+  await request("command", { command: "sessions-sidebar.extension-status" });
+  await until(
+    (snapshot) =>
+      dialogText(snapshot).includes("synthetic-review") &&
+      dialogText(snapshot).includes("ready") &&
+      !dialogText(snapshot).includes("failed"),
+    "Synthetic extension must remain ready after manual organization events.",
+  );
+  await dismiss();
+  await browse("Synthetic Alpha");
+  await choose("Synthetic extension report");
+  await until(
+    async () => await Bun.file(extensionOutput).exists(),
+    "Local extension did not run from session actions.",
+  );
+  const extensionReport = JSON.parse(await readFile(extensionOutput, "utf8"));
+  assert.equal(extensionReport.status, "noop");
+  assert.equal(extensionReport.revision, beforeExtension?.revision);
+  assert.deepEqual((await request<Snapshot>("snapshot")).organization, beforeExtension);
+  await rm(extensionOutput);
+  input("\u0010");
+  await until(
+    (snapshot) => dialogText(snapshot).includes("Commands"),
+    "Extension palette missing.",
+  );
+  const extensionCommand = "Sessions sidebar: extension actions";
+  input(extensionCommand);
+  await until(
+    (snapshot) =>
+      dialogText(snapshot)
+        .split("\n")
+        .filter((line) => line.includes(extensionCommand)).length >= 2,
+    "Extension actions must be a reachable palette result.",
+  );
+  input("\r");
+  await until(
+    (snapshot) => dialogText(snapshot).includes("Synthetic extension report"),
+    "Extension palette action missing.",
+  );
+  await capture("wide-extension-actions", "dark", "ascii");
+  await choose("Synthetic extension report");
+  await until(
+    async () => await Bun.file(extensionOutput).exists(),
+    "Local extension did not run from palette.",
+  );
+  assert.equal(await Bun.file(disabledMarker).exists(), false);
+  const eventLines = (await readFile(extensionEvents, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  assert(eventLines.length > 0 && eventLines.every((event) => event.origin === "user"));
+  assert.equal(new Set(eventLines.map((event) => event.id)).size, eventLines.length);
+  checks.push(
+    "explicit local extension loads in stock host, receives committed user events once, runs guarded no-op actions from menu and palette, and disabled modules are never imported",
+  );
+
+  input("\u0010");
+  await until(
+    (snapshot) => dialogText(snapshot).includes("Commands"),
+    "Icon check palette missing.",
+  );
+  const iconCommand = "Sessions sidebar: check icons";
+  input(iconCommand);
+  await until(
+    (snapshot) =>
+      dialogText(snapshot)
+        .split("\n")
+        .filter((line) => line.includes(iconCommand)).length >= 2,
+    "Icon check must be a reachable palette result.",
+  );
+  input("\r");
+  await until(
+    (snapshot) => dialogText(snapshot).includes("Check sidebar icons"),
+    "Icon check did not open from the native palette.",
+  );
+  const wideIcons = await capture("wide-icon-check", "dark", "all three modes");
+  const wideIconViewport = node(wideIcons, "sidebar-icon-check-scroll");
+  assert(wideIconViewport && wideIconViewport.y + wideIconViewport.height < wideIcons.frame.height);
+  const wideIconFooter = wideIcons.geometry.find((entry) =>
+    entry.text?.includes("Up/Down or PgUp/PgDn or mouse wheel"),
+  );
+  assert(
+    wideIconFooter && wideIconFooter.y + wideIconFooter.height <= wideIcons.frame.height,
+    "Wide icon check must retain its wrapped footer inside the terminal.",
+  );
+  resize(88, 24);
+  const narrowIcons = await until(
+    (snapshot) => snapshot.frame.width === 88,
+    "Narrow icon check resize missing.",
+  );
+  assert(narrowIcons.dialogDepth > 0, "Icon check closed during terminal resize.");
+  const finalIconId = "sidebar-icon-check-checking-11";
+  for (let page = 0; page < 8; page++) {
+    const before = await request<Snapshot>("snapshot");
+    const viewport = node(before, "sidebar-icon-check-scroll");
+    const last = node(before, finalIconId);
+    assert(viewport && last, "Icon check controls must remain mounted while scrolling.");
+    if (last.y >= viewport.y && last.y + last.height <= viewport.y + viewport.height) break;
+    input("\u001b[6~");
+    await until(
+      (snapshot) => Boolean(node(snapshot, finalIconId) && node(snapshot, finalIconId)!.y < last.y),
+      "PgDn must advance the narrow icon check without closing it.",
+    );
+  }
+  await until(
+    (snapshot) => text(snapshot).includes("checking 12"),
+    "The final checking frame must remain reachable in the narrow icon check.",
+  );
+  await capture("narrow-icon-check-scrolled", "dark", "all three modes");
+  for (let page = 0; page < 4; page++) {
+    input("\u001b[6~");
+    await pause(30);
+  }
+  assert.equal(
+    (await request<Snapshot>("snapshot")).dialogDepth,
+    1,
+    "PgDn at the scroll boundary must not reach the underlying session.",
+  );
+  await dismiss();
+  resize(140, 40);
+  await until((snapshot) => snapshot.frame.width === 140, "Wide restore after icon check missing.");
+  checks.push(
+    "Check icons is reachable through real Ctrl+P and supports narrow scrolling and Esc; captured cells do not certify the client's font",
+  );
+
   const beforeLifecycle = (await request<Snapshot>("snapshot")).organization;
   input("\u0010");
   await until(
@@ -939,6 +1124,9 @@ try {
     },
     source: {
       baseCommit,
+      pluginSource: process.env.SIDEBAR_PLUGIN_FILE
+        ? "external packaged artifact"
+        : "local development build",
       sha256: measuredHashes,
       receipt:
         "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions.",

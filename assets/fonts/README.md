@@ -1,31 +1,35 @@
-# Optional terminal fonts
+# Portable terminal font bundle
 
-This directory contains a download manifest and unchanged upstream notices, not font binaries. The
-development helper downloads the four pinned styles only when explicitly requested; the sidebar,
-build, tests, and dependency installation do not download or install them.
+This directory contains a download manifest and unchanged upstream notices. The helper prepares the
+optional font bundle only when explicitly requested. Plugin activation, dependency installation,
+builds, and ordinary tests do not download or install fonts.
 
-- Family: **JetBrainsMono Nerd Font Mono** (legacy family name **JetBrainsMono NFM**).
-- Base font: JetBrains Mono **2.304**.
-- Patched release: Nerd Fonts **3.4.0**, commit `fa7b859994228a9c8759f99c55a8d31ee92a1b5e`.
-- Source:
-  [official pinned repository](https://github.com/ryanoasis/nerd-fonts/tree/fa7b859994228a9c8759f99c55a8d31ee92a1b5e/patched-fonts/JetBrainsMono).
-- Styles: Regular, Bold, Italic, and BoldItalic, all using the **Mono** variant.
-- Integrity: exact byte lengths and SHA-256 values in [manifest.json](manifest.json), calculated
-  from the official commit-addressed downloads. These are project integrity pins, not claims of an
-  independent upstream signature.
+- Family: **Iosevka Nerd Font Mono**, legacy family **Iosevka NFM**.
+- Base: Iosevka **33.2.1**; patched by Nerd Fonts **3.4.0**.
+- Pinned commit: `fa7b859994228a9c8759f99c55a8d31ee92a1b5e`.
+- [Official unchanged Regular TTF](https://github.com/ryanoasis/nerd-fonts/blob/fa7b859994228a9c8759f99c55a8d31ee92a1b5e/patched-fonts/Iosevka/IosevkaNerdFontMono-Regular.ttf).
+- Download size: **13,135,052 bytes**. Only the regular face is needed for current icon runs; the
+  terminal may synthesize other text styles.
+- Integrity: exact byte count and SHA-256 in [manifest.json](manifest.json). These are project pins,
+  not an upstream signature or a claim to track the newest font release.
 
-The manifest preserves each upstream path. Font bytes are not changed, subsetted, or renamed. The
-helper places these notices beside downloaded files:
+The shared icon catalog drives verification of the actual TTF's Unicode cmap and glyph advances. All
+current controls, status glyphs, animation frames, ASCII, and required punctuation are covered in
+this family. The previous optional JetBrains Mono profile lacked retry/Braille coverage; its
+existing notice files are retained, but it is no longer the recommended downloadable bundle. The
+original symbol codepoints are preserved; the selected font determines their outlines.
 
-- [JetBrains Mono OFL and copyright](licenses/JetBrainsMono-OFL.txt).
-- [JetBrains Mono authors](licenses/JetBrainsMono-AUTHORS.txt).
+Font bytes are not modified, subsetted, or renamed. The prepared bundle preserves these notices:
+
+- [Iosevka OFL/copyright](licenses/Iosevka-LICENSE.txt).
 - [Nerd Fonts licensing and attribution](licenses/NerdFonts-LICENSE.txt).
 
-The fonts retain their own licenses; the sidebar's MIT license does not replace them. Preserve the
-notices and embedded font metadata when redistributing prepared files. See the upstream
+The font's licenses remain separate from the sidebar's MIT license. Preserve the notices and
+embedded metadata when transferring or redistributing the bundle. See the upstream
 [license audit](https://github.com/ryanoasis/nerd-fonts/blob/fa7b859994228a9c8759f99c55a8d31ee92a1b5e/license-audit.md)
-for the included glyph sources.
+for included symbol sources.
 
-Use [the terminal setup guide](../../docs/terminal-fonts.md) for preparation and selection. This
-deliberate version pin is not a claim to follow the newest Nerd Fonts release. A future update must
-review source/license changes, regenerate hashes from official files, and verify glyph coverage.
+See [terminal font setup](../../docs/terminal-fonts.md) for explicit preparation, offline
+verification, current-user placement on Ubuntu/macOS, terminal configuration, and the visual check.
+Font coverage is evidence about the file; it does not prove which font a native or remote terminal
+is displaying.

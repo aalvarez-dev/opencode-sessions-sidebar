@@ -11,7 +11,9 @@ for (const [source, destination, target, naming] of [
   ["../src/index.ts", "../dist/", "browser", "index.js"],
   ["../src/adapters/opencode-v1/index.ts", "../dist/adapters/opencode-v1/", "browser", "index.js"],
   ["../src/organization/index.ts", "../dist/organization/", "browser", "index.js"],
+  ["../src/extensions/index.ts", "../dist/extensions/", "node", "index.js"],
   ["../src/storage/file.ts", "../dist/storage/", "node", "file.js"],
+  ["../scripts/prepare-fonts.ts", "../dist/", "bun", "prepare-fonts.js"],
 ] as const) {
   const result = await Bun.build({
     entrypoints: [fileURLToPath(new URL(source, import.meta.url))],

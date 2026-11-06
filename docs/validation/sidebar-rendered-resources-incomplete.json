@@ -1,0 +1,224 @@
+{
+  "schema": 1,
+  "passed": false,
+  "budgets": {
+    "medianRssDeltaMiB": 64,
+    "medianCpuDeltaPoints": 1
+  },
+  "measurements": [
+    {
+      "sessions": 25,
+      "repetition": 1,
+      "enabled": false,
+      "bootToRenderedReadyMs": 3155.7337569999995,
+      "observationMs": 5003.21166,
+      "cpuPercent": 2.7982026249115357,
+      "rssStartMiB": 650.46875,
+      "rssEndMiB": 649.08203125,
+      "mainThreadContextSwitches": 95,
+      "probe": {
+        "passed": true,
+        "initialFrame": {
+          "sidebarVisible": false,
+          "selectedSession": true,
+          "width": 140,
+          "height": 40
+        },
+        "lifecycle": []
+      }
+    },
+    {
+      "sessions": 25,
+      "repetition": 1,
+      "enabled": true,
+      "bootToRenderedReadyMs": 3539.669361999997,
+      "observationMs": 5003.1769330000025,
+      "cpuPercent": 2.3984760404634673,
+      "rssStartMiB": 669.78125,
+      "rssEndMiB": 668.84375,
+      "mainThreadContextSwitches": 111,
+      "probe": {
+        "passed": true,
+        "initialFrame": {
+          "sidebarVisible": true,
+          "selectedSession": true,
+          "width": 140,
+          "height": 40
+        },
+        "lifecycle": [
+          {
+            "deactivated": true,
+            "reactivated": true,
+            "activationMs": 55.34598800000094
+          },
+          {
+            "deactivated": true,
+            "reactivated": true,
+            "activationMs": 76.25112900000022
+          }
+        ]
+      }
+    },
+    {
+      "sessions": 25,
+      "repetition": 2,
+      "enabled": true,
+      "bootToRenderedReadyMs": 3369.8750550000004,
+      "observationMs": 5004.368991000003,
+      "cpuPercent": 2.3979047151761064,
+      "rssStartMiB": 662.92578125,
+      "rssEndMiB": 662.48046875,
+      "mainThreadContextSwitches": 144,
+      "probe": {
+        "passed": true,
+        "initialFrame": {
+          "sidebarVisible": true,
+          "selectedSession": true,
+          "width": 140,
+          "height": 40
+        },
+        "lifecycle": [
+          {
+            "deactivated": true,
+            "reactivated": true,
+            "activationMs": 50.94966399999976
+          },
+          {
+            "deactivated": true,
+            "reactivated": true,
+            "activationMs": 66.8649209999985
+          }
+        ]
+      }
+    },
+    {
+      "sessions": 25,
+      "repetition": 2,
+      "enabled": false,
+      "bootToRenderedReadyMs": 3214.515127999999,
+      "observationMs": 5002.221273000003,
+      "cpuPercent": 2.598845450953723,
+      "rssStartMiB": 652.6875,
+      "rssEndMiB": 648,
+      "mainThreadContextSwitches": 516,
+      "probe": {
+        "passed": true,
+        "initialFrame": {
+          "sidebarVisible": false,
+          "selectedSession": true,
+          "width": 140,
+          "height": 40
+        },
+        "lifecycle": []
+      }
+    },
+    {
+      "sessions": 25,
+      "repetition": 3,
+      "enabled": false,
+      "bootToRenderedReadyMs": 3443.6619329999958,
+      "observationMs": 5002.215821000005,
+      "cpuPercent": 2.1990254706365233,
+      "rssStartMiB": 608.45703125,
+      "rssEndMiB": 606.625,
+      "mainThreadContextSwitches": 127,
+      "probe": {
+        "passed": true,
+        "initialFrame": {
+          "sidebarVisible": false,
+          "selectedSession": true,
+          "width": 140,
+          "height": 40
+        },
+        "lifecycle": []
+      }
+    },
+    {
+      "sessions": 25,
+      "repetition": 3,
+      "enabled": true,
+      "bootToRenderedReadyMs": 3271.441412,
+      "observationMs": 5002.0523539999995,
+      "cpuPercent": 2.1990973347577243,
+      "rssStartMiB": 681.4453125,
+      "rssEndMiB": 680.11328125,
+      "mainThreadContextSwitches": 132,
+      "probe": {
+        "passed": true,
+        "initialFrame": {
+          "sidebarVisible": true,
+          "selectedSession": true,
+          "width": 140,
+          "height": 40
+        },
+        "lifecycle": [
+          {
+            "deactivated": true,
+            "reactivated": true,
+            "activationMs": 95.30951199999981
+          },
+          {
+            "deactivated": true,
+            "reactivated": true,
+            "activationMs": 78.66467399999965
+          }
+        ]
+      }
+    }
+  ],
+  "source": {
+    "baseCommit": "16ffcf03bf59da6144df09c80c5f9f2b34dabb1e",
+    "sha256": {
+      "scripts/benchmark-sidebar-runtime.ts": "45ba48391cf757dbfa75d29cd3d9fb05929aec9215dbabdc4fbdf443331c196b",
+      "scripts/sidebar-resource-probe.ts": "858147853ae42aea17abf28ce83dd961e8eb4f30cabf3116cdaf388d61fffb58",
+      "src/adapters/opencode-v1/adapter.ts": "642ce987bf5de829a5dd8ecae1de4fbf50ace7b4f3b2696c4dd693042eaf593c",
+      "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+      "src/adapters/opencode-v1/index.ts": "f7601a77ce21f9907b7b0c2877c82d7cd3b48d3c6497b344b1c1788433291731",
+      "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+      "src/core/completion.ts": "12ef8ad644e12bcb18ccf5b9b94ed1097e92c3ac7eff24df7a997a8ef58bb9bf",
+      "src/core/index.ts": "c4d060233c52bda5ce64b54220a4781af8b7b00f7e29baed2e6d62d2316ec126",
+      "src/core/queue.ts": "0dc2d974c9e316bd8524a5881929126f5c66a994008e1581178cc318b5f5eb7d",
+      "src/core/types.ts": "9737b77b0d129d956e0f84d0d137c78fe74a086b88ca0b0dddc303326561efd9",
+      "src/extensions/index.ts": "84baa6fed43c8f29f2da276ca34998fe5feb7930fcf017ea3796ba88cb82da51",
+      "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+      "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+      "src/index.ts": "b01988a714da27b4a7de7586531ac9260ae04d35d9a9976df6f4c9ec7fa07cca",
+      "src/organization/index.ts": "34fcbcac941e36707c96f887747dfb24b91975ae5ce32d60878646829320a860",
+      "src/organization/schema.ts": "241b7dd9d20299a0f4791b8d03dfbb6b25adb6a7dc38cf3f818b0d35fb2e43d2",
+      "src/organization/service.ts": "2cc872a629a0857cc888c3b9a77399657f59a73e9ddc23b3b55c6f2d0ca95e82",
+      "src/organization/types.ts": "665ba1323f8e459a6ba528db1620eeeec22d238da25e80408d8ff2fe0c9c4e64",
+      "src/storage/file.ts": "43fd7cbd02dfde55acc40c9b3f5530a68acea93c59b2c9a954c8b52c5d27d099",
+      "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+      "src/ui/controller.ts": "1c2929ad895638d6317a0b79c7e2b0ceb251577c656d5d4df70ca1a0e5f14148",
+      "src/ui/icons.ts": "282462844fba21031e03edd2160d903e85d92e661a9aa57a5f8b2a79bfd4a71e",
+      "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+      "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+      "src/ui/view.tsx": "d197515986ffe02e250a26509d9eb4ef22e3874cc32c2ce0d0296fba1f0db856",
+      "runtimePlugin": "ccdaf35ffc5a8fbf3b29b5a95513c6953d4472448b3632f9d8b819746819b0a6"
+    },
+    "pluginSource": "local build"
+  },
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "kernel": "6.18.57",
+    "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+    "visibleLogicalCpus": 9,
+    "visibleMemoryGiB": 9.733650207519531,
+    "bun": "1.3.14",
+    "opencode": "1.18.30",
+    "terminal": "Bun POSIX PTY, xterm-256color, 140x40",
+    "sizes": [25, 250],
+    "repetitions": 3,
+    "settleMs": 2000,
+    "observationMs": 5000,
+    "clockTicks": 100,
+    "pageSize": 4096,
+    "icons": "ascii",
+    "density": "balanced",
+    "reducedMotion": false,
+    "extensions": [],
+    "cache": "Fresh copied data, per-treatment cache; warm OS filesystem cache is not flushed."
+  },
+  "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n100 !== 250\n"
+}

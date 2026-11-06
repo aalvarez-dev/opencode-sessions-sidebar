@@ -5,8 +5,8 @@ on:
     paths:
       - ".devcontainer/**"
       - ".github/workflows/codespaces-lab.yml"
-      - "scripts/codespaces-lab.ts"
-      - "scripts/*sidebar*"
+      - "scripts/**"
+      - "assets/fonts/**"
       - "src/**"
       - "test/**"
       - "package.json"
@@ -49,6 +49,7 @@ jobs:
             .sidebar-lab/reports/*/attention.json
             .sidebar-lab/reports/*/sidebar-frames.json
             .sidebar-lab/reports/*/attention-frames.json
+            .sidebar-lab/reports/*/package.json
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 7

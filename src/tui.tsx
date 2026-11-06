@@ -44,6 +44,27 @@ function activateSidebar(api: TuiPluginApi, options: SidebarOptions): void {
           category: "Sessions sidebar",
           run: actions.settings,
         },
+        {
+          name: "sessions-sidebar.check-icons",
+          title: "Sessions sidebar: check icons",
+          namespace: "palette",
+          category: "Sessions sidebar",
+          run: actions.checkIcons,
+        },
+        {
+          name: "sessions-sidebar.extensions",
+          title: "Sessions sidebar: extension actions",
+          namespace: "palette",
+          category: "Sessions sidebar",
+          run: actions.extensions,
+        },
+        {
+          name: "sessions-sidebar.extension-status",
+          title: "Sessions sidebar: extension status",
+          namespace: "palette",
+          category: "Sessions sidebar",
+          run: actions.extensionStatus,
+        },
       ],
     });
     api.slots.register({

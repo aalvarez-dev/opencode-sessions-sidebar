@@ -27,7 +27,9 @@ review adds regression-covered snapshot reconciliation, linear fallback summarie
 and strict display-option validation, with fresh stock-host smoke receipts in that document. The
 October 28 presentation correction removes the active row's redundant ellipsis while keeping its
 direct completion action, with stock-host navigation and action checks recorded there. Stages 5–6
-remain planned. Publishing a package or release is a separate action after the gates pass.
+are in progress: explicit local extensions and clean package validation are implemented, while the
+execution-correlated policy/report gate and final release acceptance remain open. Publishing a
+package or release is a separate action after the gates pass.
 
 The [Codespaces lab](codespaces-lab.md) adds reproducible preparation for an isolated
 browser-terminal trial with the pinned V1 host, separate scratch profiles, and the existing
@@ -36,9 +38,23 @@ remain pending; this preparation does not close remote-host or packaged-release 
 The clean interactive trial also exposed a command-palette visibility defect: sidebar commands now
 remain reachable while the host palette is open, with a real Ctrl+P/filter/Enter runtime regression.
 
-The optional [terminal font setup](terminal-fonts.md) pins one licensed mono family for consistent
-text and private-use glyph selection. Native font rendering across macOS/Ghostty and Windows
-Terminal remains a release check; the plugin does not install fonts or change terminal settings.
+The [terminal font setup](terminal-fonts.md) now verifies the centralized icon catalog, including
+every animation frame, against a pinned complete family. Explicit current-user font placement
+supports Ubuntu/Linux and macOS, with a dry-run default and separate terminal selection. Activation
+performs none of those changes. **Check icons** exposes a scrollable visual proof; native client
+rendering still needs verification in each declared terminal configuration.
+
+The [extension surface](extensions.md) adds opt-in local-file modules, session menu/palette actions,
+guarded organization commands, isolated event listeners, and scope/lifecycle revocation. It remains
+experimental. The [execution-correlation audit](execution-correlation.md) documents why automatic
+and custom policies cannot yet be connected safely to the pinned host; requested unsupported modes
+are rejected explicitly rather than silently running as manual.
+
+[Fresh package validation](release.md) verifies an offline consumer and can repeat the native probes
+against the installed artifact. The [rendered resource comparison](sidebar-resource-benchmark.md)
+adds predeclared paired CPU/RSS budgets for the complete sidebar. These bounded checks supplement
+the existing input, attention, and component tests; they do not establish untested client rendering,
+remote disconnect behavior, or a compatibility range.
 
 The [performance requirements](performance.md) apply across these stages: no blocking render-path
 I/O, event-driven updates, minimal idle work, bounded resources, and explicit integrations. The

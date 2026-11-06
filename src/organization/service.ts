@@ -709,7 +709,7 @@ export function createOrganizationService(options: OrganizationServiceOptions) {
     start,
     refresh,
     migrate,
-    dispatch: (command: OrganizationCommand) => dispatch(command),
+    dispatch: (command: OrganizationCommand, signal?: AbortSignal) => dispatch(command, signal),
     snapshot,
     subscribe,
     dispose,
