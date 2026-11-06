@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createExtensionRuntime, parseExtensionConfigs } from "../src/extensions";
 import type { ExtensionContext, SidebarExtension } from "../src/extensions";
@@ -9,7 +9,9 @@ import { createOrganizationService } from "../src/organization";
 import type { OrganizationDocument, OrganizationResult, StoragePort } from "../src/organization";
 
 const scope = { hostId: "synthetic-host", projectId: "synthetic-project" };
-const moduleURL = "file:///synthetic/extension.mjs";
+const syntheticModuleURL = (name: string) =>
+  pathToFileURL(resolve(tmpdir(), "sidebar-extension-synthetic", name)).href;
+const moduleURL = syntheticModuleURL("extension.mjs");
 const session = {
   id: "one",
   title: "Synthetic session",
@@ -150,21 +152,23 @@ export default {
       "npm:example",
       "https://example.invalid/module.js",
       "file://host/one.js",
-      "file:///one.ts",
-      "file:///one.js?q=1",
+      syntheticModuleURL("one.ts"),
+      `${syntheticModuleURL("one.js")}?q=1`,
     ])
       expect(() => parseExtensionConfigs([{ module }])).toThrow();
     expect(() => parseExtensionConfigs([{ module: moduleURL, enabled: "false" }])).toThrow();
     expect(() => parseExtensionConfigs([{ module: moduleURL }, { module: moduleURL }])).toThrow();
     expect(() =>
-      parseExtensionConfigs(Array.from({ length: 9 }, (_, i) => ({ module: `file:///${i}.mjs` }))),
+      parseExtensionConfigs(
+        Array.from({ length: 9 }, (_, i) => ({ module: syntheticModuleURL(`${i}.mjs`) })),
+      ),
     ).toThrow();
   });
   test("disabled modules are not imported; broken and duplicate manifests stay isolated", async () => {
     const imported: string[] = [];
     const runtime = createExtensionRuntime({
       configs: ["disabled", "good", "duplicate", "bad"].map((id) => ({
-        module: `file:///${id}.mjs`,
+        module: syntheticModuleURL(`${id}.mjs`),
         enabled: id !== "disabled",
       })),
       changed() {},
