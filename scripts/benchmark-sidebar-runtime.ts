@@ -1,7 +1,17 @@
 /** Paired stock-TUI process comparison with the actual rendered sidebar, no inference. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { cpus, release, tmpdir, totalmem } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -16,10 +26,11 @@ const repository = resolve(import.meta.dir, "..");
 const plugin = await realpath(process.env.SIDEBAR_PLUGIN_FILE ?? join(repository, "dist/tui.js"));
 // Fixed before measurement; independent of the narrower headless and navigation budgets.
 const budgets = { medianRssDeltaMiB: 64, medianCpuDeltaPoints: 1 };
-const sizes = [25, 250];
-const repetitions = 3;
+const diagnostic = process.env.SIDEBAR_RESOURCE_DIAGNOSTIC === "true";
+const sizes = diagnostic ? [250] : [25, 250];
+const repetitions = diagnostic ? 1 : 3;
 const settleMs = 2_000;
-const observationMs = 5_000;
+const observationMs = diagnostic ? 30_000 : 5_000;
 const root = await mkdtemp(join(tmpdir(), "sidebar-rendered-resources-"));
 const project = join(root, "project");
 const seedConfig = join(root, "seed-config");
@@ -135,13 +146,28 @@ interface Measurement {
   rssStartMiB: number;
   rssEndMiB: number;
   mainThreadContextSwitches: number;
+  readyToObservationMs: number;
+  trace?: {
+    elapsedMs: number;
+    intervalMs: number;
+    cpuPercent: number | null;
+    rssMiB: number;
+    mainThreadContextSwitches: number;
+  }[];
   probe: ResourceProbeResult;
 }
 
 const measurements: Measurement[] = [];
 const median = (values: number[]) =>
   [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]!;
-const report: Record<string, unknown> = { schema: 1, passed: false, budgets, measurements };
+const report: Record<string, unknown> = {
+  schema: 2,
+  kind: diagnostic ? "diagnostic-time-series" : "acceptance-comparison",
+  acceptanceEvaluated: !diagnostic,
+  ...(diagnostic ? {} : { passed: false }),
+  budgets,
+  measurements,
+};
 const hostConfig = JSON.stringify({ autoupdate: false, share: "disabled", enabled_providers: [] });
 
 try {
@@ -198,6 +224,8 @@ try {
     repetitions,
     settleMs,
     observationMs,
+    measurementProtocol: "finish-receipt-v1",
+    diagnosticIntervalMs: diagnostic ? 1_000 : null,
     clockTicks,
     pageSize,
     icons: "ascii",
@@ -317,21 +345,57 @@ try {
           return Bun.file(`${output}.ready`).exists();
         }, `TUI did not become ready (${label}).`);
         const bootToRenderedReadyMs = performance.now() - boot;
+        const readyReceivedAt = performance.now();
         const ready = (await Bun.file(`${output}.ready`).json()) as {
           pid: number;
           procPid: number;
+          measurementProtocol: string;
         };
         assert.equal(ready.pid, tui.pid);
+        assert.equal(ready.measurementProtocol, "finish-receipt-v1");
         await Bun.sleep(settleMs);
         const started = performance.now();
         const before = await sample(ready.procPid, pageSize);
-        await Bun.sleep(observationMs);
-        const after = await sample(ready.procPid, pageSize);
+        let after = before;
+        const trace: NonNullable<Measurement["trace"]> = [];
+        if (diagnostic) {
+          let previous = before;
+          let previousAt = performance.now();
+          trace.push({
+            elapsedMs: previousAt - started,
+            intervalMs: 0,
+            cpuPercent: null,
+            rssMiB: before.rssMiB,
+            mainThreadContextSwitches: 0,
+          });
+          for (let index = 0; index < 30; index++) {
+            lifetime.signal.throwIfAborted();
+            await Bun.sleep(1_000);
+            after = await sample(ready.procPid, pageSize);
+            const now = performance.now();
+            const intervalMs = now - previousAt;
+            trace.push({
+              elapsedMs: now - started,
+              intervalMs,
+              cpuPercent: (((after.ticks - previous.ticks) / clockTicks) * 100_000) / intervalMs,
+              rssMiB: after.rssMiB,
+              mainThreadContextSwitches: after.switches - previous.switches,
+            });
+            previous = after;
+            previousAt = now;
+          }
+        } else {
+          await Bun.sleep(observationMs);
+          after = await sample(ready.procPid, pageSize);
+        }
         const actualMs = performance.now() - started;
         assert(
-          !(await Bun.file(output).exists()),
+          !(await Bun.file(`${output}.lifecycle-started`).exists()) &&
+            !(await Bun.file(output).exists()),
           "Lifecycle work overlapped the idle sample; discard run.",
         );
+        await writeFile(`${output}.measurement-finished.tmp`, "measurement-complete\n");
+        await rename(`${output}.measurement-finished.tmp`, `${output}.measurement-finished`);
         await until(
           async () => {
             assert(tui.exitCode === null, "TUI exited before lifecycle checks.");
@@ -342,6 +406,10 @@ try {
         );
         const probe = (await Bun.file(output).json()) as ResourceProbeResult;
         assert(probe.passed, probe.message ?? "Resource observer failed.");
+        assert(
+          probe.measurementAcknowledged,
+          "Observer did not acknowledge measurement completion.",
+        );
         const measurement: Measurement = {
           sessions: size,
           repetition,
@@ -352,6 +420,8 @@ try {
           rssStartMiB: before.rssMiB,
           rssEndMiB: after.rssMiB,
           mainThreadContextSwitches: after.switches - before.switches,
+          readyToObservationMs: started - readyReceivedAt,
+          ...(diagnostic ? { trace } : {}),
           probe,
         };
         measurements.push(measurement);
@@ -388,22 +458,31 @@ try {
       deltas,
       medianRssDeltaMiB,
       medianCpuDeltaPoints,
-      passed:
-        medianRssDeltaMiB <= budgets.medianRssDeltaMiB &&
-        medianCpuDeltaPoints <= budgets.medianCpuDeltaPoints,
+      ...(diagnostic
+        ? {}
+        : {
+            passed:
+              medianRssDeltaMiB <= budgets.medianRssDeltaMiB &&
+              medianCpuDeltaPoints <= budgets.medianCpuDeltaPoints,
+          }),
     };
   });
   report.results = results;
-  report.passed = results.every((result) => result.passed);
+  if (!diagnostic) report.passed = results.every((result) => result.passed);
+  report.completed = true;
   report.limitations = [
-    "Three pairs per size on shared hardware; no confidence interval or long-running stability guarantee.",
+    diagnostic
+      ? "Diagnostic only: one baseline/enabled pair at 250 sessions with per-second traces; no acceptance budgets evaluated or stabilization claimed."
+      : "Three pairs per size on shared hardware; no confidence interval or long-running stability guarantee.",
+    "The fixed two-second settle is not proof of steady state; examine resident-memory drift and CPU activity before interpreting idle overhead.",
     "TUI-process RSS and aggregate-thread CPU only; excludes subprocesses, GPU and browser/client terminal.",
     "Main-thread context switches are not timer/wakeup counts; lifecycle visibility does not prove zero retained heap/subscriptions.",
     "Idle synthetic sessions, no prompts or external inference; no event-burst, native font, remote transport or packaged-install claim.",
     "The existing 250ms navigation and 500ms component budgets remain independent and unchanged.",
   ];
-  console.log(JSON.stringify({ results, passed: report.passed }));
-  assert(report.passed, "Predeclared rendered-sidebar idle resource budgets did not all pass.");
+  console.log(JSON.stringify({ kind: report.kind, results, passed: report.passed }));
+  if (!diagnostic)
+    assert(report.passed, "Predeclared rendered-sidebar idle resource budgets did not all pass.");
 } catch (error) {
   report.failure = error instanceof Error ? error.message : String(error);
   throw error;

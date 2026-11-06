@@ -58,5 +58,12 @@ reports and PNGs together. Artifact titles distinguish graphical pixels, transpo
 measurements, and the macOS capability pilot. Final acceptance must list failed or blocked gates
 alongside successful checks.
 
+The resource observer waits for an explicit measurement-finished receipt before starting lifecycle
+checks. A separately labelled `SIDEBAR_RESOURCE_DIAGNOSTIC=true` mode records thirty one-second
+intervals for one baseline/enabled pair at 250 sessions. It is a stability diagnostic, not a new
+acceptance window or a replacement for a failed budget result. The first hosted run exposed large
+RSS changes within the short window; retain that failed receipt rather than interpreting a later
+trace as a retroactive pass.
+
 This document describes the campaign. Run-specific outcomes are recorded separately after the
 workflow finishes and the screenshots have been reviewed.

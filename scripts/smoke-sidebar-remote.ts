@@ -132,6 +132,15 @@ function node(snapshot: Snapshot, id: string) {
 function status(snapshot: Snapshot, sessionId: string) {
   return node(snapshot, `sidebar-session-${sessionId}-status`)?.text?.trim();
 }
+function sidebarRowText(snapshot: Snapshot, sessionId: string) {
+  const statusNode = node(snapshot, `sidebar-session-${sessionId}-status`);
+  if (!statusNode || statusNode.y < 0 || statusNode.y >= snapshot.frame.height) return "";
+  // The native header may keep a cached title independently of sidebar reconciliation.
+  // Inspect this session's actual sidebar row, not any matching text in the terminal.
+  return snapshot.frame.lines[statusNode.y]!.map((span) => span.text)
+    .join("")
+    .slice(statusNode.x);
+}
 async function pause(ms = 25) {
   controller.signal.throwIfAborted();
   await Bun.sleep(ms);
@@ -431,6 +440,10 @@ try {
         "Native onboarding did not close.",
       );
     }
+    await until(
+      (snapshot) => snapshot.route.params?.sessionID === alphaId,
+      "Native onboarding dismissal changed the attached session selection.",
+    );
   }
   await launch();
   await until(
@@ -451,6 +464,11 @@ try {
     "Annotations were not committed through real TUI keyboard actions.",
   );
   const beforeOrganization = organized.organization!;
+  assert.equal(
+    organized.route.params?.sessionID,
+    alphaId,
+    "Mark, pin and Later must preserve the selected attached session.",
+  );
   record("mark, pin and Later persist through real attached TUI actions", true);
   await capture("remote-before-cut");
 
@@ -479,9 +497,9 @@ try {
   );
   record(
     "offline server changes do not leak through the severed client transport",
-    text(disconnected).includes("Remote Alpha") &&
-      !text(disconnected).includes("changed offline") &&
-      !text(disconnected).includes("Remote Gamma"),
+    sidebarRowText(disconnected, alphaId).includes("Remote Alpha") &&
+      !sidebarRowText(disconnected, alphaId).includes("changed offline") &&
+      !node(disconnected, `sidebar-session-${gamma.data.id}-status`),
   );
   record(
     "annotations are preserved during loss of transport",
@@ -491,12 +509,16 @@ try {
   online = true;
   const restored = performance.now();
   let recovered: Snapshot | undefined;
+  function reconciled(snapshot: Snapshot) {
+    return (
+      sidebarRowText(snapshot, alphaId).includes("Remote Alpha changed offline") &&
+      sidebarRowText(snapshot, gamma.data!.id).includes("Remote Gamma created offline") &&
+      !node(snapshot, `sidebar-session-${betaId}-status`)
+    );
+  }
   try {
     recovered = await until(
-      (snapshot) =>
-        text(snapshot).includes("Remote Alpha changed offline") &&
-        text(snapshot).includes("Remote Gamma created offline") &&
-        !text(snapshot).includes("Remote Beta"),
+      reconciled,
       "Native reconnect did not reconcile renamed, created and deleted sessions.",
       budgets.reconnectMs,
     );
@@ -524,14 +546,7 @@ try {
   );
   if (!recovered) {
     await request("command", { command: "sessions-sidebar.refresh" });
-    await until(
-      (snapshot) =>
-        text(snapshot).includes("Remote Alpha changed offline") &&
-        text(snapshot).includes("Remote Gamma created offline") &&
-        !text(snapshot).includes("Remote Beta"),
-      "Explicit recovery refresh also failed.",
-      10_000,
-    );
+    await until(reconciled, "Explicit recovery refresh also failed.", 10_000);
     record("explicit refresh recovers after the failed automatic reconnect", true);
     await capture("remote-after-explicit-refresh");
   }
@@ -543,7 +558,7 @@ try {
         snapshot.organization?.completionStates.some((item) => item.done) &&
           snapshot.organization.pins.length === 1 &&
           snapshot.organization.later.length === 1 &&
-          text(snapshot).includes("Remote Alpha changed offline"),
+          sidebarRowText(snapshot, alphaId).includes("Remote Alpha changed offline"),
       ),
     "Annotations or remote state were lost after restarting only the client.",
   );

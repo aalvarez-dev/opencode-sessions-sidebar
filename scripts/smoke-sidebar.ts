@@ -541,11 +541,13 @@ throw new Error("Disabled modules must never be imported");`,
   // Stock onboarding reserves a fixed panel beneath the scroll viewport. Dismiss
   // it through its native close control so the long-list fixture has visible rows.
   if (text(seeded).includes("Getting started")) {
+    if (graphical) await graphical.capture("native-onboarding-before-close");
     await click("✕");
     await until(
       (snapshot) => !text(snapshot).includes("Getting started"),
       "Native onboarding did not close.",
     );
+    if (graphical) await graphical.capture("native-onboarding-after-close");
   }
   await until(
     (snapshot) =>

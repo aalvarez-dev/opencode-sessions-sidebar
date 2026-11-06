@@ -205,7 +205,16 @@ export async function startGraphicalTerminal(options: GraphicalTerminalOptions) 
           0,
           "The graphical fixture supports left mouse and vertical wheel input.",
         );
-        run("xdotool", [...position, mouse[4] === "M" ? "mousedown" : "mouseup", "1"]);
+        const release = `\u001b[<0;${x};${y}m`;
+        if (mouse[4] === "M" && sequence.slice(mouse[0].length).startsWith(release)) {
+          // A click has one pointer movement. Warping again while button 1 is held
+          // introduces a drag/motion event into a layout that may already have changed
+          // on mouse-down (for example after closing stock onboarding).
+          run("xdotool", [...position, "mousedown", "1", "mouseup", "1"]);
+          sequence = sequence.slice(mouse[0].length + release.length);
+          continue;
+        }
+        run("xdotool", mouse[4] === "M" ? [...position, "mousedown", "1"] : ["mouseup", "1"]);
         sequence = sequence.slice(mouse[0].length);
         continue;
       }

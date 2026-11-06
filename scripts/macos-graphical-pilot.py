@@ -27,6 +27,43 @@ class Blocked(Exception):
     pass
 
 
+MACOS_OBSERVER = r'''
+import Foundation
+import CoreGraphics
+import Vision
+import Darwin
+
+func emit(_ value: Any) throws {
+    let data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+    print(String(data: data, encoding: .utf8)!)
+}
+
+do {
+    if CommandLine.arguments.count > 2 && CommandLine.arguments[1] == "ocr" {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.recognitionLanguages = ["en-US"]
+        request.usesLanguageCorrection = false
+        let handler = VNImageRequestHandler(url: URL(fileURLWithPath: CommandLine.arguments[2]), options: [:])
+        try handler.perform([request])
+        try emit(["lines": (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }])
+    } else {
+        let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+        let terminal = windows.filter { ($0[kCGWindowOwnerName as String] as? String) == "Terminal" }
+        try emit(terminal.map { entry -> [String: Any] in
+            ["id": entry[kCGWindowNumber as String] ?? 0,
+             "pid": entry[kCGWindowOwnerPID as String] ?? 0,
+             "title": entry[kCGWindowName as String] ?? "",
+             "bounds": entry[kCGWindowBounds as String] ?? [:]]
+        })
+    }
+} catch {
+    fputs("Public window/OCR observation failed: \(error)\n", stderr)
+    exit(1)
+}
+'''
+
+
 def run(arguments, timeout=15, *, cwd=None, env=None, required=True):
     result = subprocess.run(
         arguments,
@@ -53,6 +90,27 @@ def frame_text(snapshot):
     return "\n".join(
         "".join(span["text"] for span in line) for line in snapshot["frame"]["lines"]
     )
+
+
+def terminal_pids():
+    """Inventory executable identities, without reading command-line arguments."""
+    listing = run(["/bin/ps", "-axo", "pid=,comm="], required=False).stdout
+    result = set()
+    for line in listing.splitlines():
+        fields = line.strip().split(None, 1)
+        if len(fields) == 2 and fields[1].endswith("/Terminal.app/Contents/MacOS/Terminal"):
+            result.add(int(fields[0]))
+    return result
+
+
+def process_ancestors(pid):
+    rows = run(["/bin/ps", "-axo", "pid=,ppid="], required=False).stdout.splitlines()
+    parents = dict(tuple(map(int, row.split())) for row in rows if len(row.split()) == 2)
+    result = set()
+    while pid > 1 and pid not in result:
+        result.add(pid)
+        pid = parents.get(pid, 0)
+    return result
 
 
 def png_stats(path):
@@ -150,7 +208,7 @@ def main():
         "status": "blocked",
         "platform": platform.platform(),
         "scope": "macOS Terminal.app graphical feasibility pilot; ASCII configuration",
-        "deadlineSeconds": 180,
+        "deadlineSeconds": 240,
         "checks": [],
         "captures": [],
         "limitations": [
@@ -162,15 +220,23 @@ def main():
     fixture = None
     window_id = None
     pid_file = None
+    mac_observer = None
+    terminal_before = set()
     phase = "environment"
     request_id = 0
+    hosted_mac = (
+        platform.system() == "Darwin"
+        and os.environ.get("GITHUB_ACTIONS") == "true"
+        and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
+    )
     try:
-        if platform.system() != "Darwin" or os.environ.get("GITHUB_ACTIONS") != "true":
+        if not hosted_mac:
             raise Blocked("Run only on an ephemeral GitHub-hosted macOS runner.")
         def deadline(_signal, _frame):
-            raise Blocked("The bounded graphical pilot exceeded 180 seconds.")
+            raise Blocked("The bounded graphical pilot exceeded 240 seconds.")
         signal.signal(signal.SIGALRM, deadline)
-        signal.alarm(180)
+        signal.alarm(240)
+        terminal_before = terminal_pids()
         console = run(["/usr/bin/stat", "-f", "%Su", "/dev/console"]).stdout.strip()
         report["consoleUser"] = console
         if console in ("root", "loginwindow", "_mbsetupuser", ""):
@@ -243,11 +309,14 @@ def main():
             "SIDEBAR_SMOKE_DIRECTORY": str(project),
             "SIDEBAR_SMOKE_STORAGE": str(storage),
         }
-        launcher, pid_file = fixture / "launch.sh", fixture / "pid"
+        launcher, pid_file = fixture / (fixture.name + ".command"), fixture / "pid"
         launcher.write_text(
             "#!/bin/bash\nset -eu\n"
             + "printf '%s\\n' \"$$\" > " + shlex.quote(str(pid_file)) + "\n"
             + "cd " + shlex.quote(str(project)) + "\n"
+            # Public terminal control sequences: a unique title and optional
+            # window-size request. Actual geometry is read back from the TUI.
+            + "printf '\\033]2;" + fixture.name + "\\007\\033[8;40;140t'\n"
             + "exec /usr/bin/env -i "
             + " ".join(shlex.quote(key + "=" + value) for key, value in environment.items())
             + " " + shlex.quote(executable) + "\n"
@@ -259,25 +328,85 @@ def main():
             + "do script " + apple_string("/bin/bash " + shlex.quote(str(launcher)))
             + "\nreturn id of front window\nend tell"
         )
-        result = run(["/usr/bin/osascript", "-e", launch_script], timeout=20, required=False)
-        if result.returncode or not result.stdout.strip().isdigit():
-            raise Blocked("Terminal automation unavailable: " + result.stderr[-1500:])
-        window_id = int(result.stdout.strip())
-        geometry = run([
-            "/usr/bin/osascript", "-e",
-            'tell application "Terminal"\n'
-            f"set number of columns of window id {window_id} to 140\n"
-            f"set number of rows of window id {window_id} to 40\nend tell",
-        ], timeout=10, required=False)
-        report["geometryRequested"] = {"columns": 140, "rows": 40, "accepted": geometry.returncode == 0}
-        if geometry.returncode:
-            raise Blocked("The pilot could not establish its terminal dimensions: " + geometry.stderr[-1500:])
+        try:
+            result = run(["/usr/bin/osascript", "-e", launch_script], timeout=20, required=False)
+            if result.returncode or not result.stdout.strip().isdigit():
+                report["appleEvents"] = {"status": "unavailable", "reason": result.stderr[-1500:]}
+            else:
+                window_id = int(result.stdout.strip())
+                report["launchMethod"] = "Apple Events: Terminal do script"
+                geometry = run([
+                    "/usr/bin/osascript", "-e",
+                    'tell application "Terminal"\n'
+                    f"set number of columns of window id {window_id} to 140\n"
+                    f"set number of rows of window id {window_id} to 40\nend tell",
+                ], timeout=10, required=False)
+                report["geometryRequested"] = {"columns": 140, "rows": 40, "accepted": geometry.returncode == 0}
+        except subprocess.TimeoutExpired:
+            report["appleEvents"] = {"status": "unavailable", "reason": "The normal Apple Events request timed out; no permission was granted or modified."}
+
+        # Standard LaunchServices document opening does not require scripting
+        # Terminal.app. It is a separate supported launch route, not a change to
+        # any privacy/accessibility policy. CoreGraphics still respects capture
+        # permissions; absent window metadata/capture stays explicitly blocked.
+        if not window_id:
+            phase = "launchservices-fallback"
+            source = fixture / "macos-observer.swift"
+            source.write_text(MACOS_OBSERVER)
+            mac_observer = fixture / "macos-observer"
+            compiled = run([
+                "/usr/bin/swiftc", str(source), "-o", str(mac_observer),
+            ], timeout=45, required=False)
+            if compiled.returncode:
+                raise Blocked("Public CoreGraphics observer could not be prepared: " + compiled.stderr[-1500:])
+
+            def visible_windows():
+                observed = run([str(mac_observer)], timeout=10, required=False)
+                if observed.returncode:
+                    raise Blocked("Public CoreGraphics window discovery unavailable: " + observed.stderr[-1500:])
+                return json.loads(observed.stdout)
+
+            before = {window["id"] for window in visible_windows()}
+            # Do not launch a duplicate native client if the first route managed
+            # to start the owned command before its Apple Event response hung.
+            if not pid_file.exists():
+                opened = run(["/usr/bin/open", "-a", "Terminal", str(launcher)], timeout=10, required=False)
+                if opened.returncode:
+                    raise Blocked("LaunchServices could not open the owned command: " + opened.stderr[-1500:])
+                report["launchMethod"] = "LaunchServices: open owned .command"
+            else:
+                report["launchMethod"] = "Apple Events started command; CoreGraphics observation"
+            started = time.monotonic()
+            while time.monotonic() - started < 25:
+                if pid_file.exists():
+                    launch_pid = int(pid_file.read_text().strip())
+                    ancestors = process_ancestors(launch_pid)
+                    owned = [window for window in visible_windows() if window["pid"] in ancestors]
+                    candidates = [window for window in owned if window["id"] not in before or fixture.name in window["title"]]
+                    if not candidates and len(owned) == 1:
+                        candidates = owned
+                    if len(candidates) == 1:
+                        selected = candidates[0]
+                        window_id = int(selected["id"])
+                        report["windowIdentity"] = {
+                            "method": "public CoreGraphics window list plus owned process ancestry",
+                            "windowId": window_id,
+                            "ownerPid": selected["pid"],
+                            "launchPid": launch_pid,
+                            "newWindow": window_id not in before,
+                            "uniqueTitleMatch": fixture.name in selected["title"],
+                            "soleOwnedTerminalWindow": len(owned) == 1,
+                        }
+                        break
+                time.sleep(0.2)
+            if not window_id:
+                raise Blocked("LaunchServices did not expose an unambiguously owned Terminal window through public CoreGraphics.")
 
         phase = "native-startup"
         started = time.monotonic()
         while not Path(str(exchange) + ".ready.json").exists():
             if time.monotonic() - started > 45:
-                raise Blocked("Terminal automation returned, but the native TUI observer did not become ready.")
+                raise Blocked("The launch route returned, but the native TUI observer did not become ready.")
             time.sleep(0.1)
 
         def request(kind, **fields):
@@ -307,7 +436,17 @@ def main():
                 time.sleep(0.1)
             raise RuntimeError("Expected native sidebar frame did not appear.")
 
-        def capture(name, snapshot):
+        def capture(name, snapshot, expected_text):
+            nonlocal mac_observer
+            if not mac_observer:
+                source = fixture / "macos-observer.swift"
+                source.write_text(MACOS_OBSERVER)
+                mac_observer = fixture / "macos-observer"
+                compiled = run([
+                    "/usr/bin/swiftc", str(source), "-o", str(mac_observer),
+                ], timeout=45, required=False)
+                if compiled.returncode:
+                    raise Blocked("Screenshot OCR observer unavailable: " + compiled.stderr[-1500:])
             path = output / (name + ".png")
             # The TUI frame assertion can precede Terminal.app's final window paint.
             time.sleep(0.2)
@@ -317,7 +456,19 @@ def main():
             if result.returncode or not path.exists():
                 raise Blocked("Window capture unavailable: " + result.stderr[-1500:])
             stats = png_stats(path)
-            report["captures"].append({"file": path.name, **stats})
+            recognition = run([str(mac_observer), "ocr", str(path)], timeout=20, required=False)
+            if recognition.returncode:
+                raise Blocked("Screenshot exists but native offline OCR could not correlate its pixels: " + recognition.stderr[-1500:])
+            recognized = json.loads(recognition.stdout)
+            normalized = "".join(character.lower() for character in " ".join(recognized["lines"]) if character.isalnum())
+            expected = "".join(character.lower() for character in expected_text if character.isalnum())
+            (output / (name + "-ocr.json")).write_text(json.dumps(recognized, indent=2) + "\n")
+            if expected not in normalized:
+                raise Blocked("Screenshot needs visual review: native offline OCR did not find expected text: " + expected_text)
+            report["captures"].append({
+                "file": path.name, **stats,
+                "pixelCorrelation": {"method": "macOS Vision offline OCR", "expectedText": expected_text, "matched": True},
+            })
             # Raw frame is supporting evidence, never the source of the PNG.
             clean = json.loads(json.dumps(snapshot).replace(str(fixture), "/synthetic"))
             (output / (name + "-frame.json")).write_text(json.dumps(clean, indent=2) + "\n")
@@ -328,27 +479,37 @@ def main():
             for entry in snapshot["plugins"]
         ))
         request("seed")
-        snapshot = until(lambda current:
-            "Active session:" in frame_text(current) and "Synthetic Alpha" in frame_text(current)
-        )
-        active_id = snapshot["initialIds"][0]
-        identifiers = {node["id"] for node in snapshot["geometry"]}
-        if "sidebar-session-" + active_id + "-menu" in identifiers:
-            raise RuntimeError("The active row unexpectedly contains its ellipsis menu.")
-        if "sidebar-session-" + active_id + "-completion" not in identifiers:
-            raise RuntimeError("The active row's direct completion control is absent.")
+        snapshot = until(lambda current: current["route"].get("params", {}).get("sessionID") == current["initialIds"][0])
+        report["actualGeometry"] = {"columns": snapshot["frame"]["width"], "rows": snapshot["frame"]["height"]}
         report["checks"].extend([
             "Stock OpenCode loaded the actual sidebar plugin in Terminal.app.",
             "Synthetic sessions rendered in the native session route.",
-            "The active row omits its ellipsis and retains the completion control.",
         ])
+        if snapshot["frame"]["width"] >= 140:
+            snapshot = until(lambda current:
+                "Active session:" in frame_text(current) and "Synthetic Alpha" in frame_text(current)
+            )
+            active_id = snapshot["initialIds"][0]
+            identifiers = {node["id"] for node in snapshot["geometry"]}
+            if "sidebar-session-" + active_id + "-menu" in identifiers:
+                raise RuntimeError("The active row unexpectedly contains its ellipsis menu.")
+            if "sidebar-session-" + active_id + "-completion" not in identifiers:
+                raise RuntimeError("The active row's direct completion control is absent.")
+            report["checks"].append("The active row omits its ellipsis and retains the completion control.")
+            initial_capture = "macos-terminal-sidebar"
+        else:
+            request("command", command="sessions-sidebar.browse")
+            snapshot = until(lambda current: current["dialogDepth"] > 0 and "Synthetic Alpha" in frame_text(current))
+            report["checks"].append("The public Browse command presents synthetic sessions in the runner's actual narrow terminal.")
+            report["limitations"].append("Terminal resize was not established at 140 columns; this macOS pilot covers Browse and icons, not wide-sidebar row geometry.")
+            initial_capture = "macos-terminal-browse"
         phase = "window-capture"
-        capture("macos-terminal-sidebar", snapshot)
+        capture(initial_capture, snapshot, "Synthetic Alpha")
         phase = "icon-dialog"
         request("command", command="sessions-sidebar.check-icons")
         snapshot = until(lambda current: "Check sidebar icons" in frame_text(current))
         phase = "window-capture"
-        capture("macos-terminal-icon-dialog", snapshot)
+        capture("macos-terminal-icon-dialog", snapshot, "Check sidebar icons")
         report["checks"].append("The actual icon comparison dialog opened through its public command.")
         report["status"] = "passed"
     except (Blocked, subprocess.TimeoutExpired) as error:
@@ -380,10 +541,23 @@ def main():
                 report.setdefault("cleanupWarnings", []).append(str(error))
         if window_id:
             try:
-                run([
-                    "/usr/bin/osascript", "-e",
-                    f'tell application "Terminal" to close window id {window_id} saving no',
-                ], timeout=5, required=False)
+                if not report.get("appleEvents"):
+                    run([
+                        "/usr/bin/osascript", "-e",
+                        f'tell application "Terminal" to close window id {window_id} saving no',
+                    ], timeout=5, required=False)
+            except Exception as error:
+                report.setdefault("cleanupWarnings", []).append(str(error))
+        if hosted_mac:
+            try:
+                # This single-job ephemeral desktop had no user Terminal window
+                # to preserve for these newly created app processes. Existing
+                # Terminal PIDs, if any, are never terminated.
+                for pid in terminal_pids() - terminal_before:
+                    try:
+                        os.kill(pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
             except Exception as error:
                 report.setdefault("cleanupWarnings", []).append(str(error))
         if fixture:

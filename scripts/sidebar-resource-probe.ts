@@ -1,6 +1,8 @@
 /** Shared stock-TUI observer. No polling, reads, or lifecycle work during measured idle. */
 import assert from "node:assert/strict";
+import { watch, type FSWatcher } from "node:fs";
 import { readFile, rename, writeFile } from "node:fs/promises";
+import { basename, dirname } from "node:path";
 import type { TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui";
 import type { Renderable } from "@opentui/core";
 
@@ -14,11 +16,54 @@ export interface ResourceProbeResult {
     height: number;
   };
   lifecycle?: { deactivated: boolean; reactivated: boolean; activationMs: number }[];
+  measurementAcknowledged?: boolean;
 }
 
 async function publish(path: string, value: object) {
   await writeFile(`${path}.tmp`, JSON.stringify(value));
   await rename(`${path}.tmp`, path);
+}
+
+function waitForMeasurement(output: string, signal: AbortSignal, ready: object): Promise<void> {
+  const completionPath = `${output}.measurement-finished`;
+  return new Promise((resolve, reject) => {
+    let watcher: FSWatcher | undefined;
+    let settled = false;
+    const timeout = setTimeout(
+      () => finish(new Error("Parent did not finish the bounded resource measurement.")),
+      90_000,
+    );
+    function finish(error?: unknown) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      watcher?.close();
+      signal.removeEventListener("abort", aborted);
+      if (error) reject(error);
+      else resolve();
+    }
+    function aborted() {
+      finish(signal.reason ?? new Error("Resource observer disposed before measurement finished."));
+    }
+    try {
+      // Watch only this receipt name. No periodic polling, SDK calls, or renderer
+      // inspection occurs while the parent samples. The parent atomically renames
+      // its completed receipt, so the matching event cannot observe a partial write.
+      watcher = watch(dirname(output), { persistent: false }, (_event, filename) => {
+        if (filename?.toString() !== basename(completionPath)) return;
+        void readFile(completionPath, "utf8").then((value) => {
+          if (value === "measurement-complete\n") finish();
+          else finish(new Error("Invalid measurement completion receipt."));
+        }, finish);
+      });
+      watcher.on("error", finish);
+      signal.addEventListener("abort", aborted, { once: true });
+      if (signal.aborted) aborted();
+      else void publish(`${output}.ready`, ready).catch(finish);
+    } catch (error) {
+      finish(error);
+    }
+  });
 }
 
 async function measure(api: TuiPluginApi) {
@@ -109,10 +154,13 @@ async function measure(api: TuiPluginApi) {
     const proc = await readFile("/proc/self/status", "utf8");
     const procPid = Number(proc.match(/^Pid:\s+(\d+)/m)?.[1]);
     assert(Number.isSafeInteger(procPid) && procPid > 0);
-    await publish(`${output}.ready`, { pid: process.pid, procPid, initialFrame });
-
-    // Parent samples seconds 2–7. A one-shot sleep leaves the shared observer idle.
-    await Bun.sleep(11_000);
+    await waitForMeasurement(output, api.lifecycle.signal, {
+      pid: process.pid,
+      procPid,
+      initialFrame,
+      measurementProtocol: "finish-receipt-v1",
+    });
+    await publish(`${output}.lifecycle-started`, { measurementAcknowledged: true });
     assert.equal(sidebarVisible(), enabled, "Sidebar visibility changed during idle.");
     if (enabled) {
       for (let cycle = 0; cycle < 2; cycle++) {
@@ -128,7 +176,12 @@ async function measure(api: TuiPluginApi) {
       assert(await api.plugins.deactivate(id));
       await until(() => !sidebarVisible(), "Final deactivation retained sidebar controls.");
     }
-    await publish(output, { passed: true, initialFrame, lifecycle } satisfies ResourceProbeResult);
+    await publish(output, {
+      passed: true,
+      initialFrame,
+      lifecycle,
+      measurementAcknowledged: true,
+    } satisfies ResourceProbeResult);
   } catch (error) {
     await publish(output, { passed: false, message: String(error), lifecycle });
   }

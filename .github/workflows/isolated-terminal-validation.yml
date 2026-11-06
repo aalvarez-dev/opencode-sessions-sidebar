@@ -133,6 +133,14 @@ jobs:
           SIDEBAR_RESOURCE_REPORT:
             ${{ github.workspace }}/.sidebar-lab/actions/native/resources.json
         run: bun run benchmark:sidebar:runtime
+      - name: Diagnostic resource trace, not an acceptance result
+        id: diagnostic
+        continue-on-error: true
+        env:
+          SIDEBAR_RESOURCE_DIAGNOSTIC: "true"
+          SIDEBAR_RESOURCE_REPORT:
+            ${{ github.workspace }}/.sidebar-lab/actions/native/resource-diagnostic.json
+        run: bun run benchmark:sidebar:runtime
       - name: Retain native reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -147,7 +155,10 @@ jobs:
         env:
           REMOTE_RESULT: ${{ steps.remote.outcome }}
           RESOURCE_RESULT: ${{ steps.resources.outcome }}
-        run: test "$REMOTE_RESULT" = success && test "$RESOURCE_RESULT" = success
+          DIAGNOSTIC_RESULT: ${{ steps.diagnostic.outcome }}
+        run:
+          test "$REMOTE_RESULT" = success && test "$RESOURCE_RESULT" = success && test
+          "$DIAGNOSTIC_RESULT" = success
 
   macos-pilot:
     name: macOS graphical capability pilot
