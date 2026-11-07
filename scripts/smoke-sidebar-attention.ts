@@ -551,8 +551,10 @@ try {
   await action("Mark completed");
   await action("Pin");
   let organized = await until(
-    (snapshot) => text(snapshot).includes("Pinned sessions"),
-    "Pin did not render.",
+    (snapshot) =>
+      text(snapshot).includes("Pinned sessions") &&
+      sidebarText(snapshot).includes("Synthetic attention parent"),
+    "Pinned group and its parent title did not render.",
   );
   assert.equal(
     sidebarText(organized).match(/Synthetic attention parent/g)?.length,
@@ -596,6 +598,13 @@ try {
   const parentPrefix = `sidebar-session-${question.parentId}`;
   const childPrefix = `sidebar-session-${question.childId}`;
   const childRowId = `sidebar-child-${question.childId}`;
+  // The observer reads live geometry and the last completed native frame. A new
+  // compact shell can exist before its measured label has reached that frame.
+  // Require the expected host agent and attention glyph, not just mounted boxes.
+  const compactChildRendered = (snapshot: Snapshot) =>
+    Boolean(node(snapshot, childRowId)) &&
+    nodeText(snapshot, `${childRowId}-label`).trim() === "build" &&
+    nodeText(snapshot, `${childRowId}-status`).trim() === "?";
   assert.equal(
     node(question, `${parentPrefix}-children-disclosure`)!.y,
     node(question, `${parentPrefix}-controls`)!.y,
@@ -643,8 +652,8 @@ try {
   await request("activate-parent");
   const defaultExpanded = await until(
     (snapshot) =>
-      snapshot.route.params?.sessionID === snapshot.parentId && Boolean(node(snapshot, childRowId)),
-    "Selecting the parent must initially expose its live children without an extra click.",
+      snapshot.route.params?.sessionID === snapshot.parentId && compactChildRendered(snapshot),
+    "Selecting the parent must initially render its live child's agent and attention without an extra click.",
   );
   assert.equal(node(defaultExpanded, childRowId)!.height, 1);
   assert(!node(defaultExpanded, `${childPrefix}-controls`));
@@ -663,8 +672,8 @@ try {
   );
   await clickNode(`${parentPrefix}-children-disclosure`);
   const expanded = await until(
-    (snapshot) => Boolean(node(snapshot, childRowId)),
-    "Line-two disclosure did not reveal the native child.",
+    compactChildRendered,
+    "Line-two disclosure did not render the native child's build label and question glyph.",
   );
   assert(groupText(expanded, "Pinned sessions", "Other sessions").includes("v 1"));
   assert(
@@ -694,7 +703,8 @@ try {
   );
   await clickNode(`${parentPrefix}-context-disclosure`);
   const activeExpanded = await until(
-    (snapshot) => Boolean(node(snapshot, `${parentPrefix}-context-details`)),
+    (snapshot) =>
+      Boolean(node(snapshot, `${parentPrefix}-context-details`)) && compactChildRendered(snapshot),
     "Active parent context did not expand after its live children.",
   );
   assert(node(activeExpanded, `${parentPrefix}-controls`)!.y < node(activeExpanded, childRowId)!.y);
