@@ -17,6 +17,12 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2";
 import type { ResourceProbeResult } from "./sidebar-resource-probe";
+import {
+  compareThreadSnapshots,
+  sampleThreads,
+  threadDiagnosticLimits,
+  type ThreadSnapshot,
+} from "./thread-cpu-diagnostic";
 
 assert.equal(process.platform, "linux", "This comparison requires Linux /proc and a POSIX PTY.");
 assert.equal(Bun.version, "1.3.14", "Use pinned Bun 1.3.14.");
@@ -100,7 +106,11 @@ async function stop(child: ReturnType<typeof Bun.spawn>) {
 }
 
 async function hashes() {
-  const paths = ["scripts/benchmark-sidebar-runtime.ts", "scripts/sidebar-resource-probe.ts"];
+  const paths = [
+    "scripts/benchmark-sidebar-runtime.ts",
+    "scripts/sidebar-resource-probe.ts",
+    "scripts/thread-cpu-diagnostic.ts",
+  ];
   async function visit(directory: string) {
     for (const entry of await readdir(join(repository, directory), { withFileTypes: true })) {
       const path = `${directory}/${entry.name}`;
@@ -155,6 +165,8 @@ interface Measurement {
     cpuPercent: number | null;
     rssMiB: number;
     mainThreadContextSwitches: number;
+    threads: ThreadSnapshot;
+    threadCpu?: ReturnType<typeof compareThreadSnapshots>;
   }[];
   lifecycleStatus: "pending" | "passed" | "failed";
   probe?: ResourceProbeResult;
@@ -234,6 +246,19 @@ try {
     observationMs,
     measurementProtocol: "append-receipt-v2",
     diagnosticIntervalMs: diagnostic ? 1_000 : null,
+    ...(diagnostic
+      ? {
+          threadDiagnostic: {
+            ...threadDiagnosticLimits,
+            intervalTiming:
+              "Midpoints of non-atomic thread snapshots; offset from process samples.",
+            scope:
+              "Matched TID/start-time identities only; transient or unreadable threads can be missed.",
+            overhead:
+              "Parent reads task stat files once per second; profiled results are not acceptance evidence.",
+          },
+        }
+      : {}),
     clockTicks,
     pageSize,
     icons: "ascii",
@@ -365,38 +390,46 @@ try {
         const started = performance.now();
         const before = await sample(ready.procPid, pageSize);
         let after = before;
+        let diagnosticFinishedAt: number | undefined;
         const trace: NonNullable<Measurement["trace"]> = [];
         if (diagnostic) {
           let previous = before;
           let previousAt = performance.now();
+          let previousThreads = await sampleThreads(ready.procPid, started);
           trace.push({
             elapsedMs: previousAt - started,
             intervalMs: 0,
             cpuPercent: null,
             rssMiB: before.rssMiB,
             mainThreadContextSwitches: 0,
+            threads: previousThreads,
           });
           for (let index = 0; index < 30; index++) {
             lifetime.signal.throwIfAborted();
             await Bun.sleep(1_000);
             after = await sample(ready.procPid, pageSize);
             const now = performance.now();
+            diagnosticFinishedAt = now;
             const intervalMs = now - previousAt;
+            const threads = await sampleThreads(ready.procPid, started);
             trace.push({
               elapsedMs: now - started,
               intervalMs,
               cpuPercent: (((after.ticks - previous.ticks) / clockTicks) * 100_000) / intervalMs,
               rssMiB: after.rssMiB,
               mainThreadContextSwitches: after.switches - previous.switches,
+              threads,
+              threadCpu: compareThreadSnapshots(previousThreads, threads, clockTicks),
             });
             previous = after;
             previousAt = now;
+            previousThreads = threads;
           }
         } else {
           await Bun.sleep(observationMs);
           after = await sample(ready.procPid, pageSize);
         }
-        const actualMs = performance.now() - started;
+        const actualMs = (diagnosticFinishedAt ?? performance.now()) - started;
         assert(
           !(await Bun.file(`${output}.lifecycle-started`).exists()) &&
             !(await Bun.file(output).exists()),

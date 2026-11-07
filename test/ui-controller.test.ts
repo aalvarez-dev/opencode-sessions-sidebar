@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 describe("reactive sidebar controller", () => {
   for (const scenario of [
     "ready",
+    "model-invalidation",
     "stale-guard",
     "disposed",
     "bounded-lookup",

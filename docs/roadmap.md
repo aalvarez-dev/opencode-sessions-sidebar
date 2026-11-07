@@ -82,8 +82,14 @@ inline creation header, compact live-subagent trees, default active expansion wi
 choices, counted nonempty groups, aligned completion action and a verified clock icon family. A
 shared, explicitly synthetic design fixture exercises the unchanged built product inside stock
 OpenCode on Linux and macOS. This is presentation evidence only; native execution/attention checks
-remain independent. Revised-build pixel review is pending and does not close the outstanding
-rendered RSS release gate.
+remain independent. The final `5080241` build passed Ubuntu and macOS pixel review, native
+attention/transport checks, container validation and CI. PR #8 was merged into `main` on November 7
+as development integration at the owner's explicit request. Its short 250-session CPU comparison
+still failed: +1.2050 percentage points against the unchanged +1.0 limit. The delayed comparison
+passed at +0.9999 points, with effectively no CPU margin; it does not override the short failure.
+Both RSS medians passed in that campaign. The package remains experimental and unpublished, with
+resource acceptance and execution correlation still open. See the exact
+[campaign record](sidebar-resource-benchmark.md#november-7-development-merge).
 
 ## Required runtime scenarios
 

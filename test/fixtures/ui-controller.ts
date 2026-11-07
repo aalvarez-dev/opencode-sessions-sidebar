@@ -51,6 +51,8 @@ export class ControllerHost {
       vcs: "git",
     });
   createWrite: () => Promise<Session> = async () => syntheticSession("created");
+  listRead: (directory: string) => Promise<Session[]> = async (directory) =>
+    this.sessions.filter((session) => session.directory === directory);
 
   get api(): TuiPluginApi {
     const host = this;
@@ -70,7 +72,7 @@ export class ControllerHost {
           list: async (parameters: { directory: string }) => {
             host.calls.list++;
             return {
-              data: host.sessions.filter((session) => session.directory === parameters.directory),
+              data: await host.listRead(parameters.directory),
             };
           },
           status: async () => {
@@ -202,6 +204,108 @@ async function ready() {
     });
     assert.equal(saved.status, "loaded");
     assert.equal(host.toasts.at(-1)?.variant, "success");
+  } finally {
+    await fixture.dispose();
+  }
+}
+
+async function modelInvalidation() {
+  const fixture = await controllerFixture();
+  const { host, controller } = fixture;
+  try {
+    host.sessions = [
+      syntheticSession("parent"),
+      { ...syntheticSession("child"), parentID: "parent" },
+      ...Array.from({ length: 248 }, (_, index) => syntheticSession(`other-${index}`)),
+    ];
+    await controller.connect(host.directory);
+    const initialRows = controller.rows();
+    const initialGroups = controller.groups();
+    const initialDocument = controller.document();
+    assert.equal(initialRows.length, 250);
+
+    // Pending/no-op organization work must not reconstruct the loaded session model.
+    const unchanged = controller.organize(
+      { type: "set-pin", sessionId: "parent", pinned: false },
+      initialDocument!.revision,
+    );
+    assert.equal(controller.pending(), true);
+    assert.equal(controller.groups(), initialGroups);
+    await unchanged;
+    assert.equal(controller.pending(), false);
+    assert.equal(controller.document(), initialDocument);
+    assert.equal(controller.rows(), initialRows);
+    assert.equal(controller.groups(), initialGroups);
+
+    // Coverage diagnostics remain reactive even when no loaded row changes.
+    host.emit({
+      id: "unloaded-question",
+      type: "question.asked",
+      properties: { id: "unloaded", sessionID: "outside", questions: [] },
+    });
+    assert.equal(controller.state()?.attentionCoverage, "partial");
+    assert.match(controller.state()?.diagnostic ?? "", /unscoped session/);
+    assert.equal(controller.rows(), initialRows);
+    assert.equal(controller.groups(), initialGroups);
+
+    const snapshot = deferred<Session[]>();
+    host.listRead = () => snapshot.promise;
+    const refreshing = controller.refresh();
+    await Promise.resolve();
+    assert.equal(controller.state()?.phase, "loading");
+    assert.equal(controller.state()?.refreshing, true);
+    assert.equal(controller.document(), initialDocument);
+    assert.equal(controller.rows(), initialRows);
+    assert.equal(controller.groups(), initialGroups);
+    snapshot.resolve(host.sessions);
+    await refreshing;
+    assert.equal(controller.state()?.phase, "ready");
+    assert.equal(controller.state()?.refreshing, false);
+    assert.equal(controller.state()?.attentionCoverage, "complete");
+    // Organization refresh creates a new document: that is a legitimate model input.
+    assert.notEqual(controller.document(), initialDocument);
+    assert.notEqual(controller.groups(), initialGroups);
+    assert.ok(controller.rows().every((row, index) => row === initialRows[index]));
+
+    const beforeAttention = controller.groups();
+    host.emit({
+      id: "child-question",
+      type: "question.asked",
+      properties: { id: "question", sessionID: "child", questions: [] },
+    });
+    assert.notEqual(controller.groups(), beforeAttention);
+    assert.equal(
+      controller.rows().find((row) => row.session.id === "parent")?.summary.questions,
+      1,
+    );
+    assert.equal(controller.liveChildrenFor("parent")[0]?.session.id, "child");
+    await controller.organize(
+      { type: "set-pin", sessionId: "child", pinned: true },
+      controller.document()!.revision,
+    );
+    assert.equal(
+      controller.groups().find((group) => group.id === "pins")?.rows[0]?.session.id,
+      "child",
+    );
+    host.currentRoute = { name: "session", params: { sessionID: "child" } };
+    controller.observeRoute();
+    assert.equal(controller.activeRow()?.session.id, "child");
+    assert.equal(controller.activeRow()?.summary.questions, 1);
+    assert.equal(controller.groups().find((group) => group.id === "pins")?.rows.length, 0);
+    const selectedGroups = controller.groups();
+    controller.observeRoute();
+    assert.equal(controller.groups(), selectedGroups);
+
+    // Loss of certainty changes row activity and ancestor summaries immediately.
+    host.emit({ id: "reconnected", type: "server.connected", properties: {} });
+    assert.equal(controller.state()?.phase, "stale");
+    assert.equal(controller.state()?.attentionCoverage, "unknown");
+    assert.equal(controller.activeRow()?.session.activity, "unknown");
+    assert.equal(controller.rows().find((row) => row.session.id === "parent")?.summary.unknown, 2);
+    assert.equal(controller.activeRow()?.summary.questions, 1);
+    await controller.refresh();
+    assert.equal(controller.state()?.phase, "ready");
+    assert.equal(controller.activeRow()?.session.activity, "idle");
   } finally {
     await fixture.dispose();
   }
@@ -566,6 +670,7 @@ if (import.meta.main) {
   const scenario = process.argv[2];
   const scenarios: Record<string, () => Promise<void>> = {
     ready,
+    "model-invalidation": modelInvalidation,
     "stale-guard": staleGuard,
     disposed,
     "bounded-lookup": boundedLookup,
