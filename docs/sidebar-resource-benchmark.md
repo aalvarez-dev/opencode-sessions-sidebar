@@ -148,6 +148,35 @@ those windows. The measurement still includes all TUI process threads and host s
 not by itself attribute CPU to sidebar JavaScript. Thread-level diagnostic evidence is needed before
 changing the health fallback or rendering semantics to address this failure.
 
+## November 7 legibility follow-up
+
+The
+[PR #9 campaign](https://github.com/aalvarez-labs/opencode-sessions-sidebar/actions/runs/42359267055)
+tested `b4eca4629ba3a48b3be7c29f2424cf967f2351ac`, TUI SHA-256
+`c192771e64a01d8a117e47e323e660950129522e93d341327867e23cada33a97`. Both graphical jobs passed,
+including the seven shared approved-design checks. The resource job failed its original short CPU
+gate; the PR remained draft. GitHub's test-merge checkout had the same source tree as this head.
+
+| Comparison            | Median added RSS | Median added CPU | Result         |
+| --------------------- | ---------------: | ---------------: | -------------- |
+| Short, 25 sessions    |      -7.3945 MiB |   -4.3990 points | Passed         |
+| Short, 250 sessions   |      -0.4922 MiB |    1.2124 points | **Failed CPU** |
+| Delayed, 250 sessions |      46.9023 MiB |   -0.4995 points | Passed         |
+
+Short 250-session CPU pair deltas were +1.2124, +4.5984 and -4.9993 points. The corresponding RSS
+deltas were -62.0313, +86.3281 and -0.4922 MiB; delayed RSS pairs were +100.1250, +46.9023 and
++26.2852 MiB. This variability prevents interpreting the negative medians as a stable saving. Every
+enabled 250-session measurement recorded zero additional render-loop frames. The delayed pass does
+not cancel the short failure, and the earlier `852b140` short RSS failure remains relevant.
+
+The separate thirty-second diagnostic ended at +185.383 MiB process RSS: anonymous residency
+differed by +185.602 MiB, file-backed residency by +0.063 MiB, with no shared RSS or swap. The
+non-atomic counters do not identify allocation ownership. Renderable/text-buffer counts remained
+stable; exposed heap counters cannot account for all host worker or native allocations. Further
+function-level diagnosis must distinguish the TUI JavaScript VM from the host's worker VM and keep
+profiled measurements separate from acceptance. No forced GC or changed limits are justified by
+these receipts.
+
 ## Recorded November 6 comparison
 
 This is an earlier development result, not approval of every later revision. The subsequent

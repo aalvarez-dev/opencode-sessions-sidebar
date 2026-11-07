@@ -20,9 +20,10 @@ export function sidebarRowHeights(options: {
     options.rowGap +
     (options.expandedContext.has(id) ? 3 : 0);
   // Every live descendant is a single compact tree line. A promoted child is a
-  // reference and its subtree belongs to its full row elsewhere. Compute sizes
-  // once across the forest, even when several roots have their children open.
+  // reference and its subtree belongs to its full row elsewhere. Only expanded
+  // roots need compact sizes; share their descendants when open roots overlap.
   for (const row of options.rows) {
+    if (!options.expandedChildren.has(row.session.id) || compactSizes.has(row.session.id)) continue;
     const pending = [{ id: row.session.id, finish: false }];
     while (pending.length > 0) {
       const item = pending.pop()!;

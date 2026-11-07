@@ -204,6 +204,7 @@ describe("viewport-bounded sidebar mounting", () => {
 
   test("calculates a deep expanded forest without recursive stack growth", () => {
     const rows = Array.from({ length: 5000 }, (_, index) => row(String(index)));
+    let reads = 0;
     const heights = sidebarRowHeights({
       rows,
       activeId: "0",
@@ -211,10 +212,93 @@ describe("viewport-bounded sidebar mounting", () => {
       expandedContext: new Set(),
       expandedChildren: new Set(rows.map((entry) => entry.session.id)),
       rowGap: 0,
-      childrenFor: (id) => (Number(id) + 1 < rows.length ? [rows[Number(id) + 1]!] : []),
+      childrenFor: (id) => {
+        reads++;
+        return Number(id) + 1 < rows.length ? [rows[Number(id) + 1]!] : [];
+      },
     });
     expect(heights.get("0")).toBe(5003);
     expect(heights.get("4999")).toBe(3);
+    expect(reads).toBeLessThanOrEqual(2 * rows.length);
+  });
+
+  test("skips child traversal for 250 collapsed rows and reads only an expanded leaf", () => {
+    const rows = Array.from({ length: 250 }, (_, index) => row(String(index)));
+    let reads = 0;
+    const options = {
+      rows,
+      activeId: "0",
+      topLevel: new Set(rows.map((entry) => entry.session.id)),
+      expandedContext: new Set(["7"]),
+      expandedChildren: new Set<string>(),
+      rowGap: 1,
+      childrenFor: () => {
+        reads++;
+        return [];
+      },
+    };
+    const collapsed = sidebarRowHeights(options);
+    expect(collapsed.size).toBe(250);
+    expect(reads).toBe(0);
+    expect([...collapsed.values()]).toEqual(
+      rows.map((entry) => (entry.session.id === "0" ? 5 : entry.session.id === "7" ? 7 : 4)),
+    );
+    const activeExpanded = sidebarRowHeights({
+      ...options,
+      expandedChildren: new Set(["0"]),
+    });
+    expect(activeExpanded).toEqual(collapsed);
+    expect(reads).toBeLessThanOrEqual(2);
+  });
+
+  test("sizes only open subtrees and keeps a promoted descendant's expansion separate", () => {
+    const rows = [
+      row("parent"),
+      row("child"),
+      row("grandchild"),
+      row("promoted"),
+      row("elsewhere"),
+      row("closed"),
+      row("hidden"),
+    ];
+    const children = new Map([
+      ["parent", [rows[1]!, rows[3]!]],
+      ["child", [rows[2]!]],
+      ["promoted", [rows[4]!]],
+      ["closed", [rows[6]!]],
+    ]);
+    const reads = new Map<string, number>();
+    const options = {
+      rows,
+      activeId: "parent",
+      topLevel: new Set(["parent", "promoted", "closed"]),
+      expandedContext: new Set<string>(),
+      expandedChildren: new Set(["parent"]),
+      rowGap: 1,
+      childrenFor: (id: string) => {
+        reads.set(id, (reads.get(id) ?? 0) + 1);
+        return children.get(id) ?? [];
+      },
+    };
+    const parentExpanded = sidebarRowHeights(options);
+    expect(parentExpanded.get("parent")).toBe(8);
+    expect(parentExpanded.get("promoted")).toBe(4);
+    expect(parentExpanded.get("closed")).toBe(4);
+    expect(new Set(reads.keys())).toEqual(new Set(["parent", "child", "grandchild"]));
+    expect([...reads.values()].every((count) => count <= 2)).toBe(true);
+    reads.clear();
+    const bothExpanded = sidebarRowHeights({
+      ...options,
+      expandedChildren: new Set(["parent", "child", "promoted"]),
+    });
+    expect(bothExpanded.get("parent")).toBe(8);
+    expect(bothExpanded.get("child")).toBe(5);
+    expect(bothExpanded.get("promoted")).toBe(5);
+    expect(bothExpanded.get("closed")).toBe(4);
+    expect(new Set(reads.keys())).toEqual(
+      new Set(["parent", "child", "grandchild", "promoted", "elsewhere"]),
+    );
+    expect([...reads.values()].every((count) => count <= 2)).toBe(true);
   });
 
   test("flattens live descendants into one line each and stops at promoted roots", () => {
