@@ -112,6 +112,16 @@ promoted-child geometry and deep iterative traversal are preserved. This reduces
 temporary allocations; it is not a demonstrated fix for process-wide idle CPU or RSS. Its native and
 resource validation must use its new bundle, not the preceding candidate's receipts.
 
+A further transport cleanup avoids aborting health responses whose JSON body has already been
+consumed, while preserving cancellation of pending/rejected requests, timeouts, reconnection and
+disposal. A bounded native comparison found a modest, variable CPU reduction; it does not close
+resource acceptance. The
+[investigation record](sidebar-resource-benchmark.md#fulfilled-health-cleanup-investigation) retains
+all three pairs and requires the unchanged original gates on the new candidate. Its first
+original-gate validation passed both short comparisons but failed delayed CPU at +1.4001 points
+against the unchanged +1.0 limit. The exact bundle passed 222 local tests and eleven native
+remote-transport checks; these correctness results do not override the resource failure.
+
 ## Required runtime scenarios
 
 - Mark/unmark an idle session; restart and recover the correct state.

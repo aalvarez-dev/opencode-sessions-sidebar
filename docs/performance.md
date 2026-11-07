@@ -57,6 +57,11 @@ the pending request, and reject late responses. If a non-cooperative transport i
 the UI still becomes uncertain at the deadline; another request is not started until that request
 settles. This prevents an unbounded pile-up.
 
+Once the SDK has fulfilled a health request, its JSON body is fully consumed. Cleanup cancels the
+deadline and releases the controller without aborting that completed request. Rejected requests,
+deadlines and disposal still abort; a late fulfilled response after timeout cannot restore
+certainty. This avoids redundant cancellation without changing the cadence or availability policy.
+
 This fallback establishes HTTP server reachability. It does not prove that an independently broken
 event stream is healthy while HTTP remains available, and it does not infer a failure from normal
 session inactivity. The headless adapter still has no polling: its caller owns transport state. The

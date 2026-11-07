@@ -93,12 +93,40 @@ describe("bounded TUI transport-health fallback", () => {
     expect(f.clock.tasks.size).toBe(0);
   });
 
+  test("fulfilled health responses release their deadline without aborting consumed bodies", async () => {
+    for (const healthy of [true, false]) {
+      const f = fixture();
+      f.clock.advance(5_000);
+      f.clock.advance(400);
+      f.requests[0]!.reply.resolve({ data: { healthy } });
+      await settle();
+      expect(f.requests[0]!.signal.aborted).toBe(false);
+      expect(f.changes).toEqual(healthy ? [] : [false]);
+      expect(f.clock.tasks.size).toBe(1);
+
+      // Passing the old deadline must neither cancel a consumed response nor
+      // report another failure. Retry remains five seconds after settlement.
+      f.clock.advance(4_999);
+      expect(f.requests).toHaveLength(1);
+      expect(f.requests[0]!.signal.aborted).toBe(false);
+      expect(f.changes).toEqual(healthy ? [] : [false]);
+      f.clock.advance(1);
+      expect(f.requests).toHaveLength(2);
+      f.stop();
+      expect(f.requests[1]!.signal.aborted).toBe(true);
+      expect(f.requests[0]!.signal.aborted).toBe(false);
+      expect(f.clock.tasks.size).toBe(0);
+    }
+  });
+
   test("reports each failed probe but not repeated healthy responses", async () => {
     const f = fixture();
     for (let index = 0; index < 2; index++) {
       f.clock.advance(5_000);
       f.requests[index]!.reply.reject(new Error("transport cut"));
       await settle();
+      expect(f.requests[index]!.signal.aborted).toBe(true);
+      expect(f.clock.tasks.size).toBe(1);
     }
     expect(f.changes).toEqual([false, false]);
     f.clock.advance(5_000);
@@ -122,6 +150,8 @@ describe("bounded TUI transport-health fallback", () => {
     f.requests[0]!.reply.resolve({ data: { healthy: true } });
     await settle();
     expect(f.changes).toEqual([false]);
+    expect(f.requests[0]!.signal.aborted).toBe(true);
+    expect(f.clock.tasks.size).toBe(1);
     f.clock.advance(5_000);
     f.requests[1]!.reply.resolve({ data: { healthy: true } });
     await settle();

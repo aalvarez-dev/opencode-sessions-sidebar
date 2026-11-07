@@ -49,6 +49,7 @@ export function monitorV1Transport(
     const controller = new AbortController();
     pending = controller;
     let expired = false;
+    let fulfilled = false;
     cancelTimeout = schedule(() => {
       cancelTimeout = undefined;
       expired = true;
@@ -61,6 +62,7 @@ export function monitorV1Transport(
         signal: controller.signal,
         throwOnError: true,
       });
+      fulfilled = true;
       if (disposed || expired) return;
       if (response.data?.healthy !== true) {
         lost();
@@ -73,7 +75,7 @@ export function monitorV1Transport(
     } finally {
       cancelTimeout?.();
       cancelTimeout = undefined;
-      controller.abort();
+      if (!fulfilled) controller.abort();
       pending = undefined;
       // Do not accumulate requests if a non-cooperative host ignores abort. The
       // timeout marks uncertainty immediately, but retry waits for settlement.
