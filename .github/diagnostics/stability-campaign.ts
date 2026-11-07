@@ -132,7 +132,10 @@ if (mode === "long-idle") {
 } else {
   const wrapper = await readFile(resolve(import.meta.dir, "stability-tracker.mjs"), "utf8");
   const wrapperPath = join(generated, "tracker.mjs");
-  const tracker = wrapper.replace('"CANDIDATE_PRODUCT_URL"', JSON.stringify(pathToFileURL(product).href));
+  const tracker = wrapper.replace(
+    '"CANDIDATE_PRODUCT_URL"',
+    JSON.stringify(pathToFileURL(product).href),
+  );
   trackerSha256 = digest(tracker);
   await writeFile(wrapperPath, tracker);
   harness = replaceOnce(

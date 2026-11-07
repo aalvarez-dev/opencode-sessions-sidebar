@@ -1,12 +1,6 @@
 name: Pinned sidebar stability campaign
 
 on:
-  pull_request:
-    paths:
-      - ".github/diagnostics/stability-campaign.ts"
-      - ".github/diagnostics/stability-tracker.mjs"
-      - ".github/workflows/isolated-stability.yml"
-      - "docs/stability-campaign.md"
   workflow_dispatch:
 
 permissions:

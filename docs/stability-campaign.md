@@ -82,3 +82,29 @@ architecture boundaries and build. The new driver also passed an explicit strict
 because `.github/diagnostics` is outside the ordinary project typecheck. Workflow matrices and
 read-only permissions were checked. These preparation results do not claim the three campaigns,
 20-minute intervals or 50 cycles have completed; Actions supplies those separate receipts.
+
+## Hosted outcome, 2026-11-07
+
+Run `42394045854` executed on GitHub-hosted Ubuntu runners, not a self-hosted runner. All five jobs
+ran and uploaded artifacts. The failure was a resource-budget failure, not a minutes/billing
+refusal. Campaigns 1 and 3 passed; campaign 2 failed short 25-session RSS (+86.1055 MiB), short
+250-session CPU (+1.7920 points), and delayed CPU (+1.1999 points). The original +64 MiB /
++1.0-point limits remain unchanged. Three-campaign acceptance failed.
+
+The separate long observation completed 21 checkpoints per treatment over 20 minutes each. Endpoint
+differences were +34.9180 MiB RSS and +0.8200 CPU points. RSS decreased within both observations;
+this single fixed-order pair does not establish leak freedom or replace acceptance. The 50-cycle
+observation plus final disposal completed all 51 cleanup checkpoints with zero live event listeners,
+pending health requests, health failures, post-disposal health calls or post-disposal delivered
+events. All 51 activations were disposed.
+
+The concurrent diagnostic-branch CI run `42394046007` failed formatting in the driver, before its
+tests ran. The published file had a final formatting error despite the earlier local check; that
+local check therefore did not establish a passing published head. This follow-up corrects it.
+
+The expensive workflow is now **manual dispatch only** to prevent documentation or formatting
+updates from automatically repeating a concluded experiment. The run above is retained, and no rerun
+replaces its failure. Local checks and follow-up CI are separate evidence and do not turn the
+original failed experiment green. This repository is public; standard hosted runners do not draw
+down the private-repository minutes allowance. Current organization billing balance is not exposed
+by the available repository connector.
