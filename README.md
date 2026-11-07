@@ -23,11 +23,12 @@ V1** through its public APIs. The minimum supported release will be published af
 runtime testing. A future V2 adapter can live in this repository and share the domain model; V2
 support is not currently implemented.
 
-The UI retains the entire session list but mounts native row contents only near the viewport to
-bound offscreen buffers. The pinned V1 TUI has no public disconnect signal, so its integration uses
-the [bounded transport health fallback](docs/performance.md#bounded-tui-transport-health-fallback).
-It detects unavailable HTTP transport; a silent event-stream-only fault is not certified by that
-check. The headless adapter does not poll.
+The UI retains the entire session list but mounts top-level group containers and row contents only
+near the viewport, preserving full scroll geometry with spacers. The pinned V1 TUI has no public
+disconnect signal, so its integration uses the
+[bounded transport health fallback](docs/performance.md#bounded-tui-transport-health-fallback). It
+detects unavailable HTTP transport; a silent event-stream-only fault is not certified by that check.
+The headless adapter does not poll.
 
 For an isolated browser-terminal trial, see the [Codespaces lab](docs/codespaces-lab.md). Its
 development container pins the tested toolchain and provides verification and separate scratch
@@ -43,9 +44,10 @@ computer when using SSH.
 dependencies and can exercise that installed artifact in stock OpenCode. A package check is not a
 public release or a guarantee about every terminal's active font.
 
-For the frozen integration trial and the outstanding resource blocker, see the
-[V1 integration candidate](docs/v1-integration-candidate.md). This is an experimental candidate for
-a disposable Ubuntu profile, not stable release approval.
+The latest [row-container optimization](docs/windowed-row-containers.md) reduces the render tree,
+but short-window CPU acceptance still fails. No session cap or feature restriction was introduced.
+The [V1 integration candidate](docs/v1-integration-candidate.md) describes the preceding frozen
+trial build; its hashes do not identify this newer optimization. Neither is stable release approval.
 
 ## Intended behavior
 

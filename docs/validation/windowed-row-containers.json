@@ -1,0 +1,2587 @@
+{
+  "schema": 1,
+  "status": "experimental-optimization; resource acceptance failed; not stable V1",
+  "candidateBase": "a4d3bb652d6ca2366038019ca9185d47ba999bca",
+  "runtimeSha256": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949",
+  "protocol": {
+    "purpose": "Predeclared negative control and one candidate campaign; not three-campaign stable acceptance",
+    "order": ["aa-short", "aa-delayed", "candidate-short", "candidate-delayed"],
+    "host": "1.18.30",
+    "bun": "1.3.14",
+    "candidateChange": "window top-level row containers; preserve all sessions and health timing",
+    "short": {
+      "sizes": [25, 250],
+      "pairsPerSize": 3,
+      "settleMs": 2000,
+      "observationMs": 5000
+    },
+    "delayed": {
+      "sizes": [250],
+      "pairsPerSize": 3,
+      "settleMs": 20000,
+      "observationMs": 10000
+    },
+    "budgets": {
+      "rssMiB": 64,
+      "cpuPoints": 1
+    },
+    "retries": 0,
+    "limitations": [
+      "Shared scratch environment, not dedicated hardware.",
+      "A/A quantifies variation of identical baseline arms; it cannot excuse a candidate failure.",
+      "No forced GC, profiling, disabled health, shortened session list or widened limits.",
+      "Candidate probe replaces per-row-shell equality with bounded shells plus full scroll extent and last-row navigation; resource sampling code is unchanged."
+    ],
+    "candidateSha256": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949",
+    "generatedSourceSha256": "4b48b78bb60d517d59c5bccbfb951cc4a6f0a1e363b7de8c018923abeea21e0f"
+  },
+  "campaigns": {
+    "aa-short": {
+      "kind": "baseline-baseline-negative-control",
+      "acceptanceEvaluated": false,
+      "completed": true,
+      "budgets": {
+        "medianRssDeltaMiB": 64,
+        "medianCpuDeltaPoints": 1
+      },
+      "measurements": [
+        {
+          "sessions": 25,
+          "repetition": 1,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3181.837883,
+          "observationMs": 5002.99581,
+          "cpuPercent": 2.3985628722723233,
+          "rssStartMiB": 657.41015625,
+          "rssEndMiB": 655.53515625,
+          "mainThreadContextSwitches": 134,
+          "readyToObservationMs": 2003.2761449999998,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.09500980377197,
+              "heapTotalMiB": 68.5078125,
+              "externalMiB": 28.61507511138916,
+              "arrayBuffersMiB": 4.427248954772949
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 78.75173568725586,
+              "heapTotalMiB": 62.388671875,
+              "externalMiB": 27.071773529052734,
+              "arrayBuffersMiB": 0.129913330078125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 1,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3211.0595410000005,
+          "observationMs": 5002.0401660000025,
+          "cpuPercent": 2.5989395463802825,
+          "rssStartMiB": 611.34765625,
+          "rssEndMiB": 610.953125,
+          "mainThreadContextSwitches": 282,
+          "readyToObservationMs": 2003.3043199999993,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.94184970855713,
+              "heapTotalMiB": 68.2255859375,
+              "externalMiB": 29.6375093460083,
+              "arrayBuffersMiB": 4.427525520324707
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 83.55668354034424,
+              "heapTotalMiB": 63.2861328125,
+              "externalMiB": 30.1326265335083,
+              "arrayBuffersMiB": 4.428986549377441
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 2,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3046.939294,
+          "observationMs": 5001.860808999998,
+          "cpuPercent": 1.799330357975182,
+          "rssStartMiB": 669.671875,
+          "rssEndMiB": 667.98828125,
+          "mainThreadContextSwitches": 112,
+          "readyToObservationMs": 2001.9204269999973,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.09791088104248,
+              "heapTotalMiB": 67.9697265625,
+              "externalMiB": 29.681727409362793,
+              "arrayBuffersMiB": 4.427498817443848
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 83.7750186920166,
+              "heapTotalMiB": 64.5478515625,
+              "externalMiB": 30.154077529907227,
+              "arrayBuffersMiB": 4.428959846496582
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 2,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3270.132523,
+          "observationMs": 5001.877499999995,
+          "cpuPercent": 1.9992492818946506,
+          "rssStartMiB": 648.5234375,
+          "rssEndMiB": 647.1328125,
+          "mainThreadContextSwitches": 133,
+          "readyToObservationMs": 2006.1445040000035,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.45966148376465,
+              "heapTotalMiB": 69.0390625,
+              "externalMiB": 30.095964431762695,
+              "arrayBuffersMiB": 4.459353446960449
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 78.90021228790283,
+              "heapTotalMiB": 62.767578125,
+              "externalMiB": 27.252568244934082,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 3,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3263.412955,
+          "observationMs": 5004.514134999998,
+          "cpuPercent": 1.99819597472273,
+          "rssStartMiB": 656.8125,
+          "rssEndMiB": 656.07421875,
+          "mainThreadContextSwitches": 123,
+          "readyToObservationMs": 2000.7975860000006,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.04283714294434,
+              "heapTotalMiB": 67.93359375,
+              "externalMiB": 29.636842727661133,
+              "arrayBuffersMiB": 4.4275007247924805
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 83.6630392074585,
+              "heapTotalMiB": 62.8505859375,
+              "externalMiB": 30.147475242614746,
+              "arrayBuffersMiB": 4.428961753845215
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 3,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3128.994412,
+          "observationMs": 5002.449065000001,
+          "cpuPercent": 1.999020853598636,
+          "rssStartMiB": 659.4921875,
+          "rssEndMiB": 657.05078125,
+          "mainThreadContextSwitches": 122,
+          "readyToObservationMs": 2001.153575999997,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.83516216278076,
+              "heapTotalMiB": 67.7216796875,
+              "externalMiB": 29.434481620788574,
+              "arrayBuffersMiB": 4.427243232727051
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 83.45761680603027,
+              "heapTotalMiB": 62.671875,
+              "externalMiB": 29.93390464782715,
+              "arrayBuffersMiB": 4.428959846496582
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3236.616300000009,
+          "observationMs": 5001.837158999988,
+          "cpuPercent": 1.799338865681777,
+          "rssStartMiB": 609.66796875,
+          "rssEndMiB": 609.5234375,
+          "mainThreadContextSwitches": 99,
+          "readyToObservationMs": 2000.6235980000056,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.19869899749756,
+              "heapTotalMiB": 66.8466796875,
+              "externalMiB": 30.669718742370605,
+              "arrayBuffersMiB": 5.70949649810791
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 85.46778869628906,
+              "heapTotalMiB": 61.626953125,
+              "externalMiB": 31.468887329101562,
+              "arrayBuffersMiB": 5.710263252258301
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3450.303482000003,
+          "observationMs": 5002.533985999995,
+          "cpuPercent": 2.5986829947345838,
+          "rssStartMiB": 691.73828125,
+          "rssEndMiB": 689.91015625,
+          "mainThreadContextSwitches": 109,
+          "readyToObservationMs": 2002.0972870000114,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.16363716125488,
+              "heapTotalMiB": 66.8662109375,
+              "externalMiB": 30.58363151550293,
+              "arrayBuffersMiB": 5.709494590759277
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 85.42847919464111,
+              "heapTotalMiB": 61.4892578125,
+              "externalMiB": 31.385632514953613,
+              "arrayBuffersMiB": 5.710261344909668
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3578.0366950000025,
+          "observationMs": 5002.635266999991,
+          "cpuPercent": 1.9989464484779156,
+          "rssStartMiB": 666.28515625,
+          "rssEndMiB": 664.39453125,
+          "mainThreadContextSwitches": 464,
+          "readyToObservationMs": 2001.5180220000038,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.19206714630127,
+              "heapTotalMiB": 66.7587890625,
+              "externalMiB": 30.670273780822754,
+              "arrayBuffersMiB": 5.709494590759277
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 85.45544242858887,
+              "heapTotalMiB": 61.54296875,
+              "externalMiB": 31.463605880737305,
+              "arrayBuffersMiB": 5.710261344909668
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3346.79039200001,
+          "observationMs": 5002.199980999998,
+          "cpuPercent": 1.9991203946230243,
+          "rssStartMiB": 652.1953125,
+          "rssEndMiB": 650.65234375,
+          "mainThreadContextSwitches": 105,
+          "readyToObservationMs": 2002.0392060000013,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.01091194152832,
+              "heapTotalMiB": 69.9658203125,
+              "externalMiB": 30.745344161987305,
+              "arrayBuffersMiB": 5.709752082824707
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.3089599609375,
+              "heapTotalMiB": 61.029296875,
+              "externalMiB": 27.321197509765625,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3519.5517059999984,
+          "observationMs": 5002.392737000002,
+          "cpuPercent": 2.1989476992957653,
+          "rssStartMiB": 604.0859375,
+          "rssEndMiB": 603.56640625,
+          "mainThreadContextSwitches": 378,
+          "readyToObservationMs": 2005.5559719999874,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 86.7293176651001,
+              "heapTotalMiB": 66.8212890625,
+              "externalMiB": 37.15060901641846,
+              "arrayBuffersMiB": 12.118699073791504
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.3403730392456,
+              "heapTotalMiB": 60.83984375,
+              "externalMiB": 27.33967113494873,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3213.8434149999957,
+          "observationMs": 5002.333944999991,
+          "cpuPercent": 2.798693600612869,
+          "rssStartMiB": 653.31640625,
+          "rssEndMiB": 652.0859375,
+          "mainThreadContextSwitches": 127,
+          "readyToObservationMs": 2001.7648849999969,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.19091606140137,
+              "heapTotalMiB": 70.2421875,
+              "externalMiB": 30.98502540588379,
+              "arrayBuffersMiB": 5.709368705749512
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.37261199951172,
+              "heapTotalMiB": 61.369140625,
+              "externalMiB": 27.37090301513672,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        }
+      ],
+      "results": [
+        {
+          "sessions": 25,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": -44.58203125,
+              "cpuPoints": 0.20037667410795912
+            },
+            {
+              "repetition": 2,
+              "rssMiB": 20.85546875,
+              "cpuPoints": -0.19991892391946853
+            },
+            {
+              "repetition": 3,
+              "rssMiB": 0.9765625,
+              "cpuPoints": 0.0008248788759059877
+            }
+          ],
+          "medianRssDeltaMiB": 0.9765625,
+          "medianCpuDeltaPoints": 0.0008248788759059877
+        },
+        {
+          "sessions": 250,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": 80.38671875,
+              "cpuPoints": 0.7993441290528067
+            },
+            {
+              "repetition": 2,
+              "rssMiB": 13.7421875,
+              "cpuPoints": -0.00017394614510868323
+            },
+            {
+              "repetition": 3,
+              "rssMiB": 48.51953125,
+              "cpuPoints": 0.5997459013171036
+            }
+          ],
+          "medianRssDeltaMiB": 48.51953125,
+          "medianCpuDeltaPoints": 0.5997459013171036
+        }
+      ],
+      "referenceBudgetsExceeded": false,
+      "control": "Both arms load only the baseline observer. enabled labels arm B, not a sidebar.",
+      "limitations": [
+        "Three pairs per size on shared hardware; no confidence interval or long-running stability guarantee.",
+        "The fixed 2-second settle is not proof of steady state; examine resident-memory drift and CPU activity before interpreting idle overhead.",
+        "TUI-process RSS and aggregate-thread CPU only; excludes subprocesses, GPU and browser/client terminal.",
+        "Main-thread context switches are not timer/wakeup counts; lifecycle visibility does not prove zero retained heap/subscriptions.",
+        "Idle synthetic sessions, no prompts or external inference; no event-burst, native font, remote transport or packaged-install claim.",
+        "The existing 250ms navigation and 500ms component budgets remain independent and unchanged."
+      ],
+      "originalReceiptSha256": "ffdc8035c29fe8711d371f65dbd728f20c074b8cf2be003013d651b8ec6a75b6",
+      "sourceHashes": {
+        "scripts/benchmark-sidebar-runtime.ts": "cf81e0d5fe450e33ea83538710d0c133ca9e7e3d08af60ceebc091ef101e4ae5",
+        "scripts/process-memory-diagnostic.ts": "0db86dc49eb5b3ab7837e106a191d5650f69ee73a334d559516c5f0c5990abb3",
+        "scripts/sidebar-resource-probe.ts": "462342d11286b72270b5b4c369696c0a5a32c9e80e44f7a71a41eb76ad3354bf",
+        "scripts/thread-cpu-diagnostic.ts": "d36e153c6d9f7d95d5bf2362f154c1e79c295d999d8e14d8f2b6861c530d2fb0",
+        "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+        "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+        "src/adapters/opencode-v1/index.ts": "f7601a77ce21f9907b7b0c2877c82d7cd3b48d3c6497b344b1c1788433291731",
+        "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+        "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+        "src/core/completion.ts": "12ef8ad644e12bcb18ccf5b9b94ed1097e92c3ac7eff24df7a997a8ef58bb9bf",
+        "src/core/index.ts": "c4d060233c52bda5ce64b54220a4781af8b7b00f7e29baed2e6d62d2316ec126",
+        "src/core/queue.ts": "0dc2d974c9e316bd8524a5881929126f5c66a994008e1581178cc318b5f5eb7d",
+        "src/core/types.ts": "9737b77b0d129d956e0f84d0d137c78fe74a086b88ca0b0dddc303326561efd9",
+        "src/extensions/index.ts": "84baa6fed43c8f29f2da276ca34998fe5feb7930fcf017ea3796ba88cb82da51",
+        "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+        "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+        "src/index.ts": "b01988a714da27b4a7de7586531ac9260ae04d35d9a9976df6f4c9ec7fa07cca",
+        "src/organization/index.ts": "34fcbcac941e36707c96f887747dfb24b91975ae5ce32d60878646829320a860",
+        "src/organization/schema.ts": "241b7dd9d20299a0f4791b8d03dfbb6b25adb6a7dc38cf3f818b0d35fb2e43d2",
+        "src/organization/service.ts": "2cc872a629a0857cc888c3b9a77399657f59a73e9ddc23b3b55c6f2d0ca95e82",
+        "src/organization/types.ts": "665ba1323f8e459a6ba528db1620eeeec22d238da25e80408d8ff2fe0c9c4e64",
+        "src/storage/file.ts": "43fd7cbd02dfde55acc40c9b3f5530a68acea93c59b2c9a954c8b52c5d27d099",
+        "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+        "src/ui/colors.ts": "2693dc989f70bfb5aa635fa3e684ff662af6ccaba9870146c016ae32d39038df",
+        "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+        "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+        "src/ui/icons.ts": "9b766db44fea0a3f9e5637a55d10dd99467a3481571c89e762135329f7f25f23",
+        "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+        "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+        "src/ui/view.tsx": "4e6cada65e96c85e000e13f56754b69875d51d8736e3818bcea5b42076efdca2",
+        "src/ui/viewport.ts": "9388a54adda033166e3d96697c055d5a3ff1014759ce6443a4aa91791e624a7d",
+        "runtimePlugin": "a91d70019f34307548355234859f80130bac1cc8483adee6bdcc9535bf1a472d"
+      }
+    },
+    "aa-delayed": {
+      "kind": "baseline-baseline-negative-control",
+      "acceptanceEvaluated": false,
+      "completed": true,
+      "budgets": {
+        "medianRssDeltaMiB": 64,
+        "medianCpuDeltaPoints": 1
+      },
+      "measurements": [
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3237.1024649999995,
+          "observationMs": 10002.390554000005,
+          "cpuPercent": 2.2994503039877987,
+          "rssStartMiB": 605.625,
+          "rssEndMiB": 605.484375,
+          "mainThreadContextSwitches": 200,
+          "readyToObservationMs": 20002.348289999998,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 85.26799392700195,
+              "heapTotalMiB": 66.5615234375,
+              "externalMiB": 35.880462646484375,
+              "arrayBuffersMiB": 10.83644962310791
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.2761754989624,
+              "heapTotalMiB": 61.0244140625,
+              "externalMiB": 27.306830406188965,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3225.213223000006,
+          "observationMs": 10002.498145000005,
+          "cpuPercent": 2.399400594940074,
+          "rssStartMiB": 609.546875,
+          "rssEndMiB": 609.24609375,
+          "mainThreadContextSwitches": 187,
+          "readyToObservationMs": 20009.452513999997,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.49642658233643,
+              "heapTotalMiB": 66.9609375,
+              "externalMiB": 30.97103214263916,
+              "arrayBuffersMiB": 5.709368705749512
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 85.76676654815674,
+              "heapTotalMiB": 61.7080078125,
+              "externalMiB": 31.780179023742676,
+              "arrayBuffersMiB": 5.710135459899902
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3523.306786000001,
+          "observationMs": 10001.079645999998,
+          "cpuPercent": 8.299103990557303,
+          "rssStartMiB": 677.78515625,
+          "rssEndMiB": 621.30859375,
+          "mainThreadContextSwitches": 324,
+          "readyToObservationMs": 20000.798141000007,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.21576023101807,
+              "heapTotalMiB": 66.783203125,
+              "externalMiB": 30.67197895050049,
+              "arrayBuffersMiB": 5.709750175476074
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 62.92966079711914,
+              "heapTotalMiB": 60.1826171875,
+              "externalMiB": 13.74380874633789,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3197.0374119999906,
+          "observationMs": 10001.975101999997,
+          "cpuPercent": 4.399131126731334,
+          "rssStartMiB": 659.0859375,
+          "rssEndMiB": 654.109375,
+          "mainThreadContextSwitches": 467,
+          "readyToObservationMs": 20001.02777799999,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.51614475250244,
+              "heapTotalMiB": 67.1044921875,
+              "externalMiB": 30.964444160461426,
+              "arrayBuffersMiB": 5.7093706130981445
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 62.83971405029297,
+              "heapTotalMiB": 60.4609375,
+              "externalMiB": 13.666511535644531,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3913.8420160000096,
+          "observationMs": 10001.542778999981,
+          "cpuPercent": 3.699429259822603,
+          "rssStartMiB": 629.8671875,
+          "rssEndMiB": 629.14453125,
+          "mainThreadContextSwitches": 318,
+          "readyToObservationMs": 20000.898897000006,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.92238998413086,
+              "heapTotalMiB": 67.0615234375,
+              "externalMiB": 30.86089324951172,
+              "arrayBuffersMiB": 5.741730690002441
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 62.89086055755615,
+              "heapTotalMiB": 60.416015625,
+              "externalMiB": 13.715384483337402,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3435.8485780000046,
+          "observationMs": 10001.247065000003,
+          "cpuPercent": 2.299713210814475,
+          "rssStartMiB": 647.046875,
+          "rssEndMiB": 647.046875,
+          "mainThreadContextSwitches": 216,
+          "readyToObservationMs": 20000.527297000022,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 85.42433452606201,
+              "heapTotalMiB": 66.8251953125,
+              "externalMiB": 35.881239891052246,
+              "arrayBuffersMiB": 10.836958885192871
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.4008674621582,
+              "heapTotalMiB": 60.796875,
+              "externalMiB": 27.37106704711914,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        }
+      ],
+      "results": [
+        {
+          "sessions": 250,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": 3.76171875,
+              "cpuPoints": 0.09995029095227537
+            },
+            {
+              "repetition": 2,
+              "rssMiB": -32.80078125,
+              "cpuPoints": 3.899972863825968
+            },
+            {
+              "repetition": 3,
+              "rssMiB": 17.90234375,
+              "cpuPoints": -1.399716049008128
+            }
+          ],
+          "medianRssDeltaMiB": 3.76171875,
+          "medianCpuDeltaPoints": 0.09995029095227537
+        }
+      ],
+      "referenceBudgetsExceeded": false,
+      "control": "Both arms load only the baseline observer. enabled labels arm B, not a sidebar.",
+      "limitations": [
+        "Three pairs per size on shared hardware; no confidence interval or long-running stability guarantee.",
+        "The fixed 20-second settle is not proof of steady state; examine resident-memory drift and CPU activity before interpreting idle overhead.",
+        "TUI-process RSS and aggregate-thread CPU only; excludes subprocesses, GPU and browser/client terminal.",
+        "Main-thread context switches are not timer/wakeup counts; lifecycle visibility does not prove zero retained heap/subscriptions.",
+        "Idle synthetic sessions, no prompts or external inference; no event-burst, native font, remote transport or packaged-install claim.",
+        "The existing 250ms navigation and 500ms component budgets remain independent and unchanged."
+      ],
+      "originalReceiptSha256": "7e10a72ecd6937b374f4b99558a2bd814e55be17c87c67ba068eec56a1e514fa",
+      "sourceHashes": {
+        "scripts/benchmark-sidebar-runtime.ts": "cf81e0d5fe450e33ea83538710d0c133ca9e7e3d08af60ceebc091ef101e4ae5",
+        "scripts/process-memory-diagnostic.ts": "0db86dc49eb5b3ab7837e106a191d5650f69ee73a334d559516c5f0c5990abb3",
+        "scripts/sidebar-resource-probe.ts": "462342d11286b72270b5b4c369696c0a5a32c9e80e44f7a71a41eb76ad3354bf",
+        "scripts/thread-cpu-diagnostic.ts": "d36e153c6d9f7d95d5bf2362f154c1e79c295d999d8e14d8f2b6861c530d2fb0",
+        "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+        "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+        "src/adapters/opencode-v1/index.ts": "f7601a77ce21f9907b7b0c2877c82d7cd3b48d3c6497b344b1c1788433291731",
+        "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+        "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+        "src/core/completion.ts": "12ef8ad644e12bcb18ccf5b9b94ed1097e92c3ac7eff24df7a997a8ef58bb9bf",
+        "src/core/index.ts": "c4d060233c52bda5ce64b54220a4781af8b7b00f7e29baed2e6d62d2316ec126",
+        "src/core/queue.ts": "0dc2d974c9e316bd8524a5881929126f5c66a994008e1581178cc318b5f5eb7d",
+        "src/core/types.ts": "9737b77b0d129d956e0f84d0d137c78fe74a086b88ca0b0dddc303326561efd9",
+        "src/extensions/index.ts": "84baa6fed43c8f29f2da276ca34998fe5feb7930fcf017ea3796ba88cb82da51",
+        "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+        "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+        "src/index.ts": "b01988a714da27b4a7de7586531ac9260ae04d35d9a9976df6f4c9ec7fa07cca",
+        "src/organization/index.ts": "34fcbcac941e36707c96f887747dfb24b91975ae5ce32d60878646829320a860",
+        "src/organization/schema.ts": "241b7dd9d20299a0f4791b8d03dfbb6b25adb6a7dc38cf3f818b0d35fb2e43d2",
+        "src/organization/service.ts": "2cc872a629a0857cc888c3b9a77399657f59a73e9ddc23b3b55c6f2d0ca95e82",
+        "src/organization/types.ts": "665ba1323f8e459a6ba528db1620eeeec22d238da25e80408d8ff2fe0c9c4e64",
+        "src/storage/file.ts": "43fd7cbd02dfde55acc40c9b3f5530a68acea93c59b2c9a954c8b52c5d27d099",
+        "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+        "src/ui/colors.ts": "2693dc989f70bfb5aa635fa3e684ff662af6ccaba9870146c016ae32d39038df",
+        "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+        "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+        "src/ui/icons.ts": "9b766db44fea0a3f9e5637a55d10dd99467a3481571c89e762135329f7f25f23",
+        "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+        "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+        "src/ui/view.tsx": "4e6cada65e96c85e000e13f56754b69875d51d8736e3818bcea5b42076efdca2",
+        "src/ui/viewport.ts": "9388a54adda033166e3d96697c055d5a3ff1014759ce6443a4aa91791e624a7d",
+        "runtimePlugin": "a91d70019f34307548355234859f80130bac1cc8483adee6bdcc9535bf1a472d"
+      }
+    },
+    "candidate-short": {
+      "kind": "acceptance-comparison",
+      "acceptanceEvaluated": true,
+      "completed": true,
+      "passed": false,
+      "budgets": {
+        "medianRssDeltaMiB": 64,
+        "medianCpuDeltaPoints": 1
+      },
+      "measurements": [
+        {
+          "sessions": 25,
+          "repetition": 1,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3203.9307390000004,
+          "observationMs": 5003.670604,
+          "cpuPercent": 1.9985328354759941,
+          "rssStartMiB": 611,
+          "rssEndMiB": 610.01171875,
+          "mainThreadContextSwitches": 113,
+          "readyToObservationMs": 2001.170427,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.01862239837646,
+              "heapTotalMiB": 67.7880859375,
+              "externalMiB": 29.634753227233887,
+              "arrayBuffersMiB": 4.427756309509277
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 83.62338542938232,
+              "heapTotalMiB": 62.740234375,
+              "externalMiB": 30.1297025680542,
+              "arrayBuffersMiB": 4.429217338562012
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 1,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3470.150406999999,
+          "observationMs": 5002.040681000002,
+          "cpuPercent": 3.398612903044479,
+          "rssStartMiB": 689.07421875,
+          "rssEndMiB": 688.23828125,
+          "mainThreadContextSwitches": 314,
+          "readyToObservationMs": 2001.7077469999986,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 82.43408489227295,
+              "heapTotalMiB": 71.66015625,
+              "externalMiB": 30.93597984313965,
+              "arrayBuffersMiB": 3.3569793701171875
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 84.7709846496582,
+              "heapTotalMiB": 66.091796875,
+              "externalMiB": 31.384845733642578,
+              "arrayBuffersMiB": 3.357929229736328
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 97.76781499999925
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 114.6728830000011
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 1,
+            "viewport": {
+              "totalRows": 25,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 2,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3367.688842000003,
+          "observationMs": 5002.136065000002,
+          "cpuPercent": 3.198633502185629,
+          "rssStartMiB": 667.83203125,
+          "rssEndMiB": 666.05859375,
+          "mainThreadContextSwitches": 241,
+          "readyToObservationMs": 2001.9030669999993,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 83.60406017303467,
+              "heapTotalMiB": 72.5107421875,
+              "externalMiB": 29.04555320739746,
+              "arrayBuffersMiB": 1.413543701171875
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 82.95467376708984,
+              "heapTotalMiB": 67.03125,
+              "externalMiB": 29.499061584472656,
+              "arrayBuffersMiB": 1.4144935607910156
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 101.57454199999847
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 64.57441199999994
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 1,
+            "viewport": {
+              "totalRows": 25,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 2,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3209.448261000005,
+          "observationMs": 5002.0791180000015,
+          "cpuPercent": 3.5985036572546263,
+          "rssStartMiB": 656.8359375,
+          "rssEndMiB": 655.90234375,
+          "mainThreadContextSwitches": 111,
+          "readyToObservationMs": 2000.9045409999962,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.02076244354248,
+              "heapTotalMiB": 67.9990234375,
+              "externalMiB": 29.583762168884277,
+              "arrayBuffersMiB": 4.427756309509277
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 83.64123630523682,
+              "heapTotalMiB": 62.9306640625,
+              "externalMiB": 30.08357334136963,
+              "arrayBuffersMiB": 4.429217338562012
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 3,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3274.227021999999,
+          "observationMs": 5002.009238999999,
+          "cpuPercent": 2.399035952680295,
+          "rssStartMiB": 654.55078125,
+          "rssEndMiB": 652.734375,
+          "mainThreadContextSwitches": 139,
+          "readyToObservationMs": 2005.841800000002,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.16439247131348,
+              "heapTotalMiB": 68.3623046875,
+              "externalMiB": 29.814077377319336,
+              "arrayBuffersMiB": 4.427245140075684
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 78.76184558868408,
+              "heapTotalMiB": 62.11328125,
+              "externalMiB": 27.145939826965332,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 25,
+          "repetition": 3,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3321.1212000000014,
+          "observationMs": 5001.964007000002,
+          "cpuPercent": 2.798900587930599,
+          "rssStartMiB": 671.453125,
+          "rssEndMiB": 671.05078125,
+          "mainThreadContextSwitches": 294,
+          "readyToObservationMs": 2000.6294049999997,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 82.4491491317749,
+              "heapTotalMiB": 71.251953125,
+              "externalMiB": 30.129551887512207,
+              "arrayBuffersMiB": 2.4942092895507812
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 83.90708446502686,
+              "heapTotalMiB": 66.70703125,
+              "externalMiB": 30.571330070495605,
+              "arrayBuffersMiB": 2.495159149169922
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 102.70306700000037
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 76.45107699999971
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 1,
+            "viewport": {
+              "totalRows": 25,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3255.9787579999975,
+          "observationMs": 5001.9744409999985,
+          "cpuPercent": 1.7992894818152476,
+          "rssStartMiB": 606.53125,
+          "rssEndMiB": 606.01953125,
+          "mainThreadContextSwitches": 92,
+          "readyToObservationMs": 2001.0941049999965,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 85.41647624969482,
+              "heapTotalMiB": 66.72265625,
+              "externalMiB": 35.865614891052246,
+              "arrayBuffersMiB": 10.836705207824707
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.31266593933105,
+              "heapTotalMiB": 60.78515625,
+              "externalMiB": 27.329984664916992,
+              "arrayBuffersMiB": 0.12965774536132812
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3421.7717799999955,
+          "observationMs": 5005.842753000004,
+          "cpuPercent": 3.396031565276774,
+          "rssStartMiB": 660.578125,
+          "rssEndMiB": 659.8359375,
+          "mainThreadContextSwitches": 147,
+          "readyToObservationMs": 2001.1243079999986,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 86.38209629058838,
+              "heapTotalMiB": 71.7431640625,
+              "externalMiB": 34.88282489776611,
+              "arrayBuffersMiB": 8.336466789245605
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 82.3508529663086,
+              "heapTotalMiB": 62.7158203125,
+              "externalMiB": 28.620933532714844,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 100.25565700000152
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 96.34869799999979
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 0,
+            "viewport": {
+              "totalRows": 250,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3381.768443000008,
+          "observationMs": 5001.719043999998,
+          "cpuPercent": 5.198212808692102,
+          "rssStartMiB": 669.41796875,
+          "rssEndMiB": 669.18359375,
+          "mainThreadContextSwitches": 438,
+          "readyToObservationMs": 2000.4195029999973,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 82.7593183517456,
+              "heapTotalMiB": 70.671875,
+              "externalMiB": 33.05020809173584,
+              "arrayBuffersMiB": 5.384166717529297
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 87.46390342712402,
+              "heapTotalMiB": 62.2314453125,
+              "externalMiB": 33.4791316986084,
+              "arrayBuffersMiB": 5.384166717529297
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 119.65703399999984
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 99.25767500000075
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 0,
+            "viewport": {
+              "totalRows": 250,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3402.2791670000006,
+          "observationMs": 5001.835999000003,
+          "cpuPercent": 2.199192456969638,
+          "rssStartMiB": 679.9453125,
+          "rssEndMiB": 678.45703125,
+          "mainThreadContextSwitches": 129,
+          "readyToObservationMs": 2003.1262810000044,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 81.57620429992676,
+              "heapTotalMiB": 66.7587890625,
+              "externalMiB": 32.05433464050293,
+              "arrayBuffersMiB": 6.991745948791504
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 86.88715362548828,
+              "heapTotalMiB": 61.5,
+              "externalMiB": 32.887535095214844,
+              "arrayBuffersMiB": 6.9925127029418945
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3476.120443000007,
+          "observationMs": 5002.351503999991,
+          "cpuPercent": 2.1989658246135155,
+          "rssStartMiB": 657.2890625,
+          "rssEndMiB": 656.5625,
+          "mainThreadContextSwitches": 123,
+          "readyToObservationMs": 2002.4787040000083,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 85.42634296417236,
+              "heapTotalMiB": 69.755859375,
+              "externalMiB": 37.11832523345947,
+              "arrayBuffersMiB": 12.118443489074707
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.3366527557373,
+              "heapTotalMiB": 60.9853515625,
+              "externalMiB": 27.325788497924805,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3401.5961649999954,
+          "observationMs": 5001.356125999999,
+          "cpuPercent": 5.598481550721711,
+          "rssStartMiB": 660.83203125,
+          "rssEndMiB": 660.27734375,
+          "mainThreadContextSwitches": 171,
+          "readyToObservationMs": 2000.476959000007,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 81.87629318237305,
+              "heapTotalMiB": 71.6064453125,
+              "externalMiB": 31.962422370910645,
+              "arrayBuffersMiB": 3.9684371948242188
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 86.2780065536499,
+              "heapTotalMiB": 64.828125,
+              "externalMiB": 32.37888240814209,
+              "arrayBuffersMiB": 3.9684371948242188
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 108.91555700000026
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 99.58830599999965
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 0,
+            "viewport": {
+              "totalRows": 250,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        }
+      ],
+      "results": [
+        {
+          "sessions": 25,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": 78.2265625,
+              "cpuPoints": 1.400080067568485
+            },
+            {
+              "repetition": 2,
+              "rssMiB": 10.15625,
+              "cpuPoints": -0.39987015506899715
+            },
+            {
+              "repetition": 3,
+              "rssMiB": 18.31640625,
+              "cpuPoints": 0.3998646352503039
+            }
+          ],
+          "medianRssDeltaMiB": 18.31640625,
+          "medianCpuDeltaPoints": 0.3998646352503039,
+          "passed": true
+        },
+        {
+          "sessions": 250,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": 53.81640625,
+              "cpuPoints": 1.5967420834615265
+            },
+            {
+              "repetition": 2,
+              "rssMiB": -9.2734375,
+              "cpuPoints": 2.9990203517224634
+            },
+            {
+              "repetition": 3,
+              "rssMiB": 3.71484375,
+              "cpuPoints": 3.399515726108196
+            }
+          ],
+          "medianRssDeltaMiB": 3.71484375,
+          "medianCpuDeltaPoints": 2.9990203517224634,
+          "passed": false
+        }
+      ],
+      "limitations": [
+        "Three pairs per size on shared hardware; no confidence interval or long-running stability guarantee.",
+        "The fixed 2-second settle is not proof of steady state; examine resident-memory drift and CPU activity before interpreting idle overhead.",
+        "TUI-process RSS and aggregate-thread CPU only; excludes subprocesses, GPU and browser/client terminal.",
+        "Main-thread context switches are not timer/wakeup counts; lifecycle visibility does not prove zero retained heap/subscriptions.",
+        "Idle synthetic sessions, no prompts or external inference; no event-burst, native font, remote transport or packaged-install claim.",
+        "The existing 250ms navigation and 500ms component budgets remain independent and unchanged."
+      ],
+      "originalReceiptSha256": "f045f3bf3ba8bed388f3ac73cfa87f7cf849785b4e14364ca3c9d49e377e7f36",
+      "sourceHashes": {
+        "scripts/benchmark-sidebar-runtime.ts": "cf81e0d5fe450e33ea83538710d0c133ca9e7e3d08af60ceebc091ef101e4ae5",
+        "scripts/process-memory-diagnostic.ts": "0db86dc49eb5b3ab7837e106a191d5650f69ee73a334d559516c5f0c5990abb3",
+        "scripts/sidebar-resource-probe.ts": "54916c7d9fce118d7f35f4b9e94bdf8179ae5d693885e2c0abbd24f3810445dc",
+        "scripts/thread-cpu-diagnostic.ts": "d36e153c6d9f7d95d5bf2362f154c1e79c295d999d8e14d8f2b6861c530d2fb0",
+        "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+        "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+        "src/adapters/opencode-v1/index.ts": "f7601a77ce21f9907b7b0c2877c82d7cd3b48d3c6497b344b1c1788433291731",
+        "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+        "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+        "src/core/completion.ts": "12ef8ad644e12bcb18ccf5b9b94ed1097e92c3ac7eff24df7a997a8ef58bb9bf",
+        "src/core/index.ts": "c4d060233c52bda5ce64b54220a4781af8b7b00f7e29baed2e6d62d2316ec126",
+        "src/core/queue.ts": "0dc2d974c9e316bd8524a5881929126f5c66a994008e1581178cc318b5f5eb7d",
+        "src/core/types.ts": "9737b77b0d129d956e0f84d0d137c78fe74a086b88ca0b0dddc303326561efd9",
+        "src/extensions/index.ts": "84baa6fed43c8f29f2da276ca34998fe5feb7930fcf017ea3796ba88cb82da51",
+        "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+        "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+        "src/index.ts": "b01988a714da27b4a7de7586531ac9260ae04d35d9a9976df6f4c9ec7fa07cca",
+        "src/organization/index.ts": "34fcbcac941e36707c96f887747dfb24b91975ae5ce32d60878646829320a860",
+        "src/organization/schema.ts": "241b7dd9d20299a0f4791b8d03dfbb6b25adb6a7dc38cf3f818b0d35fb2e43d2",
+        "src/organization/service.ts": "2cc872a629a0857cc888c3b9a77399657f59a73e9ddc23b3b55c6f2d0ca95e82",
+        "src/organization/types.ts": "665ba1323f8e459a6ba528db1620eeeec22d238da25e80408d8ff2fe0c9c4e64",
+        "src/storage/file.ts": "43fd7cbd02dfde55acc40c9b3f5530a68acea93c59b2c9a954c8b52c5d27d099",
+        "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+        "src/ui/colors.ts": "2693dc989f70bfb5aa635fa3e684ff662af6ccaba9870146c016ae32d39038df",
+        "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+        "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+        "src/ui/icons.ts": "9b766db44fea0a3f9e5637a55d10dd99467a3481571c89e762135329f7f25f23",
+        "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+        "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+        "src/ui/view.tsx": "865b70498f5a211a802d3520909c42aa25409b0f8c3c308272bfebc2687ac009",
+        "src/ui/viewport.ts": "90a9300a41a6ee1dd01fed0511a18125631c793254d0f24b41f2c1027950338f",
+        "runtimePlugin": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949"
+      }
+    },
+    "candidate-delayed": {
+      "kind": "delayed-acceptance-comparison",
+      "acceptanceEvaluated": true,
+      "completed": true,
+      "passed": true,
+      "budgets": {
+        "medianRssDeltaMiB": 64,
+        "medianCpuDeltaPoints": 1
+      },
+      "measurements": [
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3252.5502899999997,
+          "observationMs": 10002.954772999998,
+          "cpuPercent": 2.2993206029564046,
+          "rssStartMiB": 606.93359375,
+          "rssEndMiB": 607.046875,
+          "mainThreadContextSwitches": 612,
+          "readyToObservationMs": 20001.149832,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.45188903808594,
+              "heapTotalMiB": 67.091796875,
+              "externalMiB": 30.951595306396484,
+              "arrayBuffersMiB": 5.7093706130981445
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 85.74497509002686,
+              "heapTotalMiB": 61.7568359375,
+              "externalMiB": 31.74763011932373,
+              "arrayBuffersMiB": 5.710137367248535
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3444.1929670000027,
+          "observationMs": 10001.411845999995,
+          "cpuPercent": 3.199548273056889,
+          "rssStartMiB": 659.3125,
+          "rssEndMiB": 659.0390625,
+          "mainThreadContextSwitches": 343,
+          "readyToObservationMs": 20000.592038000003,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 92.57648468017578,
+              "heapTotalMiB": 71.2490234375,
+              "externalMiB": 41.14767360687256,
+              "arrayBuffersMiB": 14.744647026062012
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 82.33378601074219,
+              "heapTotalMiB": 62.7197265625,
+              "externalMiB": 28.5516357421875,
+              "arrayBuffersMiB": 0.12965774536132812
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 96.81434399999853
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 92.86675000000105
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 0,
+            "viewport": {
+              "totalRows": 250,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3613.851337,
+          "observationMs": 10001.576345999987,
+          "cpuPercent": 3.299479887807682,
+          "rssStartMiB": 610.19140625,
+          "rssEndMiB": 609.6484375,
+          "mainThreadContextSwitches": 351,
+          "readyToObservationMs": 20000.649430000005,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 87.6632661819458,
+              "heapTotalMiB": 71.806640625,
+              "externalMiB": 36.49770927429199,
+              "arrayBuffersMiB": 9.617949485778809
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 82.32631587982178,
+              "heapTotalMiB": 62.7314453125,
+              "externalMiB": 28.56687068939209,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 107.35418900000514
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 102.30287599999428
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 0,
+            "viewport": {
+              "totalRows": 250,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3272.901402000003,
+          "observationMs": 10002.752985999992,
+          "cpuPercent": 3.6989816755233056,
+          "rssStartMiB": 610.35546875,
+          "rssEndMiB": 605.4921875,
+          "mainThreadContextSwitches": 392,
+          "readyToObservationMs": 20006.52928799999,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.51836681365967,
+              "heapTotalMiB": 67.046875,
+              "externalMiB": 31.02017879486084,
+              "arrayBuffersMiB": 5.7093706130981445
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 62.869829177856445,
+              "heapTotalMiB": 60.453125,
+              "externalMiB": 13.739870071411133,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 2
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": false,
+          "bootToRenderedReadyMs": 3173.5947910000104,
+          "observationMs": 10001.061306999996,
+          "cpuPercent": 2.199766537237567,
+          "rssStartMiB": 651.5546875,
+          "rssEndMiB": 651.4140625,
+          "mainThreadContextSwitches": 198,
+          "readyToObservationMs": 20003.97657,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 80.28230094909668,
+              "heapTotalMiB": 70.1640625,
+              "externalMiB": 32.04348182678223,
+              "arrayBuffersMiB": 7.023468971252441
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 79.40358924865723,
+              "heapTotalMiB": 61.0927734375,
+              "externalMiB": 27.38102149963379,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": true,
+          "bootToRenderedReadyMs": 3507.3831189999764,
+          "observationMs": 10002.616767,
+          "cpuPercent": 2.699293657743311,
+          "rssStartMiB": 659.59375,
+          "rssEndMiB": 659.42578125,
+          "mainThreadContextSwitches": 261,
+          "readyToObservationMs": 20001.230855,
+          "lifecycleStatus": "passed",
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 92.6917896270752,
+              "heapTotalMiB": 68.6416015625,
+              "externalMiB": 29.48818874359131,
+              "arrayBuffersMiB": 1.4111404418945312
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 83.7807149887085,
+              "heapTotalMiB": 64.513671875,
+              "externalMiB": 29.894225120544434,
+              "arrayBuffersMiB": 1.4111404418945312
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 96.44266599999537
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 98.17809699999634
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 0,
+            "viewport": {
+              "totalRows": 250,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        }
+      ],
+      "results": [
+        {
+          "sessions": 250,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": 51.9921875,
+              "cpuPoints": 0.9002276701004845
+            },
+            {
+              "repetition": 2,
+              "rssMiB": 4.15625,
+              "cpuPoints": -0.3995017877156237
+            },
+            {
+              "repetition": 3,
+              "rssMiB": 8.01171875,
+              "cpuPoints": 0.49952712050574366
+            }
+          ],
+          "medianRssDeltaMiB": 8.01171875,
+          "medianCpuDeltaPoints": 0.49952712050574366,
+          "passed": true
+        }
+      ],
+      "limitations": [
+        "Three pairs per size on shared hardware; no confidence interval or long-running stability guarantee.",
+        "The fixed 20-second settle is not proof of steady state; examine resident-memory drift and CPU activity before interpreting idle overhead.",
+        "TUI-process RSS and aggregate-thread CPU only; excludes subprocesses, GPU and browser/client terminal.",
+        "Main-thread context switches are not timer/wakeup counts; lifecycle visibility does not prove zero retained heap/subscriptions.",
+        "Idle synthetic sessions, no prompts or external inference; no event-burst, native font, remote transport or packaged-install claim.",
+        "The existing 250ms navigation and 500ms component budgets remain independent and unchanged."
+      ],
+      "originalReceiptSha256": "3263fe1c51822e3cdeb29a380ca0120d16ff37758e293a04bcb50d1bff66f6a9",
+      "sourceHashes": {
+        "scripts/benchmark-sidebar-runtime.ts": "cf81e0d5fe450e33ea83538710d0c133ca9e7e3d08af60ceebc091ef101e4ae5",
+        "scripts/process-memory-diagnostic.ts": "0db86dc49eb5b3ab7837e106a191d5650f69ee73a334d559516c5f0c5990abb3",
+        "scripts/sidebar-resource-probe.ts": "54916c7d9fce118d7f35f4b9e94bdf8179ae5d693885e2c0abbd24f3810445dc",
+        "scripts/thread-cpu-diagnostic.ts": "d36e153c6d9f7d95d5bf2362f154c1e79c295d999d8e14d8f2b6861c530d2fb0",
+        "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+        "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+        "src/adapters/opencode-v1/index.ts": "f7601a77ce21f9907b7b0c2877c82d7cd3b48d3c6497b344b1c1788433291731",
+        "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+        "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+        "src/core/completion.ts": "12ef8ad644e12bcb18ccf5b9b94ed1097e92c3ac7eff24df7a997a8ef58bb9bf",
+        "src/core/index.ts": "c4d060233c52bda5ce64b54220a4781af8b7b00f7e29baed2e6d62d2316ec126",
+        "src/core/queue.ts": "0dc2d974c9e316bd8524a5881929126f5c66a994008e1581178cc318b5f5eb7d",
+        "src/core/types.ts": "9737b77b0d129d956e0f84d0d137c78fe74a086b88ca0b0dddc303326561efd9",
+        "src/extensions/index.ts": "84baa6fed43c8f29f2da276ca34998fe5feb7930fcf017ea3796ba88cb82da51",
+        "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+        "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+        "src/index.ts": "b01988a714da27b4a7de7586531ac9260ae04d35d9a9976df6f4c9ec7fa07cca",
+        "src/organization/index.ts": "34fcbcac941e36707c96f887747dfb24b91975ae5ce32d60878646829320a860",
+        "src/organization/schema.ts": "241b7dd9d20299a0f4791b8d03dfbb6b25adb6a7dc38cf3f818b0d35fb2e43d2",
+        "src/organization/service.ts": "2cc872a629a0857cc888c3b9a77399657f59a73e9ddc23b3b55c6f2d0ca95e82",
+        "src/organization/types.ts": "665ba1323f8e459a6ba528db1620eeeec22d238da25e80408d8ff2fe0c9c4e64",
+        "src/storage/file.ts": "43fd7cbd02dfde55acc40c9b3f5530a68acea93c59b2c9a954c8b52c5d27d099",
+        "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+        "src/ui/colors.ts": "2693dc989f70bfb5aa635fa3e684ff662af6ccaba9870146c016ae32d39038df",
+        "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+        "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+        "src/ui/icons.ts": "9b766db44fea0a3f9e5637a55d10dd99467a3481571c89e762135329f7f25f23",
+        "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+        "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+        "src/ui/view.tsx": "865b70498f5a211a802d3520909c42aa25409b0f8c3c308272bfebc2687ac009",
+        "src/ui/viewport.ts": "90a9300a41a6ee1dd01fed0511a18125631c793254d0f24b41f2c1027950338f",
+        "runtimePlugin": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949"
+      }
+    }
+  },
+  "previousStructure": {
+    "source": "4f5f1ba3cd5ac4facef0e93cd9668f6aaf32d417",
+    "run": "https://github.com/aalvarez-labs/opencode-sessions-sidebar/actions/runs/42394045854",
+    "artifact": "stability-campaign-1",
+    "receipt": "short.json",
+    "terminal": {
+      "columns": 140,
+      "rows": 40
+    },
+    "sessions25": {
+      "rowShells": 25,
+      "renderables": 348
+    },
+    "sessions250": {
+      "rowShells": 250,
+      "renderables": 573
+    },
+    "limitation": "Same-size structural comparison, not a paired old/new process-memory or CPU experiment."
+  },
+  "retainedFailedAttempt": {
+    "stage": "first row-window implementation",
+    "failure": "Native attention update found a temporarily missing child-disclosure control after a group remount.",
+    "fix": "Mount SessionRow directly inside the already-windowed group; remove the second visibility gate for grouped rows.",
+    "testWasWeakened": false,
+    "logSha256": "2a1813e7bdba02b7a56ef6b47ac86162fc3aea03cecd493c5be2d32553cd10dd"
+  },
+  "interpretation": [
+    "All six enabled 250-session measurements retained five row shells, 331 renderables and zero additional measurement-window frames.",
+    "Do not infer CPU or RSS savings from render-tree counts, subtract A/A variation from candidate results, or discard failed gates.",
+    "A single new campaign cannot supersede prior failed three-campaign acceptance.",
+    "No session cap, feature removal, health-cadence change, forced GC or wider budgets.",
+    "Expanded descendant shells retain their existing strategy; this change windows top-level group rows."
+  ],
+  "functional": {
+    "check": {
+      "passed": true,
+      "tests": 233,
+      "assertions": 26458,
+      "logSha256": "a8de2b5c4012a050b60eb7869d6f83ce0be50f44ce1f18012aeccfdedc41ef3d"
+    },
+    "stock1.18.30": {
+      "runtime": {
+        "opencode": "1.18.30",
+        "bun": "1.3.14"
+      },
+      "source": {
+        "baseCommit": "a4d3bb652d6ca2366038019ca9185d47ba999bca",
+        "pluginSource": "local development build",
+        "sha256": {
+          "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+          "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+          "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+          "src/ui/view.tsx": "865b70498f5a211a802d3520909c42aa25409b0f8c3c308272bfebc2687ac009",
+          "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+          "src/ui/viewport.ts": "90a9300a41a6ee1dd01fed0511a18125631c793254d0f24b41f2c1027950338f",
+          "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+          "src/ui/icons.ts": "9b766db44fea0a3f9e5637a55d10dd99467a3481571c89e762135329f7f25f23",
+          "src/ui/colors.ts": "2693dc989f70bfb5aa635fa3e684ff662af6ccaba9870146c016ae32d39038df",
+          "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+          "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+          "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+          "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+          "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+          "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+          "scripts/build.ts": "f5a8d2341516851345e08298a5927c020b3119c6d5662d51459a9ade8c8e8289",
+          "scripts/sidebar-probe.ts": "6d529620ac82b9540dbbab7252627d66e0299d45d8410f5d05d40b5584be21f7",
+          "scripts/smoke-sidebar.ts": "c330919472b2c22b2e0c127d3018df778b5657effcc215f9714d6598ff23ea23",
+          "scripts/lib/validation-host.ts": "53569ac09b42006a00ae700d3970452001726eeabf851bb4a0881572c82c3214",
+          "scripts/lib/graphical-terminal.ts": "87a35ba234c058d70ce2e481c9274143edb6cae0c2e9539d83d28c818281bfcd",
+          "dist/tui.js": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949",
+          "runtimePlugin": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949"
+        },
+        "receipt": "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions."
+      },
+      "results": {
+        "checks": [
+          "real mouse wheel scrolls many long-title rows and restores the sidebar top",
+          "actual built plugin loaded in stock session sidebar; synthetic host sessions rendered",
+          "line-two controls and line-three context stay separate; mouse and keyboard R/B/W selection does not expand context, separate disclosure expands R/B/W in order, completion stays last, Session details retains distinct repository root and linked worktree plus the full branch value",
+          "real keyboard mark/pin/Later actions persisted without changing native selection",
+          "completed title uses theme success, completion action uses theme warning, active/pin/Later primary row is deduplicated",
+          "empty groups stay omitted; real mouse collapses and expands counted Other sessions",
+          "real keyboard Later reordering persisted",
+          "real keyboard open observed on native route; Later membership retained",
+          "active row omits its ellipsis and direct completion unmarks without a dialog, navigation, or Later change; switching sessions transfers the menu to the non-active row, whose shared actions remain usable",
+          "native create through the inline header action, keyboard rename/delete, cancellation preserves session and explicit mouse confirmation deletes",
+          "narrow 88x24 keyboard browse/action fallback and Session details remain usable; Down/PgDn/PgUp scroll to full worktree context and Esc closes",
+          "explicit local extension loads in stock host, receives committed user events once, runs guarded no-op actions from menu and palette, and disabled modules are never imported",
+          "Check icons is reachable through real Ctrl+P and supports narrow scrolling and Esc; captured cells do not certify the client's font",
+          "real Ctrl+P, palette filtering, and Enter open the sidebar Browse dialog",
+          "stock plugin deactivation/reactivation restores committed organization",
+          "20 paced native updates overlap real keyboard filtering; observed frames pass the declared p95 budget",
+          "new stock process hydrates organization; light terminal and Unicode browse render"
+        ],
+        "nativeCrudBurst20Ms": 686.7728659999993,
+        "inputObservationSamples": 10,
+        "overlappingInputSamples": 2,
+        "nativeBurstFixtureSpacingMs": 10,
+        "inputToObservedFrameP95Ms": 129.21086699999796
+      },
+      "budgets": {
+        "inputToObservedFrameP95Ms": 250,
+        "nativeCrudBurst20Ms": 5000
+      },
+      "limitations": [
+        "Observer polling and public list reads add overhead; timing is an input-to-observed-frame upper bound, not isolated renderer latency.",
+        "This smoke does not create native busy, retry, permission or question events. See the separate attention probe and model tests for their explicitly stated scope.",
+        "No slow optional metadata provider is enabled; no Git or filesystem enrichment is performed by the UI.",
+        "No baseline CPU/memory, power-loss durability, remote transport or cross-platform rendering claim."
+      ],
+      "originalReceiptSha256": "b0494d5489b623d4e9e91e7ff8878d6ee238195ad0296222f1278249a7c69390"
+    },
+    "attention1.18.30": {
+      "runtime": {
+        "opencode": "1.18.30",
+        "platform": "linux",
+        "bun": "1.3.14"
+      },
+      "artifact": {
+        "baseGitRevision": "a4d3bb652d6ca2366038019ca9185d47ba999bca",
+        "pluginSource": "local development build",
+        "sha256": {
+          "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+          "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+          "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+          "src/ui/view.tsx": "865b70498f5a211a802d3520909c42aa25409b0f8c3c308272bfebc2687ac009",
+          "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+          "src/ui/viewport.ts": "90a9300a41a6ee1dd01fed0511a18125631c793254d0f24b41f2c1027950338f",
+          "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+          "src/ui/icons.ts": "9b766db44fea0a3f9e5637a55d10dd99467a3481571c89e762135329f7f25f23",
+          "src/ui/colors.ts": "2693dc989f70bfb5aa635fa3e684ff662af6ccaba9870146c016ae32d39038df",
+          "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+          "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+          "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+          "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+          "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+          "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+          "scripts/sidebar-attention-probe.ts": "f3f479e1b3497c3969871f30daf80bbbdc0c2737cdf263f4b5f80b44a667559e",
+          "scripts/smoke-sidebar-attention.ts": "7c3d98a7e222ad63184f8c42c355f1819934e58dd32eb8da46aebccef4c7c815",
+          "scripts/lib/validation-host.ts": "53569ac09b42006a00ae700d3970452001726eeabf851bb4a0881572c82c3214",
+          "scripts/lib/graphical-terminal.ts": "87a35ba234c058d70ce2e481c9274143edb6cae0c2e9539d83d28c818281bfcd",
+          "dist/tui.js": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949",
+          "runtimePlugin": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949"
+        },
+        "receipt": "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions. The uncommitted source hashes identify this validation build."
+      },
+      "checks": [
+        "Marked pinned parent retains completion while displaying child busy/question.",
+        "Selecting an active parent defaults to expanded live children; explicit collapse is respected. Mouse and keyboard disclosure toggles one-line agent trees without duplicate controls/context, above the parent's context; deduplicated pinned parent retains its mark and success title color.",
+        "Active parent completion remains below both expanded live children and expanded R/B/W context.",
+        "Viewport shells match actual child/context/completion geometry in comfortable density and restore balanced density without overlap.",
+        "Collapsed Pinned sessions retains busy/question summary.",
+        "Native recoverable 429 renders a warning retry glyph; terminal 400 renders an error glyph after host idle, independently of completion.",
+        "From a separate idle session route, narrow 88x24 browse retains completion and question footer; session menu retains busy/question labels.",
+        "Question reply transitions to native permission with mark and collapsed summary retained.",
+        "Permission reply clears attention and busy labels without clearing completion.",
+        "Settled children disappear from the live count and disclosure; their terminal error remains discoverable on the parent's status and group summary."
+      ],
+      "providerRequests": 5,
+      "scope": "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
+      "limitations": [
+        "No external provider or model inference; native host tool handling receives synthetic loopback completion chunks.",
+        "No remote disconnect, cross-platform render, or performance claim from this focused smoke."
+      ],
+      "originalReceiptSha256": "30d930a431d13cbc5eabd91208a22751467c7f8ace52eb6a4554abefd2e35ef1"
+    },
+    "design1.18.30": {
+      "status": "passed",
+      "nativeExecutionValidated": false,
+      "scope": "Actual stock-TUI renderer with deterministic synthetic public-read inputs",
+      "acceptance": {
+        "passed": true,
+        "nativeExecutionValidated": false,
+        "checks": [
+          "Active heading and creation share one row.",
+          "Active live children open as compact one-line rows above context and aligned completion.",
+          "Later, Pinned and Other each show one session in the approved order.",
+          "All four context values either fit completely or end with the catalog ellipsis in their actual available width.",
+          "Completion, independent question status and configured agent colors are visible together.",
+          "Context, ages and unselected controls retain readable panel contrast; fitted pin/clock states remain distinct.",
+          "No modal, Saved toast or incomplete-session warning obscures the design."
+        ],
+        "pluginBounds": {
+          "x": 100,
+          "y": 11,
+          "width": 40,
+          "height": 22
+        }
+      },
+      "sourceHashes": {
+        "dist/tui.js": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949",
+        "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+        "src/ui/icons.ts": "9b766db44fea0a3f9e5637a55d10dd99467a3481571c89e762135329f7f25f23",
+        "src/ui/colors.ts": "2693dc989f70bfb5aa635fa3e684ff662af6ccaba9870146c016ae32d39038df",
+        "src/ui/view.tsx": "865b70498f5a211a802d3520909c42aa25409b0f8c3c308272bfebc2687ac009",
+        "scripts/sidebar-design-fixture.ts": "3aff7f072d47736d17102c1090444b6be2dc4f49e9cd8a0e7add8cf29310eea5",
+        "scripts/sidebar-design-wrapper.ts": "6d0fad72de78daecd1f0b9b1ce139882753f74461210fe79a405dc8eeba34311",
+        "scripts/sidebar-probe.ts": "6d529620ac82b9540dbbab7252627d66e0299d45d8410f5d05d40b5584be21f7",
+        "scripts/check-sidebar-design.ts": "2b65507bde609e0db6dd1e25a9e24f1908caf9525b5d765d77c977a7cb05ca21",
+        "scripts/smoke-sidebar-design.ts": "c92966393514d2e7d2dd936d32ab7f207cde9e963564678d71583b8e167e8c5e"
+      },
+      "pixelCapture": null,
+      "limitations": [
+        "Visual fixture only: public-read inputs for activity, attention and ages are synthetic; nativeExecutionValidated is false.",
+        "Sessions and selected route are real host records; organization is prepared through the plugin-owned service before activation.",
+        "The unchanged built product renders in stock OpenCode. PNGs must come from the real terminal window, not reconstructed buffers.",
+        "Repository/branch/worktree come from the public current-directory context. Distinct per-session worktrees in the HTML are illustrative, not supported by this adapter.",
+        "The host owns terminal cell geometry, native Context/LSP/onboarding panels, theme and client font selection."
+      ],
+      "originalReceiptSha256": "e233a369df8f1e34c8452bcdf127888ea4b1193fe9ddc9650835bb3a7bb2299c"
+    },
+    "package1.19.3": {
+      "status": "passed",
+      "checks": [
+        "explicit-package-contents",
+        "offline-consumer-install-without-development-dependencies",
+        "packaged-export-targets-and-independent-headless-imports",
+        "packaged-font-helper-without-checkout",
+        "stock-host-sidebar-from-installed-package",
+        "stock-host-attention-from-installed-package"
+      ],
+      "testedArchive": {
+        "name": "opencode-sessions-sidebar-0.1.0-dev.0.tgz",
+        "sha256": "9027f44067b2e144a558044b16f4cbf553d543c2b016a82882355e993bd8328c",
+        "files": 94
+      },
+      "sidebar": {
+        "runtime": {
+          "opencode": "1.19.3",
+          "bun": "1.3.14"
+        },
+        "source": {
+          "baseCommit": "a4d3bb652d6ca2366038019ca9185d47ba999bca",
+          "pluginSource": "external packaged artifact",
+          "sha256": {
+            "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+            "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+            "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+            "src/ui/view.tsx": "865b70498f5a211a802d3520909c42aa25409b0f8c3c308272bfebc2687ac009",
+            "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+            "src/ui/viewport.ts": "90a9300a41a6ee1dd01fed0511a18125631c793254d0f24b41f2c1027950338f",
+            "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+            "src/ui/icons.ts": "9b766db44fea0a3f9e5637a55d10dd99467a3481571c89e762135329f7f25f23",
+            "src/ui/colors.ts": "2693dc989f70bfb5aa635fa3e684ff662af6ccaba9870146c016ae32d39038df",
+            "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+            "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+            "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+            "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+            "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+            "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+            "scripts/build.ts": "f5a8d2341516851345e08298a5927c020b3119c6d5662d51459a9ade8c8e8289",
+            "scripts/sidebar-probe.ts": "6d529620ac82b9540dbbab7252627d66e0299d45d8410f5d05d40b5584be21f7",
+            "scripts/smoke-sidebar.ts": "c330919472b2c22b2e0c127d3018df778b5657effcc215f9714d6598ff23ea23",
+            "scripts/lib/validation-host.ts": "53569ac09b42006a00ae700d3970452001726eeabf851bb4a0881572c82c3214",
+            "scripts/lib/graphical-terminal.ts": "87a35ba234c058d70ce2e481c9274143edb6cae0c2e9539d83d28c818281bfcd",
+            "dist/tui.js": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949",
+            "runtimePlugin": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949"
+          },
+          "receipt": "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions."
+        },
+        "results": {
+          "checks": [
+            "real mouse wheel scrolls many long-title rows and restores the sidebar top",
+            "actual built plugin loaded in stock session sidebar; synthetic host sessions rendered",
+            "line-two controls and line-three context stay separate; mouse and keyboard R/B/W selection does not expand context, separate disclosure expands R/B/W in order, completion stays last, Session details retains distinct repository root and linked worktree plus the full branch value",
+            "real keyboard mark/pin/Later actions persisted without changing native selection",
+            "completed title uses theme success, completion action uses theme warning, active/pin/Later primary row is deduplicated",
+            "empty groups stay omitted; real mouse collapses and expands counted Other sessions",
+            "real keyboard Later reordering persisted",
+            "real keyboard open observed on native route; Later membership retained",
+            "active row omits its ellipsis and direct completion unmarks without a dialog, navigation, or Later change; switching sessions transfers the menu to the non-active row, whose shared actions remain usable",
+            "native create through the inline header action, keyboard rename/delete, cancellation preserves session and explicit mouse confirmation deletes",
+            "narrow 88x24 keyboard browse/action fallback and Session details remain usable; Down/PgDn/PgUp scroll to full worktree context and Esc closes",
+            "explicit local extension loads in stock host, receives committed user events once, runs guarded no-op actions from menu and palette, and disabled modules are never imported",
+            "Check icons is reachable through real Ctrl+P and supports narrow scrolling and Esc; captured cells do not certify the client's font",
+            "real Ctrl+P, palette filtering, and Enter open the sidebar Browse dialog",
+            "stock plugin deactivation/reactivation restores committed organization",
+            "20 paced native updates overlap real keyboard filtering; observed frames pass the declared p95 budget",
+            "new stock process hydrates organization; light terminal and Unicode browse render"
+          ],
+          "nativeCrudBurst20Ms": 664.1420579999995,
+          "inputObservationSamples": 10,
+          "overlappingInputSamples": 2,
+          "nativeBurstFixtureSpacingMs": 10,
+          "inputToObservedFrameP95Ms": 95.71214699999837
+        },
+        "budgets": {
+          "inputToObservedFrameP95Ms": 250,
+          "nativeCrudBurst20Ms": 5000
+        },
+        "limitations": [
+          "Observer polling and public list reads add overhead; timing is an input-to-observed-frame upper bound, not isolated renderer latency.",
+          "This smoke does not create native busy, retry, permission or question events. See the separate attention probe and model tests for their explicitly stated scope.",
+          "No slow optional metadata provider is enabled; no Git or filesystem enrichment is performed by the UI.",
+          "No baseline CPU/memory, power-loss durability, remote transport or cross-platform rendering claim."
+        ]
+      },
+      "attention": {
+        "runtime": {
+          "opencode": "1.19.3",
+          "platform": "linux",
+          "bun": "1.3.14"
+        },
+        "artifact": {
+          "baseGitRevision": "a4d3bb652d6ca2366038019ca9185d47ba999bca",
+          "pluginSource": "external packaged artifact",
+          "sha256": {
+            "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+            "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+            "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+            "src/ui/view.tsx": "865b70498f5a211a802d3520909c42aa25409b0f8c3c308272bfebc2687ac009",
+            "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+            "src/ui/viewport.ts": "90a9300a41a6ee1dd01fed0511a18125631c793254d0f24b41f2c1027950338f",
+            "src/ui/motion.ts": "068a41e4d0090275c5398ca6288debda31fbac987b99b89bf780c68d431d38b3",
+            "src/ui/icons.ts": "9b766db44fea0a3f9e5637a55d10dd99467a3481571c89e762135329f7f25f23",
+            "src/ui/colors.ts": "2693dc989f70bfb5aa635fa3e684ff662af6ccaba9870146c016ae32d39038df",
+            "src/extensions/runtime.ts": "f04763f822ff1f98c4062bc4f7490b25c09c40bb71b61dd84057fa7fb82ce947",
+            "src/extensions/types.ts": "554448ba59f4ace8c36e846147017df29014dae049df44b32ac0de1efca54ea6",
+            "src/adapters/opencode-v1/completion-capabilities.ts": "1876fecce8fe805b587adcbeffec867325cd3217427dcb2d9d41a53a0a71c83f",
+            "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+            "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+            "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+            "scripts/sidebar-attention-probe.ts": "f3f479e1b3497c3969871f30daf80bbbdc0c2737cdf263f4b5f80b44a667559e",
+            "scripts/smoke-sidebar-attention.ts": "7c3d98a7e222ad63184f8c42c355f1819934e58dd32eb8da46aebccef4c7c815",
+            "scripts/lib/validation-host.ts": "53569ac09b42006a00ae700d3970452001726eeabf851bb4a0881572c82c3214",
+            "scripts/lib/graphical-terminal.ts": "87a35ba234c058d70ce2e481c9274143edb6cae0c2e9539d83d28c818281bfcd",
+            "dist/tui.js": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949",
+            "runtimePlugin": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949"
+          },
+          "receipt": "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions. The uncommitted source hashes identify this validation build."
+        },
+        "checks": [
+          "Marked pinned parent retains completion while displaying child busy/question.",
+          "Selecting an active parent defaults to expanded live children; explicit collapse is respected. Mouse and keyboard disclosure toggles one-line agent trees without duplicate controls/context, above the parent's context; deduplicated pinned parent retains its mark and success title color.",
+          "Active parent completion remains below both expanded live children and expanded R/B/W context.",
+          "Viewport shells match actual child/context/completion geometry in comfortable density and restore balanced density without overlap.",
+          "Collapsed Pinned sessions retains busy/question summary.",
+          "Native recoverable 429 renders a warning retry glyph; terminal 400 renders an error glyph after host idle, independently of completion.",
+          "From a separate idle session route, narrow 88x24 browse retains completion and question footer; session menu retains busy/question labels.",
+          "Question reply transitions to native permission with mark and collapsed summary retained.",
+          "Permission reply clears attention and busy labels without clearing completion.",
+          "Settled children disappear from the live count and disclosure; their terminal error remains discoverable on the parent's status and group summary."
+        ],
+        "providerRequests": 5,
+        "scope": "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
+        "limitations": [
+          "No external provider or model inference; native host tool handling receives synthetic loopback completion chunks.",
+          "No remote disconnect, cross-platform render, or performance claim from this focused smoke."
+        ]
+      },
+      "originalReceiptSha256": "f85a24870c4eda509194d24b2360d0ec0e71af310108525cfb9296af2f82f96c",
+      "archiveScope": "Test archive predates this documentation/report update. Product hashes match; no final distributable archive is claimed."
+    },
+    "remote1.19.3": {
+      "status": "passed",
+      "version": "1.19.3",
+      "bunVersion": "1.3.14",
+      "platform": "linux",
+      "budgets": {
+        "totalMs": 150000,
+        "outageMs": 10000,
+        "reconnectMs": 20000,
+        "liveEventMs": 2000,
+        "observerResponseMs": 2000
+      },
+      "checks": [
+        {
+          "name": "stock attach loads the sidebar against a separate server and local client profile",
+          "status": "passed"
+        },
+        {
+          "name": "mark, pin and Later persist through real attached TUI actions",
+          "status": "passed"
+        },
+        {
+          "name": "local observer remains responsive throughout the real transport cut",
+          "status": "passed"
+        },
+        {
+          "name": "native sidebar marks activity uncertain while disconnected",
+          "status": "passed",
+          "detail": "After 10108 ms without transport, the rendered activity glyph was \"?\"; expected '?'. No invalidation or refresh was injected."
+        },
+        {
+          "name": "offline server changes do not leak through the severed client transport",
+          "status": "passed"
+        },
+        {
+          "name": "annotations are preserved during loss of transport",
+          "status": "passed"
+        },
+        {
+          "name": "native reconnect reconciles missed rename/create/delete without a manual refresh",
+          "status": "passed"
+        },
+        {
+          "name": "annotations survive native transport restoration",
+          "status": "passed"
+        },
+        {
+          "name": "the native event stream reopens after restoring transport",
+          "status": "passed",
+          "detail": "Observed 2 forwarded event subscriptions."
+        },
+        {
+          "name": "restored native events deliver new changes without a refresh",
+          "status": "passed"
+        },
+        {
+          "name": "client restart preserves mark/pin/Later and loads current server state",
+          "status": "passed"
+        }
+      ],
+      "proxyActivity": {
+        "forwarded": 98,
+        "rejected": 9,
+        "eventStreams": 3,
+        "cuts": 1
+      },
+      "reconnectElapsedMs": 4905.611964999998,
+      "artifactHashes": {
+        "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+        "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+        "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+        "src/ui/view.tsx": "865b70498f5a211a802d3520909c42aa25409b0f8c3c308272bfebc2687ac009",
+        "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+        "src/ui/viewport.ts": "90a9300a41a6ee1dd01fed0511a18125631c793254d0f24b41f2c1027950338f",
+        "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+        "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+        "scripts/sidebar-remote-probe.ts": "179a7b8cd8264e2af1087070a4cfb059b22dd18d75eb7ee6e906d8aa5ea0a9a5",
+        "scripts/smoke-sidebar-remote.ts": "c17334a0484bf4ee9b57312ef48b7060858afabfd874eff5775eddcd3bb75ce6",
+        "scripts/lib/validation-host.ts": "53569ac09b42006a00ae700d3970452001726eeabf851bb4a0881572c82c3214",
+        "scripts/lib/graphical-terminal.ts": "87a35ba234c058d70ce2e481c9274143edb6cae0c2e9539d83d28c818281bfcd",
+        "runtimePlugin": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949"
+      },
+      "limitations": [
+        "Controlled loopback transport, not SSH or arbitrary WAN behavior.",
+        "No injected adapter invalidation or transport event.",
+        "Automatic completion policies and correlated report exceptions are outside this transport probe.",
+        "Captured renderer buffers are not terminal-pixel screenshots."
+      ],
+      "originalReceiptSha256": "6677a132247457aff7fb8d715019dbc2d96757964ab91a23c5ddc5127b7fef88"
+    },
+    "verifiedCurrentSourceHashes": 109
+  }
+}

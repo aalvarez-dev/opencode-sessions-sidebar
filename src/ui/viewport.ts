@@ -115,6 +115,36 @@ interface Clip {
   bottom: number;
 }
 
+export interface SidebarRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+/** Half-open row range intersecting a vertical interval; offsets include the final total. */
+export function sidebarVisibleRange(
+  offsets: readonly number[],
+  top: number,
+  bottom: number,
+): SidebarRange {
+  const count = Math.max(0, offsets.length - 1);
+  if (!count || bottom <= top || bottom <= 0 || top >= offsets[count]!) return { start: 0, end: 0 };
+  let low = 0;
+  let high = count;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (offsets[middle + 1]! <= top) low = middle + 1;
+    else high = middle;
+  }
+  const start = low;
+  high = count;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (offsets[middle]! < bottom) low = middle + 1;
+    else high = middle;
+  }
+  return { start, end: low };
+}
+
 function frameVisibility(surface: MotionSurface, overscan: number) {
   const terminal: Clip = {
     left: 0,
@@ -157,17 +187,16 @@ function frameVisibility(surface: MotionSurface, overscan: number) {
     }
     return clips.get(node)!;
   }
-  return (node: MotionNode | undefined): boolean => {
-    if (!node || node.isDestroyed || !node.visible || node.opacity <= 0) return false;
+  return (node: MotionNode | undefined): { top: number; bottom: number } | null => {
+    if (!node || node.isDestroyed || !node.visible || node.opacity <= 0) return null;
     const clip = node === surface.root ? terminal : clipFor(node.parent);
-    if (!clip) return false;
+    if (!clip) return null;
     const { left, top, right, bottom } = clip;
     const width = node.width;
     const height = node.height;
     const x = node.screenX;
     const y = node.screenY;
-    return (
-      right > left &&
+    return right > left &&
       bottom > top &&
       width > 0 &&
       height > 0 &&
@@ -175,7 +204,8 @@ function frameVisibility(surface: MotionSurface, overscan: number) {
       x + width > left &&
       y < bottom + overscan &&
       y + height > top - overscan
-    );
+      ? { top: top - overscan - y, bottom: bottom + overscan - y }
+      : null;
   };
 }
 
@@ -190,6 +220,12 @@ export function createSidebarViewport(surface: MotionSurface, overscan = 12) {
     mounted(value: boolean): void;
     visible: boolean;
   }>();
+  const ranges = new Set<{
+    element(): MotionNode | undefined;
+    offsets(): readonly number[];
+    changed(range: SidebarRange): void;
+    range: SidebarRange;
+  }>();
   let disposed = false;
   function refresh() {
     if (disposed) return;
@@ -199,22 +235,41 @@ export function createSidebarViewport(surface: MotionSurface, overscan = 12) {
     // Never retain it across frames: scrolling, resizing or visibility may change.
     const nearby = frameVisibility(surface, overscan);
     for (const entry of entries) {
-      const next = nearby(entry.element());
+      const next = nearby(entry.element()) !== null;
       if (next === entry.visible) continue;
       entry.visible = next;
       entry.mounted(next);
+    }
+    for (const entry of ranges) {
+      const interval = nearby(entry.element());
+      const next = interval
+        ? sidebarVisibleRange(entry.offsets(), interval.top, interval.bottom)
+        : { start: 0, end: 0 };
+      if (next.start === entry.range.start && next.end === entry.range.end) continue;
+      entry.range = next;
+      entry.changed(next);
     }
   }
   function dispose() {
     if (disposed) return;
     disposed = true;
     entries.clear();
+    ranges.clear();
     surface.off("frame", refresh);
     surface.off("destroy", dispose);
   }
   surface.on("frame", refresh);
   surface.on("destroy", dispose);
   return {
+    trackRows(options: {
+      element(): MotionNode | undefined;
+      offsets(): readonly number[];
+      changed(range: SidebarRange): void;
+    }) {
+      const entry = { ...options, range: { start: 0, end: 0 } };
+      if (!disposed) ranges.add(entry);
+      return () => ranges.delete(entry);
+    },
     track(options: { element(): MotionNode | undefined; mounted(value: boolean): void }) {
       const entry = { ...options, visible: false };
       if (!disposed) entries.add(entry);

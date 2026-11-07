@@ -1,5 +1,9 @@
 # V1 integration candidate 1
 
+This handoff describes the frozen `a4d3bb6` candidate. A later
+[row-container optimization](windowed-row-containers.md) changes the runtime hash and still fails
+short-window CPU acceptance. Do not use the hashes below for that later build.
+
 **Prepared for an isolated integration trial, not approved as stable V1.** The package remains
 private at `0.1.0-dev.0`; identify this candidate by its source revision and hashes, not that shared
 development version string. No npm release or deployment is performed by these instructions.

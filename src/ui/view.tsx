@@ -754,6 +754,52 @@ export function SidebarView(props: {
       </box>
     );
   }
+  function WindowedRows(p: { rows: readonly SidebarRow[] }) {
+    let element: Renderable | undefined;
+    const layout = createMemo(() => {
+      const rows = p.rows;
+      const heights = rowHeights();
+      const offsets = [0];
+      for (const row of rows) offsets.push(offsets.at(-1)! + (heights.get(row.session.id) ?? 3));
+      return { rows, offsets };
+    });
+    const [range, setRange] = createSignal({ start: 0, end: 0 });
+    const stop = viewport.trackRows({
+      element: () => element,
+      offsets: () => layout().offsets,
+      changed: setRange,
+    });
+    onCleanup(stop);
+    const total = () => layout().offsets.at(-1)!;
+    // Clamp the old range while a shortened/reordered list awaits its next layout frame.
+    const start = () => Math.min(range().start, layout().rows.length);
+    const end = () => Math.min(range().end, layout().rows.length);
+    return (
+      <box
+        ref={(value) => {
+          element = value;
+        }}
+        flexDirection="column"
+        flexShrink={0}
+        height={total()}
+      >
+        <box height={layout().offsets[start()]!} flexShrink={0} />
+        <For each={layout().rows.slice(start(), end())}>
+          {(row) => (
+            <box
+              id={`sidebar-session-${row.session.id}-window`}
+              height={rowHeights().get(row.session.id) ?? 3}
+              flexDirection="column"
+              flexShrink={0}
+            >
+              <SessionRow row={row} />
+            </box>
+          )}
+        </For>
+        <box height={total() - layout().offsets[end()]!} flexShrink={0} />
+      </box>
+    );
+  }
   // Measure a layout box: the pinned native text renderer does not invoke its
   // inherited onSizeChange callback. No timer or per-frame measurement is needed.
   function EndLabel(p: EndLabelProps) {
@@ -1078,7 +1124,7 @@ export function SidebarView(props: {
             </box>
           </Show>
           <Show when={!closed()}>
-            <For each={p.group.rows}>{(row) => <WindowedRow row={row} />}</For>
+            <WindowedRows rows={p.group.rows} />
           </Show>
           <Show when={p.group.id === "later" && c.unavailableLater().length > 0}>
             <text fg={theme().warning} wrapMode="word" onMouseUp={() => props.actions.later()}>

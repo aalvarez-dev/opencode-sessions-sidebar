@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
-import { createSidebarViewport, sidebarChildLines, sidebarRowHeights } from "../src/ui/viewport";
+import {
+  createSidebarViewport,
+  sidebarChildLines,
+  sidebarRowHeights,
+  sidebarVisibleRange,
+} from "../src/ui/viewport";
 import type { MotionNode } from "../src/ui/motion";
 import type { SidebarRow } from "../src/ui/model";
 
@@ -42,6 +47,81 @@ function row(id: string): SidebarRow {
 }
 
 describe("viewport-bounded sidebar mounting", () => {
+  test("variable-height ranges match an independent intersection scan at every boundary", () => {
+    const offsets = [0];
+    for (let index = 0; index < 1000; index++) offsets.push(offsets.at(-1)! + 1 + (index % 9));
+    for (let top = -20; top < offsets.at(-1)! + 20; top += 3) {
+      const bottom = top + 19;
+      const expected = offsets
+        .slice(0, -1)
+        .flatMap((start, index) => (start < bottom && offsets[index + 1]! > top ? [index] : []));
+      const range = sidebarVisibleRange(offsets, top, bottom);
+      expect(Array.from({ length: range.end - range.start }, (_, i) => range.start + i)).toEqual(
+        expected,
+      );
+    }
+    expect(sidebarVisibleRange([0], 0, 20)).toEqual({ start: 0, end: 0 });
+    expect(sidebarVisibleRange([0, 3, 7, 12], 3, 7)).toEqual({ start: 1, end: 2 });
+    expect(sidebarVisibleRange([0, 3, 7, 12], 4, 4)).toEqual({ start: 0, end: 0 });
+  });
+
+  test("one group tracks all rows through jumps, resizes, collapse, shrink and disposal", () => {
+    const root = node();
+    const surface = Object.assign(new EventEmitter(), {
+      root,
+      terminalWidth: 40,
+      terminalHeight: 20,
+      isDestroyed: false,
+    });
+    const clip = node({ parent: root, screenY: 5, height: 10, overflow: "hidden" });
+    const group = node({ parent: clip, screenY: 5, height: 3000 });
+    let offsets: readonly number[] = Array.from({ length: 1001 }, (_, i) => i * 3);
+    const viewport = createSidebarViewport(surface, 3);
+    const ranges: { start: number; end: number }[] = [];
+    const stop = viewport.trackRows({
+      element: () => group,
+      offsets: () => offsets,
+      changed: (x) => ranges.push(x),
+    });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 5 });
+    surface.emit("frame");
+    expect(ranges).toHaveLength(1);
+    Object.assign(group, { screenY: 5 - 996 * 3 });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 995, end: 1000 });
+    offsets = [0, 4, 11];
+    Object.assign(group, { screenY: 5, height: 11 });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 2 });
+    Object.assign(clip, { visible: false });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 0 });
+    Object.assign(clip, { visible: true });
+    surface.terminalHeight = 0;
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 0 });
+    surface.terminalHeight = 20;
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 2 });
+    Object.assign(group, { parent: null });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 0 });
+    stop();
+    Object.assign(group, { parent: clip });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 0 });
+    surface.emit("destroy");
+    expect(surface.listenerCount("frame")).toBe(0);
+    viewport.trackRows({
+      element: () => group,
+      offsets: () => offsets,
+      changed: () => {
+        throw Error("disposed");
+      },
+    });
+    surface.emit("frame");
+  });
   test("shares ancestor inspection within a frame and invalidates every frame", () => {
     let ancestorReads = 0;
     let rootVisible = true;

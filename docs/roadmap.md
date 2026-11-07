@@ -182,3 +182,12 @@ sidebar/attention and remote recovery checks. See
 [the candidate handoff](v1-integration-candidate.md) for exact identity, all results, isolation,
 legacy-sidebar replacement and rollback. Full harness integration remains pending; no server
 installation or public package release has been performed.
+
+## Windowed row containers
+
+Top-level groups now mount only nearby row containers, retaining complete scroll geometry through
+prefix heights and spacers. The 250-session fixture retains five row containers instead of 250;
+native navigation and attention remain available. Original short-window CPU acceptance still fails,
+despite a passing delayed window. See [the optimization report](windowed-row-containers.md) and its
+machine-readable measurements. No session cap or feature restriction was introduced; stable V1 and
+combined-harness integration remain blocked.
