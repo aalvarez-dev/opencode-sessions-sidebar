@@ -87,20 +87,22 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     });
   }
 
-  function ancestry(id: string): string[] {
-    const result = new Set<string>();
-    let current: string | null = id;
-    while (current && !result.has(current)) {
-      result.add(current);
-      current = sessions.get(current)?.parentId ?? null;
-    }
-    return [...result];
-  }
-
   function flush() {
     if (batchDepth || disposed || (!dirty.size && !stateDirty)) return;
+    // Mutations retain their old parent as a seed before the edge is replaced.
+    // Expand the union once after the synchronous batch: intersecting chains and
+    // malformed cycles stop at an already visited node.
+    const affected = new Set<string>();
+    for (const id of dirty) {
+      let current: string | null = id;
+      while (current && !affected.has(current)) {
+        affected.add(current);
+        summaries.delete(current);
+        current = sessions.get(current)?.parentId ?? null;
+      }
+    }
     const change = Object.freeze({
-      sessionIds: Object.freeze([...dirty]),
+      sessionIds: Object.freeze([...affected]),
       stateChanged: stateDirty,
     });
     dirty.clear();
@@ -119,10 +121,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
   function changed(ids: Iterable<string> = [], changedState = false) {
     for (const id of ids) {
       views.delete(id);
-      for (const ancestor of ancestry(id)) {
-        summaries.delete(ancestor);
-        dirty.add(ancestor);
-      }
+      dirty.add(id);
     }
     stateDirty ||= changedState;
     flush();
@@ -186,7 +185,6 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
       previous.updatedAt === next.updatedAt
     )
       return;
-    const affected = ancestry(session.id);
     if (previous?.parentId) {
       const siblings = children.get(previous.parentId);
       siblings?.delete(session.id);
@@ -201,7 +199,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     // Navigation can precede its created event or snapshot. Reconcile when the
     // host establishes that the current route's session belongs to this scope.
     observeRoute();
-    changed([...affected, session.id], true);
+    changed([session.id, ...(previous?.parentId ? [previous.parentId] : [])], true);
   }
 
   function putActivity(id: string, value: Activity) {
@@ -280,7 +278,6 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
 
   function removeSession(id: string, tombstone = true) {
     const previous = sessions.get(id);
-    const affected = ancestry(id);
     if (tombstone) deleted.add(id);
     if (deleted.size > limits.maxEventIds) {
       deleted.delete(deleted.values().next().value!);
@@ -298,7 +295,7 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     for (const [request, owner] of permissions) if (owner === id) attention("permissions", request);
     for (const [request, owner] of questions) if (owner === id) attention("questions", request);
     if (selectedSessionId === id) selectedSessionId = null;
-    changed(affected, true);
+    changed([id, ...(previous?.parentId ? [previous.parentId] : [])], true);
   }
 
   function apply(event: V1Event) {

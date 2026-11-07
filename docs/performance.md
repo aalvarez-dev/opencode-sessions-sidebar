@@ -205,3 +205,18 @@ reactivation separately from the idle sampling window.
 
 See that document for the procedure, recorded evidence and limits. This bounded workload does not
 close sustained-load, native-client font, remote/disconnect, or general leak-detection gates.
+
+### Batched ancestor invalidation
+
+Snapshot mutations retain the old parent as an invalidation seed and expand the union of current
+ancestor paths once when the existing synchronous adapter batch ends. Intersections and cycles stop
+at already visited nodes. This preserves notifications and invalidates both sides of a reparent
+without repeatedly walking each ancestor's entire ancestry. It does not coalesce separate host
+events.
+
+The graph regression covers flat, deep and wide shapes at 25/250/500 nodes, including reparenting,
+missing parents, cycles, permission/question counts, errors and deletion. It compares summaries
+against an independent DFS oracle, including reads inside subscriber callbacks. For a 500-node
+chain, dictionary reads during a changed-title snapshot fall from 21,212,004 to 2,502; hydration
+falls from 377,761 to 2,011. These are deterministic adapter operation counts, not host latency or
+idle-CPU results.
