@@ -34,9 +34,11 @@ const checks: { name: string; status: "passed" | "failed"; detail?: string }[] =
 const frames: { name: string; snapshot: Snapshot }[] = [];
 const proxyActivity = { forwarded: 0, rejected: 0, eventStreams: 0, cuts: 0 };
 const budgets = {
-  totalMs: 150_000,
-  outageMs: 10_000,
-  reconnectMs: 20_000,
+  totalMs: 240_000,
+  // Quiet health: at most 60s to the next probe + 2s deadline, with scheduling margin.
+  outageMs: 70_000,
+  // A longer cut reaches the native SSE client's 30s maximum reconnect backoff.
+  reconnectMs: 35_000,
   liveEventMs: 2_000,
   observerResponseMs: 2_000,
 };

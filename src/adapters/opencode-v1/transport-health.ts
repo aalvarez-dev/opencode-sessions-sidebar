@@ -10,10 +10,17 @@ const scheduleTimeout: Schedule = (callback, delayMs) => {
   return () => clearTimeout(timer);
 };
 
+export const v1TransportHealthTiming = Object.freeze({
+  healthyIntervalMs: 60_000,
+  unavailableIntervalMs: 15_000,
+  timeoutMs: 2_000,
+});
+
 /**
  * The pinned TUI API has no transport-loss event. Its local RPC fetch also buffers
  * response.text(), so opening an extra SSE stream would hang that transport.
- * One public health request every five seconds is the bounded TUI-only fallback.
+ * One public health request per minute is the quiet TUI-only fallback.
+ * Only known outages use a shorter retry interval; native events remain immediate.
  * Healthy responses cause no adapter/UI work; no session metadata is polled.
  */
 export function monitorV1Transport(
@@ -38,10 +45,15 @@ export function monitorV1Transport(
 
   function next() {
     if (disposed) return;
-    cancelNext = schedule(() => {
-      cancelNext = undefined;
-      void probe();
-    }, 5_000);
+    cancelNext = schedule(
+      () => {
+        cancelNext = undefined;
+        void probe();
+      },
+      unavailable
+        ? v1TransportHealthTiming.unavailableIntervalMs
+        : v1TransportHealthTiming.healthyIntervalMs,
+    );
   }
 
   async function probe() {
@@ -55,7 +67,7 @@ export function monitorV1Transport(
       expired = true;
       lost();
       controller.abort();
-    }, 2_000);
+    }, v1TransportHealthTiming.timeoutMs);
     try {
       // Read the live client getter on each attempt, preserving host auth/fetch.
       const response = await host.client.global.health({

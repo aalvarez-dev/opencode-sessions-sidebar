@@ -195,5 +195,9 @@ combined-harness integration remain blocked.
 A subsequent diagnostic counted all product function entries and compared real/synthetic health
 responses within two processes in mirrored order. Only transport-health sites executed during idle;
 real requests added +1.4786 and +0.9068 CPU points within their respective processes. See the
-[health crossover](health-crossover-diagnostic.md). Changing the five-second interval would change
-disconnect detection latency and remains a product decision, not an applied optimization.
+[health crossover](health-crossover-diagnostic.md). The owner subsequently accepted slower silent
+disconnect detection to prioritize idle performance. The
+[quiet health cadence](quiet-transport-health.md) now waits 60 seconds while healthy and 15 seconds
+after a known failure, preserving the two-second deadline and immediate native events. Unit and
+integration regressions pass; native resource and transport validation are in progress. Neither this
+decision nor prior passing campaigns close the new candidate's resource gates.

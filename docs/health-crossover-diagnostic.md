@@ -1,5 +1,9 @@
 # Idle CPU: function counters and within-process health crossover
 
+Historical diagnostic for the five-second cadence. The later
+[quiet-health change](quiet-transport-health.md) implements the owner's decision to prioritize idle
+performance; the measurements below describe the earlier runtime only.
+
 **Diagnostic complete; no product restriction or performance-gate change applied.** The evidence
 supports a CPU contribution from the real health request path. It does not identify individual
 allocations, prove a host defect or close stable V1 resource acceptance.

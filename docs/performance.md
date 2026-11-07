@@ -46,10 +46,16 @@ histories. Any future external reporting requires a separately documented opt-in
 OpenCode 1.18.30's public TUI event API does not expose transport loss. Its local worker also
 buffers SDK fetch responses with `response.text()`, so an additional indefinite SSE subscription
 cannot be used safely for both local and attached clients. The TUI integration therefore owns one
-public `global.health` check per active scope, scheduled five seconds after the preceding check
-settles, with a two-second deadline and at most one request in flight. Stable healthy responses do
+public `global.health` check per active scope, scheduled **60 seconds** after a healthy check
+settles (and 60 seconds after activation). Known outages retry **15 seconds** after settlement. The
+deadline remains **two seconds**, with at most one request in flight. Stable healthy responses do
 not invalidate session data, fetch session metadata, or trigger UI updates. No request is made per
 row.
+
+Native session events remain immediate for every group; these intervals do not control session
+freshness. A silent HTTP failure can take about 62 seconds to be marked uncertain, plus scheduler
+delays. After a settled failure, probe-driven recovery can take about 17 seconds; native events may
+recover sooner. A successful recovery restores the quiet 60-second interval.
 
 A failed request, invalid response, or deadline marks transport-dependent activity uncertain. A
 confirmed recovery reconciles the snapshot. Disposal and scope replacement remove the timer, abort
@@ -60,7 +66,7 @@ settles. This prevents an unbounded pile-up.
 Once the SDK has fulfilled a health request, its JSON body is fully consumed. Cleanup cancels the
 deadline and releases the controller without aborting that completed request. Rejected requests,
 deadlines and disposal still abort; a late fulfilled response after timeout cannot restore
-certainty. This avoids redundant cancellation without changing the cadence or availability policy.
+certainty. This avoids redundant cancellation; the quiet cadence is independent of this cleanup.
 
 This fallback establishes HTTP server reachability. It does not prove that an independently broken
 event stream is healthy while HTTP remains available, and it does not infer a failure from normal

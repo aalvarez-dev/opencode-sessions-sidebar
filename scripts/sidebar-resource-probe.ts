@@ -57,7 +57,7 @@ async function waitForMeasurement(
     let settled = false;
     const timeout = setTimeout(
       () => finish(new Error("Parent did not finish the bounded resource measurement.")),
-      90_000,
+      process.env.SIDEBAR_RESOURCE_SUSTAINED === "true" ? 270_000 : 90_000,
     );
     function finish(error?: unknown) {
       if (settled) return;

@@ -37,23 +37,27 @@ const repository = resolve(import.meta.dir, "..");
 const plugin = await realpath(process.env.SIDEBAR_PLUGIN_FILE ?? join(repository, "dist/tui.js"));
 // Fixed before measurement; independent of the narrower headless and navigation budgets.
 const budgets = { medianRssDeltaMiB: 64, medianCpuDeltaPoints: 1 };
-const diagnostic = process.env.SIDEBAR_RESOURCE_DIAGNOSTIC === "true";
+const sustained = process.env.SIDEBAR_RESOURCE_SUSTAINED === "true";
+const diagnostic = sustained || process.env.SIDEBAR_RESOURCE_DIAGNOSTIC === "true";
 const delayed = process.env.SIDEBAR_RESOURCE_DELAYED === "true";
 assert(!(diagnostic && delayed), "Choose either diagnostic or delayed acceptance mode.");
 const sizes = diagnostic || delayed ? [250] : [25, 250];
 const repetitions = diagnostic ? 1 : 3;
-const settleMs = delayed ? 20_000 : 2_000;
-const observationMs = diagnostic ? 30_000 : delayed ? 10_000 : 5_000;
+const settleMs = delayed || sustained ? 20_000 : 2_000;
+const observationMs = sustained ? 210_000 : diagnostic ? 30_000 : delayed ? 10_000 : 5_000;
 const root = await mkdtemp(join(tmpdir(), "sidebar-rendered-resources-"));
 const project = join(root, "project");
 const seedConfig = join(root, "seed-config");
 const seedData = join(root, "seed-data");
 const children = new Set<ReturnType<typeof Bun.spawn>>();
 const lifetime = new AbortController();
-const watchdog = setTimeout(() => {
-  lifetime.abort(new Error("Rendered resource comparison exceeded six minutes."));
-  for (const child of children) child.kill("SIGKILL");
-}, 360_000);
+const watchdog = setTimeout(
+  () => {
+    lifetime.abort(new Error("Rendered resource comparison exceeded its bounded watchdog."));
+    for (const child of children) child.kill("SIGKILL");
+  },
+  sustained ? 600_000 : 360_000,
+);
 
 function environment(config: string, data: string, label: string) {
   return {
@@ -165,6 +169,7 @@ interface Measurement {
   enabled: boolean;
   bootToRenderedReadyMs: number;
   observationMs: number;
+  observationStartedEpochMs?: number;
   cpuPercent: number;
   rssStartMiB: number;
   rssEndMiB: number;
@@ -189,11 +194,13 @@ const median = (values: number[]) =>
   [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]!;
 const report: Record<string, unknown> = {
   schema: 3,
-  kind: diagnostic
-    ? "diagnostic-time-series"
-    : delayed
-      ? "delayed-acceptance-comparison"
-      : "acceptance-comparison",
+  kind: sustained
+    ? "sustained-health-observation"
+    : diagnostic
+      ? "diagnostic-time-series"
+      : delayed
+        ? "delayed-acceptance-comparison"
+        : "acceptance-comparison",
   acceptanceEvaluated: false,
   completed: false,
   ...(diagnostic ? {} : { passed: false }),
@@ -371,6 +378,7 @@ try {
             SIDEBAR_RESOURCE_DIRECTORY: project,
             SIDEBAR_RESOURCE_SESSION: selectedSession,
             SIDEBAR_RESOURCE_ENABLED: String(enabled),
+            SIDEBAR_RESOURCE_SUSTAINED: String(sustained),
             SIDEBAR_RESOURCE_SESSIONS: String(size),
           },
           terminal: {
@@ -423,7 +431,7 @@ try {
             threads: previousThreads,
             memory: before.memory,
           });
-          for (let index = 0; index < 30; index++) {
+          for (let index = 0; index < observationMs / 1_000; index++) {
             lifetime.signal.throwIfAborted();
             await Bun.sleep(1_000);
             after = await sample(ready.procPid, pageSize);
@@ -462,6 +470,7 @@ try {
           enabled,
           bootToRenderedReadyMs,
           observationMs: actualMs,
+          ...(sustained ? { observationStartedEpochMs: performance.timeOrigin + started } : {}),
           cpuPercent: (((after.ticks - before.ticks) / clockTicks) * 100_000) / actualMs,
           rssStartMiB: before.rssMiB,
           rssEndMiB: after.rssMiB,

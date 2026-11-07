@@ -218,7 +218,9 @@ describe("V1 adapter contract with a fake public host", () => {
       },
     );
     const probe = async () => {
-      const next = [...scheduled].find(([, delay]) => delay === 5_000)!;
+      const next = [...scheduled].find(
+        ([, delay]) => delay === (healthCalls === 0 ? 60_000 : 15_000),
+      )!;
       scheduled.delete(next[0]);
       next[0]();
       for (let turn = 0; turn < 4; turn++) await Promise.resolve();

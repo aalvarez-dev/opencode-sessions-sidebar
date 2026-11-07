@@ -2,6 +2,10 @@
 
 ## Unreleased development build
 
+- Space healthy global transport checks to 60 seconds, with 15-second retries after known failure
+  and the existing two-second deadline. Native session events remain immediate. See the
+  [quiet-health validation](docs/quiet-transport-health.md); no session cap or feature restriction.
+
 - Window top-level group row containers with prefix heights and spacers, preserving every session
   and full-list scrolling. Resource acceptance remains blocked by short-window CPU; see
   [the optimization report](docs/windowed-row-containers.md).

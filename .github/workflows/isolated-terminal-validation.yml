@@ -120,7 +120,7 @@ jobs:
   remote-and-resources:
     name: Native attach transport and resource comparison
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -151,14 +151,12 @@ jobs:
           SIDEBAR_RESOURCE_REPORT:
             ${{ github.workspace }}/.sidebar-lab/actions/native/resources.json
         run: bun run benchmark:sidebar:runtime
-      - name: Diagnostic resource trace, not an acceptance result
+      - name: Sustained idle covering three real health requests
         id: diagnostic
         continue-on-error: true
         env:
-          SIDEBAR_RESOURCE_DIAGNOSTIC: "true"
-          SIDEBAR_RESOURCE_REPORT:
-            ${{ github.workspace }}/.sidebar-lab/actions/native/resource-diagnostic.json
-        run: bun run benchmark:sidebar:runtime
+          SIDEBAR_SUSTAINED_DIR: ${{ github.workspace }}/.sidebar-lab/actions/native/sustained
+        run: bun scripts/benchmark-sidebar-sustained.ts
       - name: Additional delayed-start resource gate
         id: delayed
         continue-on-error: true
