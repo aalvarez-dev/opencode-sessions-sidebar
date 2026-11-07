@@ -220,3 +220,16 @@ against an independent DFS oracle, including reads inside subscriber callbacks. 
 chain, dictionary reads during a changed-title snapshot fall from 21,212,004 to 2,502; hydration
 falls from 377,761 to 2,011. These are deterministic adapter operation counts, not host latency or
 idle-CPU results.
+
+### Shared affected subtree summaries
+
+A missing summary now discovers only uncached descendants, adds cached subtrees, and propagates
+completed leaf totals once. Remaining cycle members receive the same aggregate of their component
+and attached trees. Computation is iterative; temporary maps and the existing summary cache are
+bounded by loaded sessions. Unaffected cached summaries keep their identity. No new timer, global
+cache or host request is added.
+
+After one leaf activity change in a 500-node chain, reading every summary uses 4,501 dictionary
+reads instead of 376,253. The same independent oracle and shape matrix cover the combined
+invalidation/aggregation path. These counts establish reduced adapter work; rendered-host
+performance and the original resource gates remain separate.

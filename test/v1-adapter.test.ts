@@ -1353,6 +1353,7 @@ describe("V1 graph update scaling and equivalence", () => {
         expect(reads.hydrate!).toBeLessThan(16 * size + 100);
         expect(reads.status!).toBeLessThan(4 * size + 30);
         expect(reads.refresh!).toBeLessThan(20 * size + 100);
+        expect(reads.summaries!).toBeLessThan(12 * size + 100);
       });
     }
   }

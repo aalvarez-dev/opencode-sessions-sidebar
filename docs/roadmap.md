@@ -166,3 +166,9 @@ older successful check.
 Until that decision is made, continue using focused task branches and reviewed PRs to `main` under
 the existing contributor instructions. Creating `develop`, changing branch protections, and enabling
 automerge are pending maintenance work.
+
+The November 7 graph optimization deduplicates batched ancestor invalidation and shares uncached
+subtree summaries. An independent DFS oracle covers flat/deep/wide graphs at 25/250/500 nodes,
+structural changes, missing parents, cycles and attention/error facts. Deterministic operation
+counts establish improved scaling; these headless regressions do not close the rendered idle-CPU,
+prolonged-lifecycle or release acceptance gates.

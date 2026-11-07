@@ -634,24 +634,85 @@ export function createV1Adapter(host: V1HostPort, inputScope: V1Scope, options: 
     if (!sessions.has(id)) return;
     const cached = summaries.get(id);
     if (cached) return cached;
-    const result = { busy: 0, retry: 0, unknown: 0, permissions: 0, questions: 0, errors: 0 };
-    const visited = new Set<string>();
+    const totals = new Map<
+      string,
+      {
+        busy: number;
+        retry: number;
+        unknown: number;
+        permissions: number;
+        questions: number;
+        errors: number;
+      }
+    >();
+    const remaining = new Map<string, number>();
     const pending = [id];
+    const leaves: string[] = [];
+    const add = (total: NonNullable<ReturnType<typeof totals.get>>, value: SessionSummary) => {
+      total.busy += value.busy;
+      total.retry += value.retry;
+      total.unknown += value.unknown;
+      total.permissions += value.permissions;
+      total.questions += value.questions;
+      total.errors += value.errors ?? 0;
+    };
+    // Discover only uncached descendants. Cached subtrees are disjoint because
+    // every session has at most one parent, and can be added without traversing.
     while (pending.length) {
       const current = pending.pop()!;
-      if (visited.has(current)) continue;
-      visited.add(current);
+      if (totals.has(current)) continue;
       const record = get(current);
       if (!record) continue;
-      if (record.activity !== "idle") result[record.activity]++;
-      result.permissions += record.permissions;
-      result.questions += record.questions;
-      if (record.error) result.errors++;
-      pending.push(...(children.get(current) ?? []));
+      const total = {
+        busy: Number(record.activity === "busy"),
+        retry: Number(record.activity === "retry"),
+        unknown: Number(record.activity === "unknown"),
+        permissions: record.permissions,
+        questions: record.questions,
+        errors: Number(record.error === true),
+      };
+      totals.set(current, total);
+      let count = 0;
+      for (const child of children.get(current) ?? []) {
+        if (!sessions.has(child)) continue;
+        const cachedChild = summaries.get(child);
+        if (cachedChild) add(total, cachedChild);
+        else {
+          count++;
+          pending.push(child);
+        }
+      }
+      remaining.set(current, count);
+      if (!count) leaves.push(current);
     }
-    const value = Object.freeze(result);
-    summaries.set(id, value);
-    return value;
+    // Prune leaves, sharing each completed subtree with its parent once.
+    while (leaves.length) {
+      const current = leaves.pop()!;
+      const total = Object.freeze(totals.get(current)!);
+      summaries.set(current, total);
+      const parent = sessions.get(current)!.parentId;
+      if (parent === null || !totals.has(parent)) continue;
+      add(totals.get(parent)!, total);
+      const count = remaining.get(parent)! - 1;
+      remaining.set(parent, count);
+      if (!count) leaves.push(parent);
+    }
+    // Only complete cycles remain. Each member reaches the same attached
+    // subtrees and cycle members; count those facts once, without recursion.
+    for (const current of totals.keys()) {
+      if (summaries.has(current)) continue;
+      const members: string[] = [];
+      const total = { busy: 0, retry: 0, unknown: 0, permissions: 0, questions: 0, errors: 0 };
+      let member = current;
+      do {
+        members.push(member);
+        add(total, totals.get(member)!);
+        member = sessions.get(member)!.parentId!;
+      } while (member !== current);
+      const value = Object.freeze(total);
+      for (const member of members) summaries.set(member, value);
+    }
+    return summaries.get(id)!;
   }
 
   async function action(
