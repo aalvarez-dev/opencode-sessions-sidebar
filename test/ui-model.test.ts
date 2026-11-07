@@ -245,6 +245,60 @@ describe("sidebar presentation", () => {
     );
   });
 
+  test("fallback summaries read deep descendant facts a bounded number of times", () => {
+    const count = 600;
+    let activityReads = 0;
+    const sessions = Array.from({ length: count }, (_, index) => {
+      const entry = session(`node-${index}`, {
+        parentId: index === 0 ? null : `node-${index - 1}`,
+      });
+      return Object.defineProperty(entry, "activity", {
+        get() {
+          activityReads++;
+          return index === count - 1 ? "busy" : "idle";
+        },
+      });
+    });
+    const model = createSidebarModelBuilder()(sessions, null, noSummary);
+    expect(model.rows).toHaveLength(count);
+    expect(model.rows.every((row) => row.summary.busy === 1)).toBe(true);
+    expect(model.groups[2]!.summary).toEqual({ ...empty, busy: 1 });
+    // An operation count detects repeated subtree walks without a machine-dependent time limit.
+    expect(activityReads).toBeLessThanOrEqual(count * 12);
+  });
+
+  test("fallback cycle summaries include attached branches exactly once and honor provided summaries", () => {
+    const sessions = [
+      session("a", { parentId: "b", activity: "busy" }),
+      session("b", { parentId: "a", permissions: 2 }),
+      session("branch", { parentId: "b", activity: "retry" }),
+      session("leaf", { parentId: "branch", questions: 3, error: true }),
+      session("self", { parentId: "self", activity: "unknown" }),
+      session("self-leaf", { parentId: "self", questions: 1 }),
+    ];
+    const build = createSidebarModelBuilder();
+    const model = build(sessions, null, noSummary);
+    const rows = new Map(model.rows.map((row) => [row.session.id, row]));
+    const cycle = { ...empty, busy: 1, retry: 1, permissions: 2, questions: 3, errors: 1 };
+    expect(rows.get("a")!.summary).toEqual(cycle);
+    expect(rows.get("b")!.summary).toEqual(cycle);
+    expect(rows.get("branch")!.summary).toEqual({
+      ...empty,
+      retry: 1,
+      questions: 3,
+      errors: 1,
+    });
+    expect(rows.get("leaf")!.summary).toEqual({ ...empty, questions: 3, errors: 1 });
+    expect(rows.get("self")!.summary).toEqual({ ...empty, unknown: 1, questions: 1 });
+    expect(rows.get("self-leaf")!.summary).toEqual({ ...empty, questions: 1 });
+    expect(model.groups[2]!.summary).toEqual({ ...cycle, unknown: 1, questions: 4 });
+    const supplied = { ...empty, questions: 9 };
+    const mixed = build(sessions, null, (id) => (id === "a" ? supplied : undefined));
+    expect(mixed.rows.find((row) => row.session.id === "a")!.summary).toEqual(supplied);
+    expect(mixed.rows.find((row) => row.session.id === "b")!.summary).toEqual(cycle);
+    expect(build([...sessions].reverse(), null, noSummary).groups).toEqual(model.groups);
+  });
+
   test("title order is deterministic for matching timestamps and does not require organization", () => {
     const input = [session("z"), session("b", { updatedAt: 2 }), session("a")];
     const forward = buildGroups(input, null, noSummary);

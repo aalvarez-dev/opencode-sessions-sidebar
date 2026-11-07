@@ -78,7 +78,12 @@ export default {
       const document = await storage.read(scope);
       const storageFinished = performance.now();
       const frame = api.renderer.currentRenderBuffer;
+      const design =
+        process.env.SIDEBAR_DESIGN === "true"
+          ? JSON.parse(await readFile(`${exchange}.design.json`, "utf8"))
+          : undefined;
       return {
+        ...(design ? { design } : {}),
         timing: {
           listMs: listFinished - started,
           storageMs: storageFinished - listFinished,
@@ -122,6 +127,20 @@ export default {
       switch (request.type) {
         case "seed": {
           assert.equal(initialIds.length, 0);
+          if (process.env.SIDEBAR_DESIGN === "true") {
+            const design = JSON.parse(await readFile(`${exchange}.design.json`, "utf8"));
+            for (const key of [
+              "release",
+              "branches",
+              "review",
+              "docs",
+              "security",
+              "backend",
+              "review-child",
+            ])
+              initialIds.push(design.ids[key]);
+            return { count: initialIds.length, nativeExecutionValidated: false };
+          }
           // Synthetic public host records; no private database or model inference.
           for (const title of [
             "Synthetic Alpha",

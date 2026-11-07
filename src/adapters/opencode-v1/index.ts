@@ -1,4 +1,6 @@
 export { createV1Adapter } from "./adapter.js";
+export { parseV1CompletionPolicy, v1CompletionCapabilities } from "./completion-capabilities.js";
+export type { V1CompletionPolicy } from "./completion-capabilities.js";
 export type {
   ActionResult,
   Activity,

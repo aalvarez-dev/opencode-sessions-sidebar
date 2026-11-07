@@ -1,8 +1,53 @@
 # Experimental sidebar validation
 
 The development TUI entrypoint targets stock OpenCode **1.18.30**. This is one tested baseline, not
-a minimum-version or V2 compatibility claim. The package remains private; public release and
-packaged-installation validation are separate roadmap work.
+a minimum-version or V2 compatibility claim. The package remains private. Fresh package validation
+is documented separately in [release validation](release.md); a passing development probe does not
+declare a public V1 release.
+
+The [Codespaces lab](codespaces-lab.md) provides a pinned development container, isolated
+interactive profiles, and a command to run both stock-host probes. Preparing that environment does
+not establish Codespaces browser-terminal compatibility; follow its manual checklist and record that
+evidence separately.
+
+## November 6: portable icons, local extensions and clean packaging
+
+The current source passes `bun run check`: **181 tests / 1,177 assertions**, formatting, both
+type-check boundaries and the build. The pinned font profile was downloaded explicitly and verified
+against its hashes and all **137** required codepoints, including every animation frame. No user
+font installation or terminal configuration change was performed. See
+[terminal fonts](terminal-fonts.md) for the Ubuntu/macOS installation procedure and client-rendering
+limits.
+
+The [stock-host receipt](validation/sidebar-portability-runtime.json) records **17 checks and 13
+frames** on OpenCode 1.18.30 / Bun 1.3.14. Keyboard-to-observed-frame p95 was **140.01 ms** against
+the unchanged 250 ms budget; twenty paced native updates completed in **907.28 ms** against 5,000
+ms. The new scenarios load an explicitly configured local extension, receive committed user events,
+run guarded no-op actions from both menus and the actual Ctrl+P palette, and verify that a disabled
+module is never imported. Check icons remains usable after resizing to 88×24 and scrolling through
+the final animation sample; repeated PgDn at the boundary keeps the dialog open.
+
+This native probe exposed a host interaction: session PageUp/PageDown commands clear dialogs unless
+the custom modal owns those keys. The three custom scrollable dialogs now register and clean up
+modal navigation bindings. Their viewport height also accounts for the host's top-quarter dialog
+placement, keeping the footer inside the terminal. Native-cell reconstructions of the two icon views
+and extension menu were reviewed with the verified font. These reconstructions do not prove
+macOS/Ubuntu terminal font selection, shaping or remote keyboard transport.
+
+The [attention receipt](validation/sidebar-portability-attention.json) records nine checks, ten
+frames and five loopback provider requests. Marked-parent questions, permissions, retry, descendant
+disclosure and terminal errors remain visible independently of completion. No external inference was
+used. The source and runtime digests identify the tested working tree based on `16ffcf0`; earlier
+dated receipts below apply to their own source revisions.
+
+The [installed-package receipt](validation/sidebar-package-runtime.json) separately passes the empty
+consumer and both native probes against the packaged TUI. Its source hashes include the final
+smoke-harness type declaration; the earlier local-run receipt predates that type-only annotation.
+See [release validation](release.md) for archive identity and scope. The complete
+[rendered resource comparison](sidebar-resource-benchmark.md) also passes its predeclared paired
+CPU/RSS budgets for 25 and 250 idle sessions; it is separate from input timing and attention checks.
+Execution-correlated automatic/custom completion, native client font/input acceptance, supported
+remote/disconnect behavior, and a host compatibility range remain open release gates.
 
 ## Load the local development build
 
@@ -43,27 +88,30 @@ storage. Keep the package private until the separate release gates pass.
 ## Use the sidebar
 
 Open the host command palette (Ctrl+P with the stock bindings) and choose **Sessions sidebar:
-browse**, **create session**, **refresh**, or **settings**. Browse is also available on the home
-screen and in the sidebar header menu. Clicking a session title opens it directly; the row ellipsis
-opens its actions. Keyboard Browse opens the same actions. Quick pin/Later controls retain
-independent memberships; delete requires the host confirmation dialog.
+browse**, **create session**, **refresh**, **settings**, **check icons**, **extension actions**, or
+**extension status**. Browse is also available on the home screen and in the sidebar header menu.
+Clicking a session title opens it directly. Non-active rows have an ellipsis for their actions; the
+active row omits it and keeps Mark/Unmark completed at the bottom. Browse exposes the full actions
+for every session, including the active one. The global header menu stays available. Quick pin/Later
+controls retain independent memberships; delete requires the host confirmation dialog.
 
 The active session is followed by Later, Pinned sessions, and Other sessions, in that display
 priority. A session has only one full row. Its first line contains the independent status indicator,
 title, and completion check. The second line contains pin/Later controls, a yellow live-subagent
-count and disclosure when relevant, the session's primary agent, age, red delete, and actions menu.
-Confirmed idle descendants are excluded from that live count; uncertain activity remains visible.
-Expanding live subagents inserts their rows immediately after the controls and before the parent's
-context line. Explicitly promoted children retain a link to their row's group. Configured public
-agent colors are used when available; unknown colors stay gray.
+count and disclosure when relevant, the session's primary agent, age, red delete, and an actions
+menu on non-active rows. Confirmed idle descendants are excluded from that live count; uncertain
+activity remains visible. Expanding live subagents inserts their rows immediately after the controls
+and before the parent's context line. Explicitly promoted children retain a link to their row's
+group. Configured public agent colors are used when available; unknown colors stay gray.
 
 The third line contains a separate yellow context arrow and **[R][B][W]** selectors for repository,
 branch, and worktree. Selecting a field changes only the inline value; it does not expand context.
 The arrow expands the three values in the same R/B/W order below that line. **Context: show
 repository/branch/worktree** and **Expand/Collapse context** in the shared session menu provide the
 keyboard equivalent. **Session details**, also opened by clicking a context value, exposes full
-values in a scrollable dialog with Up/Down or PgUp/PgDn and Esc to close. Missing public context is
-shown as unavailable; no metadata enrichment requests run while rendering.
+values in a scrollable dialog with Up/Down or PgUp/PgDn and Esc to close. Custom dialogs own those
+scroll keys while mounted, including at their boundaries, and release their bindings on close.
+Missing public context is shown as unavailable; no metadata enrichment requests run while rendering.
 
 Repository means the root reported by OpenCode's public project API. OpenCode 1.18.30 preserves the
 first worktree discovered for that project; when a fresh host first opens a linked worktree,
@@ -160,25 +208,103 @@ packaged-release performance validation is pending.
 - Deactivation/reactivation releases owned subscriptions and controls, and stale asynchronous work
   cannot update a newer or disposed scope.
 
-## Current context-and-controls revision
+## Clean lab preparation and palette correction (2026-10-29)
+
+An interactive provider-free Linux trial exposed a palette visibility defect. The command-only
+registration layer was restricted to base mode, while the host palette uses modal mode. Removing
+that restriction keeps sidebar commands reachable inside the palette. The smoke now opens Ctrl+P,
+filters for Browse, verifies an actual result beyond the filter text, and presses Enter to open the
+sidebar dialog; direct command dispatch alone did not cover this path.
+
+The [fresh stock-host receipt](validation/sidebar-palette-lab-runtime.json) records 15 checks and
+ten frames with OpenCode 1.18.30 and Bun 1.3.14 on Linux x86_64. Input observation p95 was 134.40
+ms, below the unchanged 250 ms budget. Source/build hashes identify the tested working tree on top
+of the receipt's recorded base commit. `bun run lab:verify` also passed all 148 tests / 768
+assertions and the separate native attention smoke with five loopback provider requests. No external
+model was used. The isolated launcher opened the host, rendered the sidebar after creating a
+session, and selected a fresh profile without deleting the previous one.
+
+The Codespaces workflow builds the development image and repeats verification as its non-root user,
+retaining synthetic receipts as an artifact. Its result is reported by the PR checks. A container
+check is separate from provisioning a Codespace and testing its browser terminal; those manual steps
+remain pending in the [lab guide](codespaces-lab.md).
+
+## Active-session menu correction (2026-10-28)
+
+The active row now omits its ellipsis while keeping the direct Mark/Unmark completed action last.
+Other rows retain their menus, and Browse continues to expose the active session's full actions. The
+global header menu is independent of this rule.
+
+The [stock-host receipt](validation/sidebar-active-menu-runtime.json) records a fresh pass on
+official OpenCode 1.18.30 with Bun 1.3.14 on Linux x86_64: 14 checks and ten captured frames. The
+updated probe verifies the active row has no menu, the previous row regains it after navigation, the
+active completion control unmarks without a dialog or a route/Later change, and the non-active row
+menu still opens. Existing keyboard Browse, native CRUD, context, restart, and narrow-layout checks
+also pass. Input observation p95 was 150.78 ms against the unchanged 250 ms smoke budget.
+
+`bun run check` passed all 148 tests and 768 assertions. Source/build hashes in the receipt identify
+the tested revision. The older receipts below describe their dated source revisions; this focused
+correction does not add remote or cross-platform rendering evidence.
+
+## Stability and performance review (2026-10-04)
+
+This review preserves the presentation and public APIs while fixing four bounded behaviors:
+
+- Unchanged permission/question snapshots retain session-row identities and ancestor summaries.
+  Snapshot replacement frees capacity across both request kinds before admitting new requests;
+  overflow stays explicit and a later complete read restores coverage.
+- The model fallback computes descendant totals once instead of walking each subtree repeatedly. A
+  600-session chain previously caused 543,300 activity reads; the regression now enforces at most
+  7,200. Cycles, self-links, attached branches, and adapter-supplied summary precedence are
+  retained. This optimization applies when an adapter does not supply summaries; it is not a
+  measured speedup of the normal V1 rendered sidebar.
+- Listener command authority is revoked when a callback returns or its promise settles. Detached
+  commands can no longer slip into storage during the outer promise cleanup. Awaited commands retain
+  the documented behavior; synchronous and asynchronous regressions verify the persisted document
+  agrees with the acknowledged snapshot.
+- Density/icon configuration requires actual strings. Arrays and coercible objects are rejected
+  instead of being accepted as malformed settings.
+
+`bun run check` passed with 148 tests and 768 assertions, including the existing file-storage,
+reactive-controller, and lifecycle suites. Independent source review covered both the state changes
+and graph optimization.
+
+Fresh Linux x86_64 probes used Bun 1.3.14 and official OpenCode 1.18.30 in isolated temporary state:
+
+| Probe                                                              | Result                                                                     | Existing budget                       |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------- |
+| [Stock input/render](validation/sidebar-review-runtime.json)       | 14 checks, ten frames; input observation p95 118.13 ms across ten samples  | ≤250 ms                               |
+| Stock native update burst                                          | 20 updates in 688.10 ms, three overlapping keyboard samples                | ≤5,000 ms                             |
+| [Stock native attention](validation/sidebar-review-attention.json) | Nine checks, ten frames, five synthetic loopback provider requests         | Correct visible status and disclosure |
+| [Reactive controller](validation/sidebar-review-component.json)    | 500 activity changes and 500 inert events across 250 sessions in 201.62 ms | ≤500 ms; zero extra reads             |
+
+The controller retained zero inert-event recomputations, zero extra SDK reads, and zero instrumented
+subscriptions/lifecycle callbacks after disposal. The same receipt includes the baseline's 178.26 ms
+sample: these single runs on shared hardware establish budget compliance, not an overall speedup or
+regression. The unchanged-attention and deep-fallback improvements have separate deterministic
+regressions. Native receipts record source/build hashes; component source hashes were captured after
+its run. No external model inference was used. Remote deployment, the user's terminal, packaged
+installation, and controlled whole-process resource comparisons remain unverified.
+
+## Previous context-and-controls revision
 
 The updated probes passed on Linux x86_64 with Bun 1.3.14 and official OpenCode 1.18.30, using
 isolated temporary host state and synthetic data. The
-[current input/render receipt](validation/sidebar-context-runtime.json) records 14 checks and ten
-captured frames. It verifies distinct public repository/worktree paths in a linked checkout, mouse
-and keyboard R/B/W selection without expansion, separate context expansion, completion below
-expanded context, and full-value details. At 88×24, Down, PgDn, PgUp, and Esc operate the details
-dialog, with every character of the wrapped branch retained outside the scrollbar column. CRUD,
-organization, restart, light/dark modes, and ASCII/Unicode checks also pass.
+[context-and-controls input/render receipt](validation/sidebar-context-runtime.json) records 14
+checks and ten captured frames. It verifies distinct public repository/worktree paths in a linked
+checkout, mouse and keyboard R/B/W selection without expansion, separate context expansion,
+completion below expanded context, and full-value details. At 88×24, Down, PgDn, PgUp, and Esc
+operate the details dialog, with every character of the wrapped branch retained outside the
+scrollbar column. CRUD, organization, restart, light/dark modes, and ASCII/Unicode checks also pass.
 
-The [current native attention receipt](validation/sidebar-context-attention.json) records nine
-checks and ten frames from five deterministic loopback provider requests, with no external
-inference. Actual retry, child question and permission, resolved idle, and settled error are visible
-independently of completion. Expanded parents use an aggregate status glyph; collapsed groups retain
-textual counts. Mouse and keyboard disclosure show live children between controls and parent
-context. The active parent's completion action stays below both expanded children and context.
-Settled children leave the live count, while their errors remain visible through the parent.
-Switching to the newly created current session also exercises route reconciliation.
+The [context-and-controls native attention receipt](validation/sidebar-context-attention.json)
+records nine checks and ten frames from five deterministic loopback provider requests, with no
+external inference. Actual retry, child question and permission, resolved idle, and settled error
+are visible independently of completion. Expanded parents use an aggregate status glyph; collapsed
+groups retain textual counts. Mouse and keyboard disclosure show live children between controls and
+parent context. The active parent's completion action stays below both expanded children and
+context. Settled children leave the live count, while their errors remain visible through the
+parent. Switching to the newly created current session also exercises route reconciliation.
 
 | Current probe                                                                      | Observed result                         | Unchanged budget             |
 | ---------------------------------------------------------------------------------- | --------------------------------------- | ---------------------------- |
@@ -187,13 +313,13 @@ Switching to the newly created current session also exercises route reconciliati
 | Reactive controller: 250 sessions, 500 activity changes and 500 inert token events | 214.25 ms; zero extra reads             | ≤500 ms and zero extra reads |
 
 Both native probes captured source and built-artifact hashes before launch and verified they were
-unchanged at completion. The [current controller receipt](validation/sidebar-context-component.json)
-records zero token-driven recomputations and zero retained instrumented subscriptions or lifecycle
-callbacks after disposal. Its source hashes were recorded immediately afterward and agree with the
-overlapping native receipts. The
-[ordered input diagnostics](validation/sidebar-context-input-diagnostics.json) preserve every timing
-sample. Ten samples on shared hardware still do not establish stable tail latency or whole-process
-resource overhead.
+unchanged at completion. The
+[context-and-controls controller receipt](validation/sidebar-context-component.json) records zero
+token-driven recomputations and zero retained instrumented subscriptions or lifecycle callbacks
+after disposal. Its source hashes were recorded immediately afterward and agree with the overlapping
+native receipts. The [ordered input diagnostics](validation/sidebar-context-input-diagnostics.json)
+preserve every timing sample. Ten samples on shared hardware still do not establish stable tail
+latency or whole-process resource overhead.
 
 The [attempt history](validation/sidebar-context-attempts.json) separates outdated harness
 expectations, the sandbox's initial loopback-bind refusal, the cold-linked-project observation, and
@@ -273,3 +399,30 @@ Independent source review found and resolved unknown/error summaries, promoted-c
 cumulative indentation, and completion-action placement above expanded children. The source review,
 model tests, real-host correctness probes, and limited performance workloads are complementary
 evidence; none substitutes for the pending packaged-release gates.
+
+## Approved design alignment — November 7
+
+The [visual target](visual-design.md) is now expressed by the inline header, compact live-child
+trees, counted nonempty groups, explicit active-child disclosure defaults, aligned completion
+action, readable inactive controls and clock icons. Main labels preserve their beginning when
+truncated.
+
+A native regression exposed a pinned OpenTUI behavior: text renderables override `onResize` without
+invoking the inherited `onSizeChange` callback. Measuring the text itself therefore kept the
+available width at zero. `EndLabel` measures a public box allocation and fits its inner text to that
+width. An actual renderer regression covers initial paint, reactive text, resize, CJK, combining
+graphemes and ASCII fallback; it does not infer runtime correctness from a pure helper.
+
+The local combined check passes 199 tests and 1,324 assertions. Independent stock OpenCode PTY
+checks pass 17 organization/layout checks and 10 native child-attention checks. A separate shared
+design fixture passes five geometry/color checks with all four main entries visible. Its activity,
+attention and age reads are explicitly synthetic (`nativeExecutionValidated: false`); the
+independent attention fixture still creates genuine host events through its local provider. These
+local receipts describe native frames, not terminal pixel captures.
+
+The isolated hosted workflow adds the same design fixture on Ubuntu and macOS. The macOS design
+scenario forwards unchanged native output through its own PTY and dismisses native onboarding with
+one bounded, observed mouse click, without editing host state or requiring accessibility
+permissions. Source, relay and product hashes accompany its real-window evidence. Record the hosted
+pixel review and exact campaign outcome separately; this change does not close an existing
+resource-budget or release gate.

@@ -1,6 +1,24 @@
-import { For, Index, Show, createEffect, createSignal, onCleanup, type Accessor } from "solid-js";
-import { RGBA, type Renderable } from "@opentui/core";
+import {
+  For,
+  Index,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+  type Accessor,
+} from "solid-js";
+import { RGBA, type Renderable, type ScrollBoxRenderable } from "@opentui/core";
 import { createSidebarMotion } from "./motion";
+import { EndLabel as MeasuredEndLabel, type EndLabelProps } from "./end-label";
+import {
+  createSidebarViewport,
+  sidebarChildLines,
+  sidebarRowHeights,
+  type SidebarChildLine,
+} from "./viewport";
+import { iconGlyph, iconModes, iconProofRows, type IconName } from "./icons";
 import { useTerminalDimensions, type JSX } from "@opentui/solid";
 import type { TuiDialogSelectOption, TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { SidebarController } from "./controller";
@@ -11,11 +29,45 @@ import {
   type Density,
   type IconMode,
   type SidebarRow,
+  type SidebarGroup,
 } from "./model";
 
 const contextFields = ["repository", "branch", "worktree"] as const;
 const contextLabels = { repository: "Repository", branch: "Branch", worktree: "Worktree" };
 const contextSymbols = { repository: "R", branch: "B", worktree: "W" };
+// Stock V1 dialogs start one quarter down the terminal. Reserve heading, gaps and footer too.
+const dialogScrollHeight = (height: number) => Math.max(1, height - Math.ceil(height / 4) - 6);
+function dialogScrollRef(api: TuiPluginApi) {
+  let scroll: ScrollBoxRenderable | undefined;
+  let unregister: (() => void) | undefined;
+  let focusTimer: ReturnType<typeof setTimeout> | undefined;
+  onMount(() => {
+    // The host palette restores the previous input asynchronously after clearing itself.
+    focusTimer = setTimeout(() => {
+      if (scroll && !scroll.isDestroyed) scroll.focus();
+    }, 1);
+  });
+  onCleanup(() => {
+    if (focusTimer !== undefined) clearTimeout(focusTimer);
+    unregister?.();
+  });
+  return (value: ScrollBoxRenderable) => {
+    scroll = value;
+    unregister?.();
+    // Session PageUp/PageDown commands otherwise run first and clear the dialog.
+    // The mounted modal owns these keys, including at either scroll boundary.
+    unregister = api.keymap.registerLayer({
+      mode: "modal",
+      priority: 100,
+      bindings: [
+        { key: "up", cmd: () => value.scrollBy(-1) },
+        { key: "down", cmd: () => value.scrollBy(1) },
+        { key: "pageup", cmd: () => value.scrollBy(-Math.max(1, value.viewport.height - 1)) },
+        { key: "pagedown", cmd: () => value.scrollBy(Math.max(1, value.viewport.height - 1)) },
+      ],
+    });
+  };
+}
 // Details preserve the full host value while removing terminal controls and direction overrides.
 const fullLabel = (value: string) =>
   value.replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/gu, " ");
@@ -99,14 +151,16 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
     if (!row) return;
     replace(() => {
       const dimensions = useTerminalDimensions();
+      const scrollRef = dialogScrollRef(api);
       return (
         <box flexDirection="column" paddingLeft={2} paddingRight={2} gap={1}>
           <text fg={api.theme.current.text} attributes={1}>
             Session details
           </text>
           <scrollbox
+            ref={scrollRef}
             id={`sidebar-session-${id}-details-scroll`}
-            height={Math.max(1, dimensions().height - 12)}
+            height={dialogScrollHeight(dimensions().height)}
             focused
           >
             <box flexDirection="column" gap={1} paddingRight={2}>
@@ -216,6 +270,17 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
           ]
         : []),
       option("Session details", () => details(id)),
+      ...controller.extensionActions(id).map((action) => ({
+        ...option(
+          action.title,
+          () => {
+            clear();
+            void controller.runExtension(action.id, id);
+          },
+          !action.enabled,
+        ),
+        category: `Extension: ${action.extensionId}`,
+      })),
       option("Rename", () => rename(row), controller.pending()),
       option("Delete session…", () => remove(row), controller.pending()),
     ];
@@ -310,8 +375,147 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
       });
     });
   }
+  function extensions() {
+    const id = controller.state()?.selectedSessionId;
+    if (!id) {
+      controller.notify("Open a session to use extension actions.");
+      return;
+    }
+    const actions = controller.extensionActions(id);
+    if (actions.length === 0) {
+      controller.notify("No enabled extension actions are available for this session.");
+      return;
+    }
+    select("Session extension actions", () =>
+      actions.map((action) => ({
+        title: action.title,
+        description: action.extensionId,
+        disabled: !action.enabled,
+        value: controller.guard(() => {
+          clear();
+          void controller.runExtension(action.id, id);
+        }),
+      })),
+    );
+  }
+  function extensionStatus() {
+    replace(() => {
+      const dimensions = useTerminalDimensions();
+      const scrollRef = dialogScrollRef(api);
+      return (
+        <box flexDirection="column" paddingLeft={2} paddingRight={2} gap={1}>
+          <text fg={api.theme.current.text} attributes={1}>
+            Extension status
+          </text>
+          <scrollbox
+            ref={scrollRef}
+            id="sidebar-extension-status-scroll"
+            height={dialogScrollHeight(dimensions().height)}
+            focused
+          >
+            <box flexDirection="column" gap={1} paddingRight={2}>
+              <Show
+                when={controller.extensionDiagnostics().length > 0}
+                fallback={
+                  <text fg={api.theme.current.textMuted}>No local extensions configured.</text>
+                }
+              >
+                <For each={controller.extensionDiagnostics()}>
+                  {(entry, index) => (
+                    <box flexDirection="column" flexShrink={0}>
+                      <text
+                        fg={
+                          entry.state === "failed"
+                            ? api.theme.current.warning
+                            : api.theme.current.text
+                        }
+                      >
+                        {entry.id ?? `Configured module ${index() + 1}`}: {entry.state}
+                      </text>
+                      <Show when={entry.message}>
+                        <text fg={api.theme.current.textMuted} wrapMode="word">
+                          {entry.message}
+                        </text>
+                      </Show>
+                    </box>
+                  )}
+                </For>
+              </Show>
+              <text fg={api.theme.current.textMuted} wrapMode="word">
+                Only explicitly enabled local modules are loaded. Restart OpenCode after editing a
+                module or fixing a failure. Module paths and exception details are not displayed
+                here.
+              </text>
+            </box>
+          </scrollbox>
+          <text fg={api.theme.current.textMuted}>
+            Up/Down or PgUp/PgDn to scroll · Esc to close
+          </text>
+        </box>
+      );
+    });
+  }
+  function checkIcons() {
+    // This is a visual check on the displaying client, never a claim to detect its active font.
+    const rows = iconProofRows();
+    replace(() => {
+      const dimensions = useTerminalDimensions();
+      const scrollRef = dialogScrollRef(api);
+      return (
+        <box flexDirection="column" paddingLeft={2} paddingRight={2} gap={1}>
+          <text fg={api.theme.current.text} attributes={1}>
+            Check sidebar icons
+          </text>
+          <scrollbox
+            ref={scrollRef}
+            id="sidebar-icon-check-scroll"
+            height={dialogScrollHeight(dimensions().height)}
+            focused
+          >
+            <box flexDirection="column" gap={1} paddingRight={2}>
+              <text fg={api.theme.current.text} wrapMode="word">
+                Current mode: {controller.icons()}. Compare every symbol and animation frame.
+                Right-hand bars should align; symbols should not appear as empty boxes.
+              </text>
+              <text fg={api.theme.current.warning} wrapMode="word">
+                The font belongs to the computer displaying this terminal. Installing it inside
+                Docker or on an SSH server does not configure your client. This check cannot detect
+                which font your terminal uses.
+              </text>
+              <box flexDirection="column" flexShrink={0}>
+                <text fg={api.theme.current.textMuted} wrapMode="none">
+                  {"Symbol           Unicode ASCII   Nerd"}
+                </text>
+                <For each={rows}>
+                  {(row) => (
+                    <text
+                      id={`sidebar-icon-check-${row.id}`}
+                      fg={api.theme.current.text}
+                      wrapMode="char"
+                    >
+                      {row.text}
+                    </text>
+                  )}
+                </For>
+              </box>
+              <text fg={api.theme.current.textMuted} wrapMode="word">
+                Animation frames above are static samples. Choose Icons in Display settings, or set
+                icons in tui.json to retain the choice after restarting. Nerd mode needs the
+                prepared font selected in the client terminal. ASCII substitutes the icons only;
+                session titles can still contain Unicode.
+              </text>
+            </box>
+          </scrollbox>
+          <text fg={api.theme.current.textMuted} wrapMode="word">
+            Up/Down or PgUp/PgDn or mouse wheel to scroll. Esc to close.
+          </text>
+        </box>
+      );
+    });
+  }
   function settings() {
     select("Sidebar display — this activation", () => [
+      { title: "Extension status", value: extensionStatus },
       ...(["compact", "balanced", "comfortable"] as const).map((value: Density) => ({
         title: `Density: ${value}`,
         value: () => {
@@ -320,7 +524,7 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
         },
         footer: controller.density() === value ? "Selected" : "",
       })),
-      ...(["unicode", "ascii", "nerd"] as const).map((value: IconMode) => ({
+      ...iconModes.map((value: IconMode) => ({
         title: `Icons: ${value}`,
         value: () => {
           controller.setIcons(value);
@@ -342,6 +546,7 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
           clear();
         },
       })),
+      { title: "Check icons", value: checkIcons },
       { title: "Manage unavailable pins", value: unavailablePins },
       {
         title: "Refresh sessions and organization",
@@ -396,6 +601,7 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
       { title: "Browse all sessions", value: browse },
       { title: "Manage Later list", value: later },
       { title: "Display settings", value: settings },
+      { title: "Extension actions", value: extensions },
       {
         title: "Refresh sessions and organization",
         value: () => {
@@ -410,7 +616,10 @@ export function createSidebarActions(api: TuiPluginApi, controller: SidebarContr
     create,
     session,
     browse,
+    extensions,
+    extensionStatus,
     settings,
+    checkIcons,
     later,
     menu,
     quick,
@@ -433,8 +642,9 @@ export function SidebarView(props: {
   const theme = () => props.api.theme.current;
   const motion = createSidebarMotion(props.api.renderer);
   onCleanup(motion.dispose);
-  const symbol = (unicode: string, ascii: string, nerd = unicode) =>
-    c.icons() === "ascii" ? ascii : c.icons() === "nerd" ? nerd : unicode;
+  const viewport = createSidebarViewport(props.api.renderer);
+  onCleanup(viewport.dispose);
+  const symbol = (name: IconName) => iconGlyph(name, c.icons());
   // Derived from the host palette; retry stays distinct from a terminal error.
   const retryColor = () =>
     RGBA.fromValues(
@@ -442,12 +652,8 @@ export function SidebarView(props: {
       (theme().warning.g * 2 + theme().error.g) / 3,
       (theme().warning.b * 2 + theme().error.b) / 3,
     );
-  const mutedIcon = () =>
-    RGBA.fromValues(
-      (theme().textMuted.r * 3 + theme().backgroundPanel.r) / 4,
-      (theme().textMuted.g * 3 + theme().backgroundPanel.g) / 4,
-      (theme().textMuted.b * 3 + theme().backgroundPanel.b) / 4,
-    );
+  const mutedIcon = () => theme().textMuted;
+  const rowGap = () => (c.density() === "compact" ? 0 : c.density() === "comfortable" ? 2 : 1);
   const contextValue = (field: ContextField) => {
     const value = c.context()[field];
     if (!value) return "Unavailable";
@@ -466,12 +672,12 @@ export function SidebarView(props: {
   const summaryLabel = (row: { summary: SidebarRow["summary"] }) => {
     const s = row.summary;
     return [
-      s.permissions ? `perm${s.permissions}` : "",
-      s.questions ? `ask${s.questions}` : "",
-      s.busy ? `busy${s.busy}` : "",
-      s.retry ? `retry${s.retry}` : "",
-      s.errors ? `err${s.errors}` : "",
-      s.unknown ? `unknown${s.unknown}` : "",
+      s.permissions ? `${symbol("permission")} ${s.permissions}` : "",
+      s.questions ? `${symbol("question")} ${s.questions}` : "",
+      s.busy ? `${symbol("busy")} ${s.busy}` : "",
+      s.retry ? `${symbol("retry")} ${s.retry}` : "",
+      s.errors ? `${symbol("error")} ${s.errors}` : "",
+      s.unknown ? `${symbol("unknown")} ${s.unknown}` : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -494,18 +700,56 @@ export function SidebarView(props: {
           ? `${Math.floor(minutes / 60)}h`
           : `${Math.floor(minutes / 1440)}d`;
   };
-  const topLevel = (id: string) =>
-    c.activeRow()?.session.id === id ||
-    c.groups().some((group) => group.rows.some((row) => row.session.id === id));
-  function SessionRow(p: { row: SidebarRow; depth?: number; active?: boolean }) {
-    const row = () => p.row;
-    const children = () => c.liveChildrenFor(row().session.id);
-    const expanded = () => c.expandedChildren().has(row().session.id);
+  const topLevelIds = createMemo(
+    () =>
+      new Set([
+        ...(c.activeRow() ? [c.activeRow()!.session.id] : []),
+        ...c.groups().flatMap((group) => group.rows.map((row) => row.session.id)),
+      ]),
+  );
+  const rowHeights = createMemo(() =>
+    sidebarRowHeights({
+      rows: c.rows(),
+      activeId: c.activeRow()?.session.id,
+      topLevel: topLevelIds(),
+      expandedContext: c.expandedContext(),
+      expandedChildren: c.expandedChildren(),
+      rowGap: rowGap(),
+      childrenFor: c.liveChildrenFor,
+    }),
+  );
+  function WindowedRow(p: { row: SidebarRow; active?: boolean }) {
+    const [mounted, setMounted] = createSignal(false);
+    let shell: Renderable | undefined;
+    const stop = viewport.track({ element: () => shell, mounted: setMounted });
+    onCleanup(stop);
+    return (
+      <box
+        id={`sidebar-session-${p.row.session.id}-window`}
+        ref={(element) => {
+          shell = element;
+        }}
+        flexDirection="column"
+        flexShrink={0}
+        height={rowHeights().get(p.row.session.id) ?? 3}
+      >
+        <Show when={mounted()}>
+          <SessionRow row={p.row} active={p.active ?? false} />
+        </Show>
+      </box>
+    );
+  }
+  // Measure a layout box: the pinned native text renderer does not invoke its
+  // inherited onSizeChange callback. No timer or per-frame measurement is needed.
+  function EndLabel(p: EndLabelProps) {
+    return <MeasuredEndLabel {...p} ellipsis={symbol("menu")} />;
+  }
+  function StatusGlyph(p: { row: SidebarRow; id?: string; width?: number }) {
     const [motionGlyph, setMotionGlyph] = createSignal("");
     let statusElement: Renderable | undefined;
     const animation = motion.track({ element: () => statusElement, frame: setMotionGlyph });
     createEffect(() => {
-      const s = row().summary;
+      const s = p.row.summary;
       const kind =
         !c.active() || s.permissions > 0 || s.questions > 0 || s.retry > 0
           ? null
@@ -518,60 +762,119 @@ export function SidebarView(props: {
     });
     onCleanup(animation.dispose);
     const status = () => {
-      const s = row().summary;
-      if (s.permissions > 0) return { glyph: "!", color: theme().warning };
-      if (s.questions > 0) return { glyph: "?", color: theme().warning };
-      if (s.retry > 0) return { glyph: symbol("↻", "~"), color: retryColor() };
-      if (s.busy > 0) return { glyph: motionGlyph() || symbol("⠋", "-"), color: theme().text };
-      if ((s.errors ?? 0) > 0) return { glyph: symbol("×", "x"), color: theme().error };
+      const s = p.row.summary;
+      if (s.permissions > 0) return { glyph: symbol("permission"), color: theme().warning };
+      if (s.questions > 0) return { glyph: symbol("question"), color: theme().warning };
+      if (s.retry > 0) return { glyph: symbol("retry"), color: retryColor() };
+      if (s.busy > 0) return { glyph: motionGlyph() || symbol("busy"), color: theme().text };
+      if ((s.errors ?? 0) > 0) return { glyph: symbol("error"), color: theme().error };
       if (s.unknown > 0 && c.state()?.refreshing)
-        return { glyph: motionGlyph() || symbol("⠤⠄", "..."), color: theme().text };
+        return { glyph: motionGlyph() || symbol("checking"), color: theme().text };
       return {
-        glyph: s.unknown > 0 ? symbol("◌", "?") : symbol("·", "."),
+        glyph: s.unknown > 0 ? symbol("unknown") : symbol("idle"),
         color: theme().text,
       };
     };
+    return (
+      <text
+        id={p.id ?? `sidebar-session-${p.row.session.id}-status`}
+        ref={(element) => {
+          statusElement = element;
+        }}
+        width={p.width ?? 3}
+        flexShrink={0}
+        fg={status().color}
+      >
+        {status().glyph}
+      </text>
+    );
+  }
+  function CompactChild(p: { line: SidebarChildLine }) {
+    const [mounted, setMounted] = createSignal(false);
+    let shell: Renderable | undefined;
+    const stop = viewport.track({ element: () => shell, mounted: setMounted });
+    onCleanup(stop);
+    const guide = () => {
+      let text = "";
+      for (let depth = 0; depth < Math.min(3, p.line.depth); depth++)
+        text += (p.line.guides & (1 << depth) ? symbol("treeVertical") : " ") + " ";
+      return text + symbol(p.line.last ? "treeLast" : "treeBranch") + " ";
+    };
+    const label = () => safeLabel(p.line.row.session.agent || p.line.row.session.title);
+    const promotedGroup = () =>
+      c.activeRow()?.session.id === p.line.row.session.id
+        ? "Active"
+        : p.line.row.later
+          ? "Later"
+          : "Pinned";
+    return (
+      <box
+        id={`sidebar-child-${p.line.row.session.id}-window`}
+        ref={(element) => {
+          shell = element;
+        }}
+        height={1}
+        flexShrink={0}
+      >
+        <Show when={mounted()}>
+          <box
+            id={`sidebar-child-${p.line.row.session.id}`}
+            flexDirection="row"
+            height={1}
+            paddingLeft={3}
+            onMouseUp={() => c.open(p.line.row.session.id)}
+          >
+            <text fg={theme().textMuted} flexShrink={0}>
+              {guide()}
+            </text>
+            <StatusGlyph row={p.line.row} id={`sidebar-child-${p.line.row.session.id}-status`} />
+            <EndLabel
+              id={`sidebar-child-${p.line.row.session.id}-label`}
+              fg={agentColor(p.line.row.session.agent)}
+              text={label()}
+            />
+            <Show when={p.line.promoted}>
+              <text fg={theme().textMuted} flexShrink={0}>
+                {" "}
+                {symbol("promoted")} {promotedGroup()}
+              </text>
+            </Show>
+            <Show when={p.line.row.done}>
+              <text fg={theme().success} flexShrink={0}>
+                {" "}
+                {symbol("completion")}
+              </text>
+            </Show>
+          </box>
+        </Show>
+      </box>
+    );
+  }
+  function SessionRow(p: { row: SidebarRow; active?: boolean }) {
+    const row = () => p.row;
+    const children = () => c.liveChildrenFor(row().session.id);
+    const expanded = () => c.expandedChildren().has(row().session.id);
+    const childLines = createMemo(() =>
+      expanded() ? sidebarChildLines(row().session.id, c.liveChildrenFor, topLevelIds()) : [],
+    );
     const stop = (run: () => void) => (event: { stopPropagation(): void }) => {
       event.stopPropagation();
       run();
     };
     return (
-      <box
-        flexDirection="column"
-        flexShrink={0}
-        marginBottom={c.density() === "comfortable" ? 1 : 0}
-      >
-        <box
-          flexDirection="column"
-          flexShrink={0}
-          paddingLeft={(p.depth ?? 0) > 0 && (p.depth ?? 0) <= 2 ? 1 : 0}
-        >
+      <box flexDirection="column" flexShrink={0} marginBottom={rowGap()}>
+        <box flexDirection="column" flexShrink={0}>
           <box flexDirection="row" height={1} onMouseUp={() => c.open(row().session.id)}>
-            <text
-              id={`sidebar-session-${row().session.id}-status`}
-              ref={(element) => {
-                statusElement = element;
-              }}
-              width={3}
-              flexShrink={0}
-              fg={status().color}
-            >
-              {status().glyph}
-            </text>
-            <text
+            <StatusGlyph row={row()} />
+            <EndLabel
+              id={`sidebar-session-${row().session.id}-title`}
               fg={row().done ? theme().success : theme().text}
-              flexGrow={1}
-              flexShrink={1}
-              minWidth={1}
-              truncate
-              wrapMode="none"
-            >
-              {safeLabel(row().session.title)}
-            </text>
+              text={safeLabel(row().session.title)}
+            />
             <Show when={row().done}>
               <text fg={theme().success} flexShrink={0}>
                 {" "}
-                {symbol("✓", "+")}
+                {symbol("completion")}
               </text>
             </Show>
           </box>
@@ -586,13 +889,13 @@ export function SidebarView(props: {
               fg={row().pinned ? theme().text : mutedIcon()}
               onMouseUp={stop(() => props.actions.quick(row().session.id, "pin"))}
             >
-              {row().pinned ? symbol("◆", "P", "\uEBA0") : symbol("◇", "p", "\uEB2B")}
+              {row().pinned ? symbol("pinActive") : symbol("pinInactive")}
             </text>
             <text
               fg={row().later ? theme().text : mutedIcon()}
               onMouseUp={stop(() => props.actions.quick(row().session.id, "later"))}
             >
-              {row().later ? symbol("⌛", "L", "\uF4E3") : symbol("≡", "l", "\uF451")}
+              {row().later ? symbol("laterActive") : symbol("laterInactive")}
             </text>
             <Show when={children().length > 0}>
               <text
@@ -601,19 +904,13 @@ export function SidebarView(props: {
                 flexShrink={0}
                 onMouseUp={stop(() => c.toggleChildren(row().session.id))}
               >
-                {expanded() ? symbol("▾", "v") : symbol("▸", ">")} {children().length}
+                {expanded() ? symbol("expanded") : symbol("collapsed")} {children().length}
               </text>
             </Show>
-            <text
+            <EndLabel
               fg={agentColor(row().session.agent)}
-              flexGrow={1}
-              flexShrink={1}
-              minWidth={0}
-              truncate
-              wrapMode="none"
-            >
-              {row().session.agent ? `[${safeLabel(row().session.agent ?? "")}]` : ""}
-            </text>
+              text={row().session.agent ? `[${safeLabel(row().session.agent ?? "")}]` : ""}
+            />
             <text fg={theme().textMuted} flexShrink={0}>
               {age(row().session.updatedAt)}
             </text>
@@ -622,45 +919,20 @@ export function SidebarView(props: {
               flexShrink={0}
               onMouseUp={stop(() => props.actions.remove(row().session.id))}
             >
-              {symbol("⌫", "del", "\uF48E")}
+              {symbol("delete")}
             </text>
-            <text
-              fg={theme().textMuted}
-              flexShrink={0}
-              onMouseUp={stop(() => props.actions.session(row().session.id))}
-            >
-              {symbol("…", "...")}
-            </text>
-          </box>
-          <Show when={children().length > 0}>
-            <Show when={expanded()}>
-              <For each={children()}>
-                {(child) => (
-                  <Show
-                    when={!topLevel(child.session.id)}
-                    fallback={
-                      <text
-                        paddingLeft={3}
-                        fg={theme().textMuted}
-                        truncate
-                        wrapMode="none"
-                        onMouseUp={() => c.open(child.session.id)}
-                      >
-                        {symbol("↗", ">>")} {safeLabel(child.session.title)} — shown in{" "}
-                        {c.activeRow()?.session.id === child.session.id
-                          ? "Active"
-                          : child.later
-                            ? "Later"
-                            : "Pinned"}
-                      </text>
-                    }
-                  >
-                    <SessionRow row={child} depth={(p.depth ?? 0) + 1} />
-                  </Show>
-                )}
-              </For>
+            <Show when={!p.active}>
+              <text
+                id={`sidebar-session-${row().session.id}-menu`}
+                fg={theme().textMuted}
+                flexShrink={0}
+                onMouseUp={stop(() => props.actions.session(row().session.id))}
+              >
+                {symbol("menu")}
+              </text>
             </Show>
-          </Show>
+          </box>
+          <Index each={childLines()}>{(line) => <CompactChild line={line()} />}</Index>
           <box
             id={`sidebar-session-${row().session.id}-context`}
             flexDirection="column"
@@ -675,7 +947,9 @@ export function SidebarView(props: {
                 flexShrink={0}
                 onMouseUp={stop(() => c.toggleContext(row().session.id))}
               >
-                {c.expandedContext().has(row().session.id) ? symbol("▾", "v") : symbol("▸", ">")}
+                {c.expandedContext().has(row().session.id)
+                  ? symbol("expanded")
+                  : symbol("collapsed")}
               </text>
               <For each={contextFields}>
                 {(field) => (
@@ -691,18 +965,11 @@ export function SidebarView(props: {
                   </text>
                 )}
               </For>
-              <text
+              <EndLabel
                 fg={theme().textMuted}
-                flexGrow={1}
-                flexShrink={1}
-                minWidth={0}
-                truncate
-                wrapMode="none"
+                text={" " + contextValue(c.contextField(row().session.id))}
                 onMouseUp={stop(() => props.actions.details(row().session.id))}
-              >
-                {" "}
-                {contextValue(c.contextField(row().session.id))}
-              </text>
+              />
             </box>
             <Show when={c.expandedContext().has(row().session.id)}>
               <box
@@ -712,21 +979,15 @@ export function SidebarView(props: {
               >
                 <For each={contextFields}>
                   {(field) => (
-                    <box flexDirection="row" height={1} paddingLeft={2}>
+                    <box flexDirection="row" height={1}>
                       <text fg={theme().textMuted} flexShrink={0}>
                         [{contextSymbols[field]}]{" "}
                       </text>
-                      <text
+                      <EndLabel
                         fg={theme().textMuted}
-                        flexGrow={1}
-                        flexShrink={1}
-                        minWidth={0}
-                        truncate
-                        wrapMode="none"
+                        text={contextValue(field)}
                         onMouseUp={stop(() => props.actions.details(row().session.id))}
-                      >
-                        {contextValue(field)}
-                      </text>
+                      />
                     </box>
                   )}
                 </For>
@@ -734,33 +995,98 @@ export function SidebarView(props: {
             </Show>
           </box>
           <Show when={p.active}>
-            <text
-              id={`sidebar-session-${row().session.id}-completion`}
-              fg={theme().warning}
-              paddingLeft={3}
-              onMouseUp={() => props.actions.quick(row().session.id, "completion")}
-            >
-              {row().done ? "Unmark completed" : "Mark completed"}
-            </text>
+            <box paddingLeft={3} height={1}>
+              <text
+                id={`sidebar-session-${row().session.id}-completion`}
+                fg={theme().warning}
+                onMouseUp={() => props.actions.quick(row().session.id, "completion")}
+              >
+                {row().done ? "Unmark completed" : "Mark completed"} {symbol("completion")}
+              </text>
+            </box>
           </Show>
         </box>
       </box>
     );
   }
+  function SessionGroup(p: { group: SidebarGroup }) {
+    const [width, setWidth] = createSignal(0);
+    const closed = () => c.collapsed().has(p.group.id);
+    const heading = () =>
+      `${symbol(closed() ? "collapsed" : "expanded")} ${p.group.title} (${p.group.rows.length})`;
+    const summary = () => (closed() ? summaryLabel(p.group) : "");
+    const inlineSummary = () =>
+      Boolean(summary()) && Bun.stringWidth(heading()) + 1 + Bun.stringWidth(summary()) <= width();
+    return (
+      <Show
+        when={
+          p.group.rows.length > 0 || (p.group.id === "later" && c.unavailableLater().length > 0)
+        }
+      >
+        <box
+          flexDirection="column"
+          flexShrink={0}
+          marginBottom={closed() && c.density() !== "compact" ? 1 : 0}
+        >
+          <box
+            id={`sidebar-group-${p.group.id}`}
+            flexDirection="row"
+            height={1}
+            gap={1}
+            ref={(element) => setWidth(element.width)}
+            onSizeChange={function () {
+              setWidth(this.width);
+            }}
+            onMouseUp={() => c.toggleGroup(p.group.id)}
+          >
+            <EndLabel id={`sidebar-group-${p.group.id}-label`} fg={theme().text} text={heading()} />
+            <Show when={inlineSummary()}>
+              <text
+                id={`sidebar-group-${p.group.id}-summary`}
+                fg={summaryColor(p.group)}
+                flexShrink={0}
+              >
+                {summary()}
+              </text>
+            </Show>
+          </box>
+          <Show when={summary() && !inlineSummary()}>
+            <box paddingLeft={2}>
+              <text
+                id={`sidebar-group-${p.group.id}-summary`}
+                fg={summaryColor(p.group)}
+                wrapMode="word"
+              >
+                {summary()}
+              </text>
+            </box>
+          </Show>
+          <Show when={!closed()}>
+            <For each={p.group.rows}>{(row) => <WindowedRow row={row} />}</For>
+          </Show>
+          <Show when={p.group.id === "later" && c.unavailableLater().length > 0}>
+            <text fg={theme().warning} wrapMode="word" onMouseUp={() => props.actions.later()}>
+              {c.unavailableLater().length} unavailable — Manage Later
+            </text>
+          </Show>
+        </box>
+      </Show>
+    );
+  }
   return (
     <Show when={c.active()}>
       <box flexDirection="column" flexShrink={0} gap={0}>
-        <box flexDirection="row" height={1}>
-          <text fg={theme().text} attributes={1} flexGrow={1}>
-            Active session:
-          </text>
-          <text fg={theme().textMuted} onMouseUp={() => props.actions.menu()}>
-            {symbol("…", "...")}
+        <box flexDirection="row" height={1} gap={1}>
+          <EndLabel id="sidebar-heading" fg={theme().text} text="Active session:" />
+          <text
+            id="sidebar-create"
+            fg={theme().warning}
+            flexShrink={0}
+            onMouseUp={() => props.actions.create()}
+          >
+            new session {symbol("create")}
           </text>
         </box>
-        <text fg={theme().warning} onMouseUp={() => props.actions.create()}>
-          new session +
-        </text>
         <Show
           when={c.activeRow()}
           fallback={
@@ -769,7 +1095,7 @@ export function SidebarView(props: {
             </text>
           }
         >
-          {(row: Accessor<SidebarRow>) => <SessionRow row={row()} active />}
+          {(row: Accessor<SidebarRow>) => <WindowedRow row={row()} active />}
         </Show>
         <Show when={c.error()}>
           <text fg={theme().warning} wrapMode="word">
@@ -792,42 +1118,7 @@ export function SidebarView(props: {
             Organization unavailable — Refresh
           </text>
         </Show>
-        <Index each={c.groups()}>
-          {(group) => (
-            <box
-              flexDirection="column"
-              flexShrink={0}
-              marginTop={c.density() === "compact" ? 0 : 1}
-            >
-              <box flexDirection="row" height={1} onMouseUp={() => c.toggleGroup(group().id)}>
-                <text
-                  fg={theme().text}
-                  attributes={1}
-                  flexGrow={1}
-                  flexShrink={1}
-                  truncate
-                  wrapMode="none"
-                >
-                  {c.collapsed().has(group().id) ? symbol("▸", ">") : symbol("▾", "v")}{" "}
-                  {group().title}
-                </text>
-              </box>
-              <Show when={c.collapsed().has(group().id) && summaryLabel(group())}>
-                <text fg={summaryColor(group())} paddingLeft={2} wrapMode="word">
-                  {summaryLabel(group())}
-                </text>
-              </Show>
-              <Show when={!c.collapsed().has(group().id)}>
-                <For each={group().rows}>{(row) => <SessionRow row={row} />}</For>
-              </Show>
-              <Show when={group().id === "later" && c.unavailableLater().length > 0}>
-                <text fg={theme().warning} wrapMode="word" onMouseUp={() => props.actions.later()}>
-                  {c.unavailableLater().length} unavailable — Manage Later
-                </text>
-              </Show>
-            </box>
-          )}
-        </Index>
+        <Index each={c.groups()}>{(group) => <SessionGroup group={group()} />}</Index>
       </box>
     </Show>
   );
@@ -845,7 +1136,7 @@ export function SidebarHome(props: {
           Browse sessions
         </text>
         <text fg={props.api.theme.current.warning} onMouseUp={() => props.actions.create()}>
-          new session +
+          new session {iconGlyph("create", props.controller.icons())}
         </text>
       </box>
     </Show>

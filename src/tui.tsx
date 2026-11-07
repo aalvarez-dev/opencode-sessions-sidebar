@@ -11,8 +11,8 @@ function activateSidebar(api: TuiPluginApi, options: SidebarOptions): void {
     const controller = createSidebarController(api, checked);
     const actions = createSidebarActions(api, controller);
     let disposed = false;
+    // The command palette enters modal mode; its commands must remain reachable there.
     const unregisterCommands = api.keymap.registerLayer({
-      mode: "base",
       commands: [
         {
           name: "sessions-sidebar.browse",
@@ -43,6 +43,27 @@ function activateSidebar(api: TuiPluginApi, options: SidebarOptions): void {
           namespace: "palette",
           category: "Sessions sidebar",
           run: actions.settings,
+        },
+        {
+          name: "sessions-sidebar.check-icons",
+          title: "Sessions sidebar: check icons",
+          namespace: "palette",
+          category: "Sessions sidebar",
+          run: actions.checkIcons,
+        },
+        {
+          name: "sessions-sidebar.extensions",
+          title: "Sessions sidebar: extension actions",
+          namespace: "palette",
+          category: "Sessions sidebar",
+          run: actions.extensions,
+        },
+        {
+          name: "sessions-sidebar.extension-status",
+          title: "Sessions sidebar: extension status",
+          namespace: "palette",
+          category: "Sessions sidebar",
+          run: actions.extensionStatus,
         },
       ],
     });

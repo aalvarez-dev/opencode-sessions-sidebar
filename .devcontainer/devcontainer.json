@@ -1,0 +1,18 @@
+{
+  "name": "Sessions sidebar · isolated OpenCode V1 lab",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "node",
+  "hostRequirements": { "cpus": 2, "memory": "8gb" },
+  "postCreateCommand": "bun install --frozen-lockfile && bun run build",
+  "waitFor": "postCreateCommand",
+  "otherPortsAttributes": { "onAutoForward": "ignore" },
+  "customizations": {
+    "codespaces": { "openFiles": ["docs/codespaces-lab.md"] },
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "remote.autoForwardPorts": false
+      }
+    }
+  }
+}

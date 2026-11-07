@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aalvarez-dev/opencode-sessions-sidebar.git"
+    "url": "https://github.com/aalvarez-labs/opencode-sessions-sidebar.git"
   },
   "packageManager": "bun@1.3.14",
   "scripts": {
@@ -26,9 +26,24 @@
     "smoke:organization": "bun run scripts/smoke-organization.ts",
     "smoke:sidebar": "bun run scripts/smoke-sidebar.ts",
     "benchmark:sidebar": "bun --conditions=browser scripts/benchmark-sidebar.ts",
+    "benchmark:sidebar:runtime": "bun run scripts/benchmark-sidebar-runtime.ts",
     "smoke:sidebar:attention": "bun run scripts/smoke-sidebar-attention.ts",
-    "fonts:prepare": "bun run scripts/prepare-fonts.ts"
+    "lab:start": "bun run scripts/codespaces-lab.ts start",
+    "lab:fresh": "bun run scripts/codespaces-lab.ts fresh",
+    "lab:verify": "bun run scripts/codespaces-lab.ts verify",
+    "fonts:prepare": "bun run scripts/prepare-fonts.ts",
+    "package:check": "bun run scripts/package-check.ts",
+    "smoke:package": "bun run scripts/package-check.ts --runtime"
   },
+  "files": [
+    "dist",
+    "assets/fonts",
+    "docs",
+    "examples/*.mjs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "devDependencies": {
     "@opencode-ai/plugin": "1.18.30",
     "@opencode-ai/sdk": "1.18.30",
@@ -52,6 +67,10 @@
     "./organization": {
       "types": "./dist/organization/index.d.ts",
       "import": "./dist/organization/index.js"
+    },
+    "./extensions": {
+      "types": "./dist/extensions/index.d.ts",
+      "import": "./dist/extensions/index.js"
     },
     "./storage/file": {
       "types": "./dist/storage/file.d.ts",

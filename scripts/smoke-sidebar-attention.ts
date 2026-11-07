@@ -5,6 +5,7 @@ import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from
 import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { startGraphicalTerminal, type GraphicalTerminal } from "./lib/graphical-terminal";
 
 const expectedVersion = "1.18.30";
 assert(process.env.OPENCODE_BIN, "Set OPENCODE_BIN to stock OpenCode 1.18.30.");
@@ -17,15 +18,20 @@ const storageDirectory = join(root, "sidebar-state");
 const exchange = join(root, "exchange");
 const lifetime = new AbortController();
 let child: ReturnType<typeof Bun.spawn> | undefined;
+let graphical: GraphicalTerminal | undefined;
+const graphicalOutput = process.env.SIDEBAR_GRAPHICAL_DIR;
 let fixture: ReturnType<typeof Bun.serve> | undefined;
 let providerError: unknown;
 let providerRequests = 0;
 let requestId = 0;
 let outputTail = "";
-const deadline = setTimeout(() => {
-  lifetime.abort(new Error("Rendered attention smoke exceeded 90 seconds."));
-  child?.kill("SIGKILL");
-}, 90_000);
+const deadline = setTimeout(
+  () => {
+    lifetime.abort(new Error("Rendered attention smoke exceeded its bounded deadline."));
+    child?.kill("SIGKILL");
+  },
+  graphicalOutput ? 180_000 : 90_000,
+);
 
 type Span = { text: string; width: number; fg: number[]; bg: number[]; attributes: number };
 type Geometry = {
@@ -56,28 +62,43 @@ type Snapshot = {
 };
 const frames: { name: string; frame: Snapshot["frame"] }[] = [];
 const repository = resolve(import.meta.dir, "..");
+const plugin = await realpath(
+  process.env.SIDEBAR_PLUGIN_FILE ?? resolve(repository, "dist/tui.js"),
+);
 async function artifactHashes() {
   const paths = [
     "src/tui.tsx",
     "src/ui/controller.ts",
     "src/ui/model.ts",
     "src/ui/view.tsx",
+    "src/ui/end-label.tsx",
+    "src/ui/viewport.ts",
     "src/ui/motion.ts",
+    "src/ui/icons.ts",
+    "src/extensions/runtime.ts",
+    "src/extensions/types.ts",
+    "src/adapters/opencode-v1/completion-capabilities.ts",
     "src/adapters/opencode-v1/adapter.ts",
+    "src/adapters/opencode-v1/transport-health.ts",
     "src/adapters/opencode-v1/types.ts",
     "scripts/sidebar-attention-probe.ts",
     "scripts/smoke-sidebar-attention.ts",
+    "scripts/lib/graphical-terminal.ts",
     "dist/tui.js",
   ];
   return Object.fromEntries(
-    await Promise.all(
-      paths.map(async (path) => [
+    await Promise.all([
+      ...paths.map(async (path) => [
         path,
         createHash("sha256")
           .update(await readFile(join(repository, path)))
           .digest("hex"),
       ]),
-    ),
+      readFile(plugin).then((bytes) => [
+        "runtimePlugin",
+        createHash("sha256").update(bytes).digest("hex"),
+      ]),
+    ]),
   );
 }
 
@@ -159,6 +180,7 @@ async function until(check: (value: Snapshot) => boolean, description: string, b
   throw new Error(`${description}\n${last ? text(last) : outputTail}`);
 }
 function input(sequence: string) {
+  if (graphical) return graphical.input(sequence);
   assert(child?.terminal);
   child.terminal.write(sequence);
 }
@@ -218,6 +240,13 @@ function labelColor(snapshot: Snapshot, label: string) {
   }
   return undefined;
 }
+function collapsedAttentionSummaryReady(
+  snapshot: Snapshot,
+  attention: "questions" | "permissions",
+) {
+  const summary = nodeText(snapshot, "sidebar-group-pins-summary");
+  return summary.includes("- 1") && summary.includes(`${attention === "questions" ? "?" : "!"} 1`);
+}
 function assertVisible(
   snapshot: Snapshot,
   attention: "questions" | "permissions",
@@ -235,9 +264,10 @@ function assertVisible(
     "Pinned group disclosure has the expected state.",
   );
   if (collapsed) {
+    const summary = nodeText(snapshot, "sidebar-group-pins-summary");
     assert(
-      pinned.includes("busy1") && pinned.includes(`${attention === "questions" ? "ask" : "perm"}1`),
-      "Collapsed pinned group hides descendant activity/attention.",
+      summary.includes("- 1") && summary.includes(`${attention === "questions" ? "?" : "!"} 1`),
+      `Collapsed pinned group hides descendant activity/attention. Actual summary: ${JSON.stringify(summary)}. Frame ${snapshot.frame.frameId} (${snapshot.frame.width}x${snapshot.frame.height}):\n${text(snapshot)}`,
     );
     assert(
       !pinned.includes("Synthetic attention parent"),
@@ -264,6 +294,7 @@ async function capture(name: string, snapshot: Snapshot) {
     JSON.stringify(snapshot.frame).replaceAll(root, "/synthetic"),
   ) as Snapshot["frame"];
   frames.push({ name, frame });
+  if (graphical) await graphical.capture(name);
   if (process.env.SIDEBAR_ATTENTION_FRAMES)
     await writeFile(resolve(process.env.SIDEBAR_ATTENTION_FRAMES), JSON.stringify(frames));
 }
@@ -428,7 +459,6 @@ try {
   });
   assert(built.success && built.outputs[0]);
   await Bun.write(observer, built.outputs[0]);
-  const plugin = resolve(import.meta.dir, "../dist/tui.js");
   assert(await Bun.file(plugin).exists(), "Build the TUI entrypoint before this smoke.");
   await writeFile(
     join(config, "opencode", "tui.json"),
@@ -474,20 +504,35 @@ try {
   });
   assert.equal((await new Response(version.stdout).text()).trim(), expectedVersion);
   assert.equal(await version.exited, 0);
-  child = Bun.spawn([executable], {
-    cwd: directory,
-    env,
-    terminal: {
+  if (graphicalOutput) {
+    graphical = await startGraphicalTerminal({
+      executable,
+      cwd: directory,
+      env,
       cols: 140,
       rows: 40,
-      data(terminal, data) {
-        const output = new TextDecoder().decode(data);
-        outputTail = (outputTail + output).slice(-12_000);
-        if (output.includes("\u001b]11;?")) terminal.write("\u001b]11;rgb:0000/0000/0000\u001b\\");
-        if (output.includes("\u001b[6n")) terminal.write("\u001b[1;1R");
+      theme: "dark",
+      directory: graphicalOutput,
+      label: "attention",
+    });
+    child = graphical.process;
+  } else {
+    child = Bun.spawn([executable], {
+      cwd: directory,
+      env,
+      terminal: {
+        cols: 140,
+        rows: 40,
+        data(terminal, data) {
+          const output = new TextDecoder().decode(data);
+          outputTail = (outputTail + output).slice(-12_000);
+          if (output.includes("\u001b]11;?"))
+            terminal.write("\u001b]11;rgb:0000/0000/0000\u001b\\");
+          if (output.includes("\u001b[6n")) terminal.write("\u001b[1;1R");
+        },
       },
-    },
-  });
+    });
+  }
   const started = performance.now();
   while (!(await Bun.file(`${exchange}.ready.json`).exists())) {
     assert(child.exitCode === null, `Stock TUI exited loading plugins: ${outputTail}`);
@@ -513,8 +558,10 @@ try {
   await action("Mark completed");
   await action("Pin");
   let organized = await until(
-    (snapshot) => text(snapshot).includes("Pinned sessions"),
-    "Pin did not render.",
+    (snapshot) =>
+      text(snapshot).includes("Pinned sessions") &&
+      sidebarText(snapshot).includes("Synthetic attention parent"),
+    "Pinned group and its parent title did not render.",
   );
   assert.equal(
     sidebarText(organized).match(/Synthetic attention parent/g)?.length,
@@ -557,6 +604,14 @@ try {
   );
   const parentPrefix = `sidebar-session-${question.parentId}`;
   const childPrefix = `sidebar-session-${question.childId}`;
+  const childRowId = `sidebar-child-${question.childId}`;
+  // The observer reads live geometry and the last completed native frame. A new
+  // compact shell can exist before its measured label has reached that frame.
+  // Require the expected host agent and attention glyph, not just mounted boxes.
+  const compactChildRendered = (snapshot: Snapshot) =>
+    Boolean(node(snapshot, childRowId)) &&
+    nodeText(snapshot, `${childRowId}-label`).trim() === "build" &&
+    nodeText(snapshot, `${childRowId}-status`).trim() === "?";
   assert.equal(
     node(question, `${parentPrefix}-children-disclosure`)!.y,
     node(question, `${parentPrefix}-controls`)!.y,
@@ -579,6 +634,18 @@ try {
     "Unicode line-two disclosure did not render.",
   );
   await capture("unicode-marked-parent-second-line-question", unicode);
+  if (graphical) {
+    await request("command", { command: "sessions-sidebar.settings" });
+    await until((snapshot) => snapshot.dialogDepth > 0, "Nerd icon settings did not open.");
+    input("Icons: nerd\r");
+    const nerd = await until(
+      (snapshot) =>
+        snapshot.dialogDepth === 0 &&
+        nodeText(snapshot, `${parentPrefix}-controls`).includes("\uEBA0"),
+      "Nerd pin icon did not render for the marked parent.",
+    );
+    await capture("nerd-marked-parent-second-line-question", nerd);
+  }
   await request("command", { command: "sessions-sidebar.settings" });
   await until(
     (snapshot) => snapshot.dialogDepth > 0,
@@ -589,34 +656,50 @@ try {
     (snapshot) => snapshot.dialogDepth === 0 && sidebarText(snapshot).includes("> 1"),
     "ASCII fallback did not return.",
   );
+  await request("activate-parent");
+  const defaultExpanded = await until(
+    (snapshot) =>
+      snapshot.route.params?.sessionID === snapshot.parentId && compactChildRendered(snapshot),
+    "Selecting the parent must initially render its live child's agent and attention without an extra click.",
+  );
+  assert.equal(node(defaultExpanded, childRowId)!.height, 1);
+  assert(!node(defaultExpanded, `${childPrefix}-controls`));
+  assert(!node(defaultExpanded, `${childPrefix}-context`));
+  await clickNode(`${parentPrefix}-children-disclosure`);
+  await until(
+    (snapshot) => !node(snapshot, childRowId),
+    "Explicit collapse did not hide the active child.",
+  );
+  await request("activate-current");
+  await until(
+    (snapshot) =>
+      snapshot.route.params?.sessionID !== snapshot.parentId &&
+      Boolean(node(snapshot, "sidebar-group-pins")),
+    "Pinned parent did not return after testing its active default.",
+  );
   await clickNode(`${parentPrefix}-children-disclosure`);
   const expanded = await until(
-    (snapshot) =>
-      groupText(snapshot, "Pinned sessions", "Other sessions").includes(
-        "Synthetic attention child",
-      ),
-    "Line-two disclosure did not reveal the native child.",
+    compactChildRendered,
+    "Line-two disclosure did not render the native child's build label and question glyph.",
   );
   assert(groupText(expanded, "Pinned sessions", "Other sessions").includes("v 1"));
   assert(
-    node(expanded, `${childPrefix}-controls`)!.y > node(expanded, `${parentPrefix}-controls`)!.y,
+    node(expanded, childRowId)!.y > node(expanded, `${parentPrefix}-controls`)!.y,
     "Expanded child must follow parent controls.",
   );
   assert(
-    node(expanded, `${childPrefix}-context`)!.y < node(expanded, `${parentPrefix}-context`)!.y,
+    node(expanded, childRowId)!.y < node(expanded, `${parentPrefix}-context`)!.y,
     "Expanded child must precede parent context.",
   );
-  const childLine = expanded.frame.lines.find((line) =>
-    line.some((span) => span.text.includes("Synthetic attention child")),
-  );
+  assert.equal(node(expanded, childRowId)!.height, 1, "A live child occupies exactly one row.");
+  assert.equal(nodeText(expanded, `${childRowId}-label`).trim(), "build");
   assert(
-    childLine?.some(
-      (span) =>
-        span.text.includes("?") &&
-        JSON.stringify(span.fg) === JSON.stringify(expanded.palette.warning),
-    ),
-    "Expanded child's question glyph must be yellow.",
+    !node(expanded, `${childPrefix}-controls`),
+    "Compact children have no duplicate controls.",
   );
+  assert(!node(expanded, `${childPrefix}-context`), "Compact children have no duplicate context.");
+  assert.equal(nodeText(expanded, `${childRowId}-status`).trim(), "?");
+  assert.deepEqual(nodeColor(expanded, `${childRowId}-status`), expanded.palette.warning);
   await capture("marked-parent-expanded-child-question", expanded);
   await request("activate-parent");
   await until(
@@ -627,17 +710,12 @@ try {
   );
   await clickNode(`${parentPrefix}-context-disclosure`);
   const activeExpanded = await until(
-    (snapshot) => Boolean(node(snapshot, `${parentPrefix}-context-details`)),
+    (snapshot) =>
+      Boolean(node(snapshot, `${parentPrefix}-context-details`)) && compactChildRendered(snapshot),
     "Active parent context did not expand after its live children.",
   );
-  assert(
-    node(activeExpanded, `${parentPrefix}-controls`)!.y <
-      node(activeExpanded, `${childPrefix}-controls`)!.y,
-  );
-  assert(
-    node(activeExpanded, `${childPrefix}-context`)!.y <
-      node(activeExpanded, `${parentPrefix}-context`)!.y,
-  );
+  assert(node(activeExpanded, `${parentPrefix}-controls`)!.y < node(activeExpanded, childRowId)!.y);
+  assert(node(activeExpanded, childRowId)!.y < node(activeExpanded, `${parentPrefix}-context`)!.y);
   assert(
     node(activeExpanded, `${parentPrefix}-completion`)!.y >=
       node(activeExpanded, `${parentPrefix}-context-details`)!.y +
@@ -645,43 +723,80 @@ try {
     "Active completion action must be below both expanded children and context.",
   );
   await capture("active-parent-children-context-completion-order", activeExpanded);
+  await request("command", { command: "sessions-sidebar.settings" });
+  await until((snapshot) => snapshot.dialogDepth > 0, "Density settings did not open.");
+  input("Density: comfortable\r");
+  const comfortable = await until(
+    (snapshot) =>
+      snapshot.dialogDepth === 0 && node(snapshot, `${parentPrefix}-window`)?.height === 10,
+    "Comfortable density did not reserve the expanded parent and child height.",
+  );
+  const childWindow = node(comfortable, `${childRowId}-window`)!;
+  const parentWindow = node(comfortable, `${parentPrefix}-window`)!;
+  assert.equal(
+    childWindow.height,
+    1,
+    "The live child stays a single compact row even with comfortable main-row density.",
+  );
+  assert.equal(
+    node(comfortable, `${parentPrefix}-context`)!.y,
+    childWindow.y + childWindow.height,
+    "The parent's context must follow the child's actual Yoga height.",
+  );
+  assert.equal(
+    node(comfortable, `${parentPrefix}-completion`)!.y,
+    node(comfortable, `${parentPrefix}-context-details`)!.y + 3,
+    "Completion must follow the three expanded context lines without overlap.",
+  );
+  assert.equal(
+    parentWindow.y + parentWindow.height,
+    node(comfortable, `${parentPrefix}-completion`)!.y + 3,
+    "The parent shell must end after the completion line and comfortable gap.",
+  );
+  await capture("comfortable-active-parent-children-context", comfortable);
+  await request("command", { command: "sessions-sidebar.settings" });
+  await until((snapshot) => snapshot.dialogDepth > 0, "Density settings did not reopen.");
+  input("Density: balanced\r");
+  await until(
+    (snapshot) =>
+      snapshot.dialogDepth === 0 && node(snapshot, `${parentPrefix}-window`)?.height === 9,
+    "Balanced density did not restore the expanded parent geometry.",
+  );
   await clickNode(`${parentPrefix}-context-disclosure`);
   await request("activate-current");
   await until(
     (snapshot) =>
-      snapshot.route.params?.sessionID !== snapshot.parentId &&
-      groupText(snapshot, "Pinned sessions", "Other sessions").includes(
-        "Synthetic attention child",
-      ),
+      snapshot.route.params?.sessionID !== snapshot.parentId && Boolean(node(snapshot, childRowId)),
     "Pinned parent did not return with expanded children preserved.",
   );
   await clickNode(`${parentPrefix}-children-disclosure`);
   await until(
-    (snapshot) =>
-      !groupText(snapshot, "Pinned sessions", "Other sessions").includes(
-        "Synthetic attention child",
-      ),
+    (snapshot) => !node(snapshot, childRowId),
     "Line-two disclosure did not hide child rows.",
   );
   await action("Expand subagents");
   await until(
-    (snapshot) => Boolean(node(snapshot, `${childPrefix}-controls`)),
+    (snapshot) => Boolean(node(snapshot, childRowId)),
     "Keyboard subagent expansion did not reveal live children.",
   );
   await action("Collapse subagents");
   await until(
-    (snapshot) => !node(snapshot, `${childPrefix}-controls`),
+    (snapshot) => !node(snapshot, childRowId),
     "Keyboard subagent collapse did not hide live children.",
   );
   await click("Pinn");
   const collapsed = await until(
-    (snapshot) => text(snapshot).includes("> Pinn"),
-    "Pinned group did not collapse from mouse.",
+    (snapshot) =>
+      text(snapshot).includes("> Pinn") && collapsedAttentionSummaryReady(snapshot, "questions"),
+    "Pinned group did not collapse with its busy/question summary from mouse.",
   );
   assertVisible(collapsed, "questions", true);
   await capture("marked-parent-collapsed-question", collapsed);
-  assert(child.terminal);
-  child.terminal.resize(88, 24);
+  if (graphical) graphical.resize(88, 24);
+  else {
+    assert(child.terminal);
+    child.terminal.resize(88, 24);
+  }
   await until((snapshot) => snapshot.frame.width === 88, "Narrow resize missing.");
   await request("command", { command: "sessions-sidebar.browse" });
   await until((snapshot) => snapshot.dialogDepth > 0, "Narrow browse dialog missing.");
@@ -701,18 +816,24 @@ try {
   );
   input("\u001b");
   await until((snapshot) => snapshot.dialogDepth === 0, "Narrow menu did not close.");
-  child.terminal.resize(140, 40);
+  if (graphical) graphical.resize(140, 40);
+  else {
+    assert(child.terminal);
+    child.terminal.resize(140, 40);
+  }
   const wide = await until(
-    (snapshot) => snapshot.frame.width === 140 && text(snapshot).includes("> Pinn"),
-    "Wide collapsed group did not return.",
+    (snapshot) =>
+      snapshot.frame.width === 140 &&
+      text(snapshot).includes("> Pinn") &&
+      collapsedAttentionSummaryReady(snapshot, "questions"),
+    "Wide collapsed group did not return with its busy/question summary.",
   );
   assertVisible(wide, "questions", true);
   await request("reply-question");
   const permission = await until(
     (snapshot) =>
-      snapshot.permissions.length === 1 &&
-      groupText(snapshot, "Pinned sessions", "Other sessions").includes("perm1"),
-    "Native permission did not reach collapsed pinned sidebar.",
+      snapshot.permissions.length === 1 && collapsedAttentionSummaryReady(snapshot, "permissions"),
+    "Native permission did not reach collapsed pinned sidebar with its busy/permission summary.",
   );
   assert.equal(permission.permissions[0]?.sessionID, permission.childId);
   assert.equal(permission.questions.length, 0);
@@ -724,8 +845,8 @@ try {
       snapshot.promptFinished &&
       snapshot.questions.length === 0 &&
       snapshot.permissions.length === 0 &&
-      !sidebarText(snapshot).includes("busy1") &&
-      !sidebarText(snapshot).includes("perm1"),
+      !nodeText(snapshot, "sidebar-group-pins-summary").includes("- 1") &&
+      !nodeText(snapshot, "sidebar-group-pins-summary").includes("! 1"),
     "Resolved attention did not repaint.",
   );
   assert(
@@ -750,9 +871,7 @@ try {
     !node(settled, `${parentPrefix}-children-disclosure`),
     "Settled idle children must leave the live-subagent count and disclosure.",
   );
-  assert(
-    !groupText(settled, "Pinned sessions", "Other sessions").includes("Synthetic attention child"),
-  );
+  assert(!node(settled, childRowId), "Settled native children must leave the compact tree.");
   await capture("marked-parent-settled-no-live-subagents", settled);
   await request("start-error");
   const terminalError = await until(
@@ -779,7 +898,7 @@ try {
     terminalError.palette.success,
   );
   assert(
-    !groupText(terminalError, "Pinned sessions", "Other sessions").includes("retry1"),
+    terminalError.statuses[terminalError.childId]?.type !== "retry",
     "Final error must not remain a retry.",
   );
   await capture("marked-parent-final-error", terminalError);
@@ -794,16 +913,22 @@ try {
     runtime: { opencode: expectedVersion, platform: process.platform, bun: Bun.version },
     artifact: {
       baseGitRevision,
+      pluginSource: process.env.SIDEBAR_PLUGIN_FILE
+        ? "external packaged artifact"
+        : "local development build",
       sha256: measuredHashes,
       receipt:
         "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions. The uncommitted source hashes identify this validation build.",
     },
-    scope:
-      "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
+    graphical: graphical?.metadata() ?? null,
+    scope: graphicalOutput
+      ? "Actual stock TUI in xterm with real X input and window PNGs; native retry, child question/permission and terminal error from deterministic loopback provider."
+      : "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
     checks: [
       "Marked pinned parent retains completion while displaying child busy/question.",
-      "Mouse and keyboard line-two live-subagent disclosure expands and collapses native child rows above the parent's line-three context; deduplicated pinned parent retains its mark and success title color.",
+      "Selecting an active parent defaults to expanded live children; explicit collapse is respected. Mouse and keyboard disclosure toggles one-line agent trees without duplicate controls/context, above the parent's context; deduplicated pinned parent retains its mark and success title color.",
       "Active parent completion remains below both expanded live children and expanded R/B/W context.",
+      "Viewport shells match actual child/context/completion geometry in comfortable density and restore balanced density without overlap.",
       "Collapsed Pinned sessions retains busy/question summary.",
       "Native recoverable 429 renders a warning retry glyph; terminal 400 renders an error glyph after host idle, independently of completion.",
       "From a separate idle session route, narrow 88x24 browse retains completion and question footer; session menu retains busy/question labels.",
@@ -826,10 +951,14 @@ try {
   console.log(
     `Stock OpenCode ${expectedVersion}: marked parent and collapsed-group native question/permission rendering passed (${providerRequests} loopback provider requests).`,
   );
+} catch (error) {
+  if (graphical) await graphical.capture("failure").catch(() => undefined);
+  throw error;
 } finally {
   clearTimeout(deadline);
   lifetime.abort();
-  if (child) {
+  if (graphical) await graphical.close();
+  else if (child) {
     child.kill("SIGKILL");
     await child.exited;
     child.terminal?.close();

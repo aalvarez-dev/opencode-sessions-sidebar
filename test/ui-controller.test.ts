@@ -10,6 +10,7 @@ describe("reactive sidebar controller", () => {
     "disposed",
     "bounded-lookup",
     "hierarchy",
+    "active-children",
     "context",
     "options",
   ]) {

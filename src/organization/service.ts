@@ -323,11 +323,24 @@ export function createOrganizationService(options: OrganizationServiceOptions) {
         });
         const handled = Promise.resolve()
           .then(() => {
-            if (!controller.signal.aborted && subscriber.active && !disposed())
-              return subscriber.handler(delivery.event, context);
-          })
-          .catch(() => {
-            if (!controller.signal.aborted) listenerFailures += 1;
+            if (controller.signal.aborted || !subscriber.active || disposed()) return;
+            const failed = () => {
+              if (!controller.signal.aborted) listenerFailures += 1;
+              controller.abort();
+            };
+            try {
+              const pending = subscriber.handler(delivery.event, context);
+              // Revoke before releasing queued commands, not in the outer race's
+              // later cleanup. Detached mutations must lose authority when their
+              // callback returns; an awaited dispatch keeps the callback pending.
+              if (pending === undefined) {
+                controller.abort();
+                return;
+              }
+              return Promise.resolve(pending).then(() => controller.abort(), failed);
+            } catch {
+              failed();
+            }
           })
           .finally(() => {
             // Timeouts revoke the command context, but cannot stop arbitrary extension work.
@@ -696,7 +709,7 @@ export function createOrganizationService(options: OrganizationServiceOptions) {
     start,
     refresh,
     migrate,
-    dispatch: (command: OrganizationCommand) => dispatch(command),
+    dispatch: (command: OrganizationCommand, signal?: AbortSignal) => dispatch(command, signal),
     snapshot,
     subscribe,
     dispose,

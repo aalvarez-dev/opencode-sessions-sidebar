@@ -1,11 +1,18 @@
 import { isAbsolute } from "node:path";
 import { createMemo, createSignal } from "solid-js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
-import { createV1Adapter } from "../adapters/opencode-v1";
+import {
+  createV1Adapter,
+  parseV1CompletionPolicy,
+  type V1CompletionPolicy,
+} from "../adapters/opencode-v1";
 import type { ActionResult } from "../adapters/opencode-v1";
+import { monitorV1Transport } from "../adapters/opencode-v1/transport-health";
 import { createOrganizationService, sessionIdFromKey } from "../organization";
 import type { OrganizationAction } from "../organization";
 import { createFileStorage } from "../storage/file";
+import { createExtensionRuntime, parseExtensionConfigs } from "../extensions";
+import type { SidebarExtensionConfig } from "../extensions";
 import {
   createSidebarModelBuilder,
   type ContextField,
@@ -22,6 +29,8 @@ export interface SidebarOptions {
   readonly density?: Density;
   readonly icons?: IconMode;
   readonly reducedMotion?: boolean;
+  readonly completionPolicy?: V1CompletionPolicy;
+  readonly extensions?: readonly SidebarExtensionConfig[];
 }
 
 /** Storage is explicitly local; no host-reported directory becomes a local I/O path. */
@@ -31,7 +40,9 @@ export function parseSidebarOptions(input: Record<string, unknown> | undefined):
     typeof input.hostId !== "string" ||
     !input.hostId.trim() ||
     input.hostId.length > 512 ||
+    /[\u0000-\u001f\u007f]/.test(input.hostId) ||
     typeof input.storageDirectory !== "string" ||
+    input.storageDirectory.includes("\0") ||
     !isAbsolute(input.storageDirectory)
   )
     throw new TypeError("Configure a stable hostId and an absolute local storageDirectory.");
@@ -42,13 +53,19 @@ export function parseSidebarOptions(input: Record<string, unknown> | undefined):
     throw new TypeError("workspaceId must be a nonempty string.");
   if (
     input.density !== undefined &&
-    !["compact", "balanced", "comfortable"].includes(String(input.density))
+    (typeof input.density !== "string" ||
+      !["compact", "balanced", "comfortable"].includes(input.density))
   )
     throw new TypeError("density must be compact, balanced, or comfortable.");
-  if (input.icons !== undefined && !["unicode", "ascii", "nerd"].includes(String(input.icons)))
+  if (
+    input.icons !== undefined &&
+    (typeof input.icons !== "string" || !["unicode", "ascii", "nerd"].includes(input.icons))
+  )
     throw new TypeError("icons must be unicode, ascii, or nerd.");
   if (input.reducedMotion !== undefined && typeof input.reducedMotion !== "boolean")
     throw new TypeError("reducedMotion must be a boolean.");
+  const completionPolicy = parseV1CompletionPolicy(input.completionPolicy);
+  const extensions = parseExtensionConfigs(input.extensions);
   return {
     hostId: input.hostId,
     storageDirectory: input.storageDirectory,
@@ -56,6 +73,8 @@ export function parseSidebarOptions(input: Record<string, unknown> | undefined):
     ...(input.density === undefined ? {} : { density: input.density as Density }),
     ...(input.icons === undefined ? {} : { icons: input.icons as IconMode }),
     ...(input.reducedMotion === undefined ? {} : { reducedMotion: input.reducedMotion }),
+    ...(input.completionPolicy === undefined ? {} : { completionPolicy }),
+    ...(input.extensions === undefined ? {} : { extensions }),
   };
 }
 
@@ -66,7 +85,11 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   const [icons, setIcons] = createSignal<IconMode>(options.icons ?? "unicode");
   const [reducedMotion, setReducedMotion] = createSignal(options.reducedMotion ?? false);
   const [collapsed, setCollapsed] = createSignal<ReadonlySet<GroupId>>(new Set());
-  const [expandedChildren, setExpandedChildren] = createSignal<ReadonlySet<string>>(new Set());
+  // An absent choice follows selection: the active session opens its live subtree.
+  // Explicit open/closed choices survive route changes and snapshot refreshes.
+  const [childDisclosures, setChildDisclosures] = createSignal<ReadonlyMap<string, boolean>>(
+    new Map(),
+  );
   const [expandedContext, setExpandedContext] = createSignal<ReadonlySet<string>>(new Set());
   const [contextFields, setContextFields] = createSignal<ReadonlyMap<string, ContextField>>(
     new Map(),
@@ -83,15 +106,16 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   let adapter: ReturnType<typeof createV1Adapter> | undefined;
   let organization: ReturnType<typeof createOrganizationService> | undefined;
   let unsubscribe: (() => void) | undefined;
+  let stopTransport: (() => void) | undefined;
   let lookup: AbortController | undefined;
   let lookupInFlight = false;
   let lookupTimer: ReturnType<typeof setTimeout> | undefined;
   let epoch = 0;
   let scopeDirectory: string | undefined;
   const changed = () => {
-    setExpandedChildren((previous) => {
-      const retained = [...previous].filter((id) => adapter?.get(id));
-      return retained.length === previous.size ? previous : new Set(retained);
+    setChildDisclosures((previous) => {
+      const retained = [...previous].filter(([id]) => adapter?.get(id));
+      return retained.length === previous.size ? previous : new Map(retained);
     });
     setExpandedContext((previous) => {
       const retained = [...previous].filter((id) => adapter?.get(id));
@@ -104,6 +128,11 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     setRevision((value) => value + 1);
   };
   const buildModel = createSidebarModelBuilder();
+  const extensions = createExtensionRuntime({
+    configs: options.extensions ?? [],
+    changed,
+    notify: (message, failed) => notify(message, failed ? "warning" : "info"),
+  });
   const state = createMemo(() => {
     revision();
     return adapter?.state();
@@ -128,6 +157,14 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   const groups = createMemo(() => model().groups);
   const rows = createMemo(() => model().rows);
   const activeRow = createMemo(() => model().activeRow);
+  const activeSessionId = createMemo(() => activeRow()?.session.id);
+  const expandedChildren = createMemo<ReadonlySet<string>>(() => {
+    const choices = childDisclosures();
+    const expanded = new Set([...choices].filter(([, open]) => open).map(([id]) => id));
+    const selected = activeSessionId();
+    if (selected && !choices.has(selected)) expanded.add(selected);
+    return expanded;
+  });
   const childrenFor = (id: string) => model().childrenFor(id);
   const liveChildrenFor = (id: string) => model().liveChildrenFor(id);
   const contextField = (id: string): ContextField => contextFields().get(id) ?? "repository";
@@ -163,6 +200,9 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     if (active()) api.ui.toast({ title: "Sessions sidebar", message, variant });
   }
   function stopScope() {
+    stopTransport?.();
+    stopTransport = undefined;
+    extensions.detach();
     setProjectContext(null);
     lookup?.abort();
     lookup = undefined;
@@ -180,7 +220,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     scopeDirectory = directory;
     const generation = ++epoch;
     stopScope();
-    setExpandedChildren(new Set<string>());
+    setChildDisclosures(new Map<string, boolean>());
     setExpandedContext(new Set<string>());
     setContextFields(new Map<string, ContextField>());
     setCollapsed(new Set<GroupId>());
@@ -237,6 +277,22 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
       changed();
       await Promise.all([adapter.start(), organization.start()]);
       if (!active() || generation !== epoch) return;
+      const currentAdapter = adapter;
+      stopTransport = monitorV1Transport(api, (available) => {
+        if (active() && generation === epoch) currentAdapter.setTransportAvailable(available);
+      });
+      extensions.attach(organization, (id) => {
+        const record = currentAdapter?.get(id);
+        return record
+          ? {
+              id: record.id,
+              title: record.title,
+              activity: record.activity,
+              permissions: record.permissions,
+              questions: record.questions,
+            }
+          : undefined;
+      });
       changed();
     } catch {
       if (active() && generation === epoch)
@@ -363,12 +419,8 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   }
   function toggleChildren(id: string) {
     if (!active() || liveChildrenFor(id).length === 0) return;
-    setExpandedChildren((previous) => {
-      const next = new Set(previous);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const open = !expandedChildren().has(id);
+    setChildDisclosures((previous) => new Map(previous).set(id, open));
   }
   function selectContext(id: string, field: ContextField) {
     if (!active() || !adapter?.get(id) || contextField(id) === field) return;
@@ -386,6 +438,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   function dispose() {
     if (!active()) return;
     setActive(false);
+    extensions.dispose();
     ++epoch;
     stopScope();
     changed();
@@ -427,6 +480,15 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     native,
     open,
     notify,
+    extensionActions: (sessionId: string) => {
+      revision();
+      return extensions.actions(sessionId);
+    },
+    runExtension: (id: string, sessionId: string) => extensions.run(id, sessionId),
+    extensionDiagnostics: () => {
+      revision();
+      return extensions.diagnostics();
+    },
     dispose,
     guard: <Args extends unknown[]>(fn: (...args: Args) => void) => {
       const generation = epoch;

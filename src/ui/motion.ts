@@ -2,23 +2,8 @@ import type { Renderable } from "@opentui/core";
 
 export type MotionKind = "busy" | "checking" | null;
 
-export const checkingFrames = [
-  "⠤⠄",
-  "⠢⠄",
-  "⠡⠄",
-  "⠢⠄",
-  "⠤⠄",
-  "⠔⠄",
-  "⠌⠄",
-  "⠔⠄",
-  "⠤⠄",
-  "⠤⠂",
-  "⠤⠁",
-  "⠤⠂",
-] as const;
-
-const busyFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
-const asciiBusyFrames = ["-", "\\", "|", "/"] as const;
+export { checkingFrames } from "./icons";
+import { iconAnimations } from "./icons";
 
 /** The public geometry needed to respect terminal and scroll-viewport clipping. */
 export interface MotionNode
@@ -82,10 +67,9 @@ interface Entry {
 
 function glyph(entry: Entry, elapsed: number): string {
   if (entry.kind === null) return "";
-  if (entry.kind === "checking" && entry.ascii) return "...";
-  const frames =
-    entry.kind === "checking" ? checkingFrames : entry.ascii ? asciiBusyFrames : busyFrames;
-  const period = entry.kind === "checking" ? 160 : 80;
+  const animation = iconAnimations[entry.kind];
+  const frames = animation[entry.ascii ? "ascii" : "unicode"].frames;
+  const period = animation.periodMs;
   return frames[entry.reduced ? 0 : Math.floor(elapsed / period) % frames.length]!;
 }
 
@@ -122,7 +106,7 @@ export function createSidebarMotion(surface: MotionSurface, clock: MotionClock =
     for (const entry of animated) {
       if (!visible(entry.element(), surface)) continue;
       emit(entry, glyph(entry, elapsed));
-      const period = entry.kind === "checking" ? 160 : 80;
+      const period = iconAnimations[entry.kind!].periodMs;
       delay = Math.min(delay, period - (elapsed % period));
     }
     if (disposed) return;

@@ -1,4 +1,6 @@
 # Logs
+.sidebar-lab/
+
 logs
 *.log
 npm-debug.log*
@@ -38,8 +40,12 @@ bower_components
 build/Release
 
 # Dependency directories
-node_modules/
+node_modules
 jspm_packages/
+
+# Python validation helpers
+__pycache__/
+*.py[cod]
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/

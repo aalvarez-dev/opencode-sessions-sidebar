@@ -120,8 +120,9 @@ security sandbox.
 
 The OpenCode event API carries host events, not arbitrary sidebar events. Keep the sidebar's
 extension contract explicit rather than assuming an undocumented global bus or a shared singleton
-across separately bundled packages. The loader and distribution mechanism for extensions remain
-future implementation work.
+across separately bundled packages. Explicit local-file manifests now provide the experimental
+[extension surface](extensions.md), with scope-bound commands and cleanup. Native execution
+correlation and the stable public contract remain future acceptance work.
 
 ## Local and remote operation
 
@@ -148,6 +149,12 @@ Activation owns subscriptions, timers, pending reads, and UI state. Disposal mus
 cancel cooperative work, and prevent late responses from updating a disposed instance. Reconnection
 and refresh must reconcile current host state without pretending that every missed transition was
 observed.
+
+The rendered V1 integration owns a bounded HTTP health fallback because its public event API has no
+transport-loss notification. The headless adapter only accepts explicit transport availability from
+its owner and suppresses stale events/snapshots while unavailable. See the exact cadence, deadline,
+cleanup and stream-only limitation in
+[performance](performance.md#bounded-tui-transport-health-fallback).
 
 ## Resource and responsiveness boundaries
 

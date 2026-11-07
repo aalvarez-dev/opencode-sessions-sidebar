@@ -58,6 +58,7 @@ export class ControllerHost {
     // fields envelope used here; production compatibility is checked against its full type.
     return {
       client: {
+        global: { health: async () => ({ data: { healthy: true, version: "test" } }) },
         project: {
           current: async (parameters: { directory: string }, options: { signal: AbortSignal }) => {
             host.calls.project++;
@@ -357,6 +358,99 @@ async function hierarchy() {
   }
 }
 
+async function activeChildren() {
+  const fixture = await controllerFixture();
+  const { host, controller } = fixture;
+  const select = (id: string) => {
+    host.currentRoute = { name: "session", params: { sessionID: id } };
+    controller.observeRoute();
+  };
+  try {
+    host.sessions = [
+      syntheticSession("first"),
+      syntheticSession("second"),
+      { ...syntheticSession("first-child"), parentID: "first" },
+      { ...syntheticSession("second-child"), parentID: "second" },
+    ];
+    // Selection exists before hydration; children can begin work after that snapshot.
+    host.currentRoute = { name: "session", params: { sessionID: "first" } };
+    await controller.connect(host.directory);
+    assert.equal(controller.activeRow()?.session.id, "first");
+    assert.equal(controller.liveChildrenFor("first").length, 0);
+    host.status("first-started", "first-child", { type: "busy" });
+    host.status("second-started", "second-child", { type: "busy" });
+    assert.equal(controller.expandedChildren().has("first"), true);
+    assert.equal(controller.expandedChildren().has("second"), false);
+    const calls = { ...host.calls };
+
+    // Without a user choice, disclosure follows the currently selected session.
+    select("second");
+    assert.equal(controller.expandedChildren().has("first"), false);
+    assert.equal(controller.expandedChildren().has("second"), true);
+    controller.toggleChildren("second");
+    assert.equal(controller.expandedChildren().has("second"), false);
+    select("first");
+    select("second");
+    assert.equal(controller.expandedChildren().has("second"), false);
+
+    // Explicit opening also survives switching away; it is not a second default.
+    controller.toggleChildren("second");
+    select("first");
+    assert.equal(controller.expandedChildren().has("first"), true);
+    assert.equal(controller.expandedChildren().has("second"), true);
+    controller.toggleChildren("first");
+    assert.equal(controller.expandedChildren().has("first"), false);
+    assert.deepEqual(host.calls, calls);
+
+    // A fresh snapshot or newly arriving work must not override an explicit collapse.
+    await controller.refresh();
+    assert.equal(controller.expandedChildren().has("first"), false);
+    assert.equal(controller.expandedChildren().has("second"), true);
+    const lateChild = { ...syntheticSession("late-child"), parentID: "first" };
+    host.sessions.push(lateChild);
+    host.emit({
+      id: "late-created",
+      type: "session.created",
+      properties: { sessionID: lateChild.id, info: lateChild },
+    });
+    host.status("late-started", "late-child", { type: "busy" });
+    assert.equal(controller.liveChildrenFor("first")[0]?.session.id, "late-child");
+    assert.equal(controller.expandedChildren().has("first"), false);
+
+    // Deleted choices are discarded rather than retaining an expanded orphan.
+    host.emit({
+      id: "second-deleted",
+      type: "session.deleted",
+      properties: { sessionID: "second", info: host.sessions[1]! },
+    });
+    assert.equal(controller.expandedChildren().has("second"), false);
+
+    // A different project never inherits the previous project's explicit collapse.
+    host.directory = "/example/two";
+    host.sessions = [
+      syntheticSession("first", host.directory, "project-two"),
+      {
+        ...syntheticSession("first-child", host.directory, "project-two"),
+        parentID: "first",
+      },
+    ];
+    await controller.connect(host.directory);
+    assert.equal(controller.activeRow()?.session.id, "first");
+    assert.equal(controller.expandedChildren().has("first"), true);
+    host.status("new-scope-started", "first-child", { type: "busy" });
+    assert.equal(controller.liveChildrenFor("first").length, 1);
+    assert.equal(controller.expandedChildren().has("first"), true);
+
+    controller.dispose();
+    controller.toggleChildren("first");
+    host.status("after-disposal", "first-child", { type: "busy" });
+    assert.equal(controller.expandedChildren().size, 0);
+    assert.equal(host.subscriptions, 0);
+  } finally {
+    await fixture.dispose();
+  }
+}
+
 async function context() {
   const fixture = await controllerFixture();
   const { host, controller } = fixture;
@@ -441,8 +535,21 @@ async function options() {
     reducedMotion: true,
   };
   assert.deepEqual(parseSidebarOptions(valid), valid);
+  for (const hostId of ["test\0host", "test\nhost", "test\thost", "test\u007fhost"]) {
+    assert.throws(() => parseSidebarOptions({ ...valid, hostId }), /hostId/);
+  }
+  assert.throws(
+    () => parseSidebarOptions({ ...valid, storageDirectory: "/example/sto\0rage" }),
+    /storageDirectory/,
+  );
   assert.throws(() => parseSidebarOptions({ ...valid, reducedMotion: "false" }), /boolean/);
   assert.throws(() => parseSidebarOptions({ ...valid, icons: "invalid" }), /icons/);
+  for (const icons of [["nerd"], { toString: () => "ascii" }, null]) {
+    assert.throws(() => parseSidebarOptions({ ...valid, icons }), /icons/);
+  }
+  for (const density of [["compact"], { toString: () => "balanced" }, null]) {
+    assert.throws(() => parseSidebarOptions({ ...valid, density }), /density/);
+  }
   const fixture = await controllerFixture();
   try {
     assert.equal(fixture.controller.reducedMotion(), false);
@@ -463,6 +570,7 @@ if (import.meta.main) {
     disposed,
     "bounded-lookup": boundedLookup,
     hierarchy,
+    "active-children": activeChildren,
     context,
     options,
   };

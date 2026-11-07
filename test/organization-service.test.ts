@@ -341,6 +341,36 @@ describe("Organization service persistence and events", () => {
     service.dispose();
   });
 
+  test.each(["synchronous", "asynchronous"])(
+    "a %s listener cannot leave a detached command authorized after returning",
+    async (kind) => {
+      const storage = new MemoryStorage();
+      const service = createOrganizationService({ scope, storage });
+      let detached: Promise<{ readonly status: string }> | undefined;
+      service.subscribe("detached-follow-up", (_event, context) => {
+        detached = context.dispatch({
+          type: "set-pin",
+          commandId: "detached-pin",
+          sessionId: "beta",
+          pinned: true,
+        });
+        if (kind === "asynchronous") return Promise.resolve();
+      });
+      try {
+        await service.start();
+        expect((await service.dispatch(pin("user-pin", 0))).status).toBe("committed");
+        await until(() => detached !== undefined);
+        expect((await detached!).status).toBe("unavailable");
+        expect(storage.writes).toBe(1);
+        expect(service.snapshot().phase).toBe("ready");
+        expect(service.snapshot().document?.pins).toEqual([organizationSessionKey(scope, "alpha")]);
+        expect(storage.value).toEqual(service.snapshot().document);
+      } finally {
+        service.dispose();
+      }
+    },
+  );
+
   test("a delayed extension result retains its event revision and cannot overwrite a newer decision", async () => {
     const storage = new MemoryStorage();
     const service = createOrganizationService({ scope, storage });

@@ -22,18 +22,68 @@ mouse/keyboard actions. The approved Continuista presentation now adds a dedupli
 layout, independent third-line context selectors, live subagent disclosure above context,
 independent completion colors, explicit observed error state, and a shared visibility-bound
 animation clock. Its stock-host rendering and input evidence, component budget, and remaining
-release limits are recorded in [sidebar validation](sidebar-validation.md). Stages 5–6 remain
-planned. Publishing a package or release is a separate action after the gates pass.
+release limits are recorded in [sidebar validation](sidebar-validation.md). The October 4 stability
+review adds regression-covered snapshot reconciliation, linear fallback summaries, listener cleanup,
+and strict display-option validation, with fresh stock-host smoke receipts in that document. The
+October 28 presentation correction removes the active row's redundant ellipsis while keeping its
+direct completion action, with stock-host navigation and action checks recorded there. Stages 5–6
+are in progress: explicit local extensions and clean package validation are implemented, while the
+execution-correlated policy/report gate and final release acceptance remain open. Publishing a
+package or release is a separate action after the gates pass.
 
-The optional [terminal font setup](terminal-fonts.md) pins one licensed mono family for consistent
-text and private-use glyph selection. Native font rendering across macOS/Ghostty and Windows
-Terminal remains a release check; the plugin does not install fonts or change terminal settings.
+The [Codespaces lab](codespaces-lab.md) adds reproducible preparation for an isolated
+browser-terminal trial with the pinned V1 host, separate scratch profiles, and the existing
+stock-host probes. Successful Codespaces provisioning and the manual browser-terminal checklist
+remain pending; this preparation does not close remote-host or packaged-release validation gates.
+The clean interactive trial also exposed a command-palette visibility defect: sidebar commands now
+remain reachable while the host palette is open, with a real Ctrl+P/filter/Enter runtime regression.
+
+The [terminal font setup](terminal-fonts.md) now verifies the centralized icon catalog, including
+every animation frame, against a pinned complete family. Explicit current-user font placement
+supports Ubuntu/Linux and macOS, with a dry-run default and separate terminal selection. Activation
+performs none of those changes. **Check icons** exposes a scrollable visual proof; native client
+rendering still needs verification in each declared terminal configuration.
+
+The [extension surface](extensions.md) adds opt-in local-file modules, session menu/palette actions,
+guarded organization commands, isolated event listeners, and scope/lifecycle revocation. It remains
+experimental. The [execution-correlation audit](execution-correlation.md) documents why automatic
+and custom policies cannot yet be connected safely to the pinned host; requested unsupported modes
+are rejected explicitly rather than silently running as manual.
+
+[Fresh package validation](release.md) verifies an offline consumer and can repeat the native probes
+against the installed artifact. The [rendered resource comparison](sidebar-resource-benchmark.md)
+adds predeclared paired CPU/RSS budgets for the complete sidebar. These bounded checks supplement
+the existing input, attention, and component tests; they do not establish untested client rendering,
+remote disconnect behavior, or a compatibility range.
 
 The [performance requirements](performance.md) apply across these stages: no blocking render-path
 I/O, event-driven updates, minimal idle work, bounded resources, and explicit integrations. The
 adapter's component and stock-TUI probes have explicitly limited workloads. Their measurements do
 not establish the rendered sidebar's responsiveness or the storage layer's performance. The sidebar
 has a separate focused smoke; broad release performance and remote-host validation remain pending.
+
+The November 6 hosted campaign exposed excessive offscreen text buffers and confirmed idle activity
+during a real native transport cut. The follow-up now mounts row content only near the viewport,
+retains complete scroll geometry, and adds a bounded TUI HTTP health monitor with explicit transport
+availability at the adapter boundary. Focused stock-host checks verify wide/narrow navigation,
+expanded child/context geometry in both balanced and comfortable density, unknown activity during
+the cut, automatic recovery and a fresh event after reconnection. A double-cut regression also
+covers native recovery between two failed health checks. Full rendered resource budgets are still
+evaluated independently; these functional checks do not substitute for their exact receipts.
+
+Hosted macOS validation now separates the ASCII/default-font case from a uniquely named Terminal
+profile selecting the pinned font. Both require explicit passing receipts, followed by real pixel
+review. The [isolated campaign](isolated-terminal-validation.md) describes provenance and limits;
+run-specific results are attached to the validation PR. There is no universal-terminal or Ghostty
+acceptance claim, and an SSE-only fault with healthy HTTP remains outside the health fallback.
+
+The November 7 visual alignment work uses the [approved design contract](visual-design.md): an
+inline creation header, compact live-subagent trees, default active expansion with explicit user
+choices, counted nonempty groups, aligned completion action and a verified clock icon family. A
+shared, explicitly synthetic design fixture exercises the unchanged built product inside stock
+OpenCode on Linux and macOS. This is presentation evidence only; native execution/attention checks
+remain independent. Revised-build pixel review is pending and does not close the outstanding
+rendered RSS release gate.
 
 ## Required runtime scenarios
 

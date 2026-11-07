@@ -7,6 +7,7 @@ import type {
   SessionStatus,
 } from "@opencode-ai/sdk/v2";
 import { createV1Adapter } from "../src/adapters/opencode-v1";
+import { monitorV1Transport } from "../src/adapters/opencode-v1/transport-health";
 import type { V1HostPort, V1Limits } from "../src/adapters/opencode-v1/types";
 
 const scope = {
@@ -186,6 +187,107 @@ afterEach(() => {
 });
 
 describe("V1 adapter contract with a fake public host", () => {
+  test("a second health failure invalidates a native reconnect without an intervening healthy probe", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a")];
+    const adapter = adapterFor(host);
+    await adapter.start();
+    const scheduled = new Map<() => void, number>();
+    const availability: boolean[] = [];
+    let healthCalls = 0;
+    const healthHost = {
+      lifecycle: host.port.lifecycle,
+      client: {
+        global: {
+          async health() {
+            healthCalls++;
+            throw new Error("transport cut");
+          },
+        },
+      },
+    } as unknown as Parameters<typeof monitorV1Transport>[0];
+    const stop = monitorV1Transport(
+      healthHost,
+      (available) => {
+        availability.push(available);
+        adapter.setTransportAvailable(available);
+      },
+      (run, delay) => {
+        scheduled.set(run, delay);
+        return () => scheduled.delete(run);
+      },
+    );
+    const probe = async () => {
+      const next = [...scheduled].find(([, delay]) => delay === 5_000)!;
+      scheduled.delete(next[0]);
+      next[0]();
+      for (let turn = 0; turn < 4; turn++) await Promise.resolve();
+    };
+    try {
+      await probe();
+      expect(adapter.get("a")?.activity).toBe("unknown");
+      host.emit({ id: "native-between-cuts", type: "server.connected", properties: {} });
+      await adapter.refresh();
+      expect(adapter.get("a")?.activity).toBe("idle");
+      await probe();
+      expect(adapter.get("a")?.activity).toBe("unknown");
+      expect(healthCalls).toBe(2);
+      expect(availability).toEqual([false, false]);
+      let changes = 0;
+      adapter.subscribe(() => changes++);
+      await probe();
+      expect(changes).toBe(0);
+    } finally {
+      stop();
+    }
+    expect(scheduled.size).toBe(0);
+  });
+
+  test("transport loss rejects buffered idle events and stale snapshots until recovery", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a")];
+    const adapter = adapterFor(host);
+    await adapter.start();
+    const snapshot = deferred<Session[]>();
+    host.listRead = () => snapshot.promise;
+    const refresh = adapter.refresh();
+    await Promise.resolve();
+    adapter.setTransportAvailable(false);
+    host.status("buffered-idle", "a", { type: "idle" });
+    snapshot.resolve([session("a", { title: "Obsolete title" })]);
+    await refresh;
+    expect(adapter.get("a")).toMatchObject({ title: "Session a", activity: "unknown" });
+    expect(adapter.state()).toMatchObject({ phase: "stale", attentionCoverage: "unknown" });
+    const calls = host.calls.list;
+    await adapter.refresh();
+    adapter.setTransportAvailable(false);
+    expect(host.calls.list).toBe(calls);
+
+    host.listRead = async () => [session("a", { title: "Current title" })];
+    adapter.setTransportAvailable(true);
+    await adapter.refresh();
+    expect(adapter.get("a")).toMatchObject({ title: "Current title", activity: "idle" });
+    adapter.setTransportAvailable(true);
+    expect(host.calls.list).toBe(calls + 1);
+  });
+
+  test("native server.connected recovers a failed transport probe, disposal revokes it", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a")];
+    const adapter = adapterFor(host);
+    await adapter.start();
+    adapter.setTransportAvailable(false);
+    host.emit({ id: "reconnected", type: "server.connected", properties: {} });
+    await adapter.refresh();
+    expect(adapter.get("a")?.activity).toBe("idle");
+    const calls = host.calls.list;
+    adapter.dispose();
+    adapter.setTransportAvailable(false);
+    adapter.setTransportAvailable(true);
+    expect(adapter.state().phase).toBe("disposed");
+    expect(host.calls.list).toBe(calls);
+  });
+
   test("starts once, scopes snapshots, and infers idle only for covered sessions", async () => {
     const host = new FakeHost();
     host.sessions = [
@@ -273,6 +375,86 @@ describe("V1 adapter contract with a fake public host", () => {
     await starting;
     expect(adapter.get("a")).toMatchObject({ permissions: 0, questions: 0 });
     expect(adapter.state().attentionCount).toBe(0);
+  });
+
+  test("unchanged attention snapshots preserve row and ancestor summary identities", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("parent"), session("child", { parentID: "parent" }), session("other")];
+    host.permissions = [permission("p", "child")];
+    host.questions = [question("q", "child")];
+    const adapter = adapterFor(host);
+    await adapter.start();
+    const before = adapter.list();
+    const summary = adapter.summary("parent");
+    const changedRows: string[] = [];
+    adapter.subscribe((change) => changedRows.push(...change.sessionIds));
+
+    await adapter.refresh();
+
+    expect(adapter.list().every((row, index) => row === before[index])).toBe(true);
+    expect(adapter.summary("parent")).toBe(summary);
+    expect(changedRows).toEqual([]);
+    expect(adapter.get("child")).toMatchObject({ permissions: 1, questions: 1 });
+    expect(adapter.state()).toMatchObject({ phase: "ready", attentionCoverage: "complete" });
+  });
+
+  test("snapshot attention replacement frees capacity across both request kinds", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a"), session("b")];
+    host.questions = [question("old-question", "a")];
+    const adapter = adapterFor(host, { maxAttention: 1 });
+    await adapter.start();
+    host.questions = [];
+    host.permissions = [permission("new-permission", "b")];
+
+    await adapter.refresh();
+
+    expect(adapter.get("a")).toMatchObject({ permissions: 0, questions: 0 });
+    expect(adapter.get("b")).toMatchObject({ permissions: 1, questions: 0 });
+    expect(adapter.state()).toMatchObject({ attentionCount: 1, attentionCoverage: "complete" });
+  });
+
+  test("snapshot attention owner changes invalidate only the previous and next owners", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a"), session("b"), session("other")];
+    host.permissions = [permission("p", "a")];
+    const adapter = adapterFor(host, { maxAttention: 1 });
+    await adapter.start();
+    const other = adapter.get("other");
+    host.permissions = [permission("p", "b")];
+    const changedRows = new Set<string>();
+    adapter.subscribe((change) => change.sessionIds.forEach((id) => changedRows.add(id)));
+
+    await adapter.refresh();
+
+    expect(adapter.get("a")?.permissions).toBe(0);
+    expect(adapter.get("b")?.permissions).toBe(1);
+    expect(adapter.get("other")).toBe(other);
+    expect([...changedRows].sort()).toEqual(["a", "b"]);
+    expect(adapter.state()).toMatchObject({ attentionCount: 1, attentionCoverage: "complete" });
+  });
+
+  test("snapshot attention remains bounded across kinds and restores coverage after a smaller read", async () => {
+    const host = new FakeHost();
+    host.sessions = [session("a"), session("b")];
+    host.permissions = [permission("p1", "a"), permission("p2", "b")];
+    host.questions = [question("q1", "a"), question("q2", "b")];
+    const adapter = adapterFor(host, { maxAttention: 3 });
+    await adapter.start();
+    expect(adapter.state()).toMatchObject({ attentionCount: 3, attentionCoverage: "partial" });
+    expect(adapter.get("a")).toMatchObject({ permissions: 1, questions: 1 });
+    expect(adapter.get("b")).toMatchObject({ permissions: 1, questions: 0 });
+
+    host.permissions = [];
+    await adapter.refresh();
+
+    expect(adapter.state()).toMatchObject({
+      attentionCount: 2,
+      attentionCoverage: "complete",
+      partial: false,
+    });
+    expect(adapter.get("a")).toMatchObject({ permissions: 0, questions: 1 });
+    expect(adapter.get("b")).toMatchObject({ permissions: 0, questions: 1 });
   });
 
   test("deletion during a refresh wins over both stale list and attention responses", async () => {

@@ -142,6 +142,66 @@ function forestParents(sessions: readonly SessionRecord[]): ReadonlyMap<string, 
   return parents;
 }
 
+/** Compute fallback subtrees once, including the host graph's malformed cycles. */
+function fallbackSummaries(
+  sessions: readonly SessionRecord[],
+  children: ReadonlyMap<string, readonly SessionRecord[]>,
+): ReadonlyMap<string, SessionSummary> {
+  const records = new Map(sessions.map((session) => [session.id, session]));
+  const totals = new Map<string, ReturnType<typeof emptySummary>>();
+  const remaining = new Map<string, number>();
+  const pending: string[] = [];
+  const result = new Map<string, SessionSummary>();
+  const add = (total: ReturnType<typeof emptySummary>, value: SessionSummary) => {
+    total.busy += value.busy;
+    total.retry += value.retry;
+    total.unknown += value.unknown;
+    total.permissions += value.permissions;
+    total.questions += value.questions;
+    total.errors += value.errors ?? 0;
+  };
+  for (const session of sessions) {
+    totals.set(session.id, {
+      busy: Number(session.activity === "busy"),
+      retry: Number(session.activity === "retry"),
+      unknown: Number(session.activity === "unknown"),
+      permissions: session.permissions,
+      questions: session.questions,
+      errors: Number(session.error === true),
+    });
+    const count = children.get(session.id)?.length ?? 0;
+    remaining.set(session.id, count);
+    if (count === 0) pending.push(session.id);
+  }
+  // Each record has at most one parent: prune leaves and propagate their finished totals once.
+  while (pending.length > 0) {
+    const id = pending.pop()!;
+    const total = Object.freeze(totals.get(id)!);
+    result.set(id, total);
+    const parent = records.get(id)!.parentId;
+    if (parent === null || !records.has(parent)) continue;
+    add(totals.get(parent)!, total);
+    const count = remaining.get(parent)! - 1;
+    remaining.set(parent, count);
+    if (count === 0) pending.push(parent);
+  }
+  // Only cycles remain. Every member reaches the same cycle plus all its attached subtrees.
+  for (const session of sessions) {
+    if (result.has(session.id)) continue;
+    const members: string[] = [];
+    const total = emptySummary();
+    let id = session.id;
+    do {
+      members.push(id);
+      add(total, totals.get(id)!);
+      id = records.get(id)!.parentId!;
+    } while (id !== session.id);
+    const value = Object.freeze(total);
+    for (const member of members) result.set(member, value);
+  }
+  return result;
+}
+
 function renderModel(
   sessionsByKey: ReadonlyMap<string, SessionRecord>,
   document: OrganizationDocument | null,
@@ -182,13 +242,15 @@ function renderModel(
       total.permissions += session.permissions;
       total.questions += session.questions;
       total.errors += Number(session.error === true);
-      pending.push(...(children.get(session.id) ?? []));
+      for (const child of children.get(session.id) ?? []) pending.push(child);
     }
     return Object.freeze(total);
   }
 
+  let fallback: ReadonlyMap<string, SessionSummary> | undefined;
   for (const session of sessions) {
-    const currentSummary = summary(session.id) ?? aggregate([session]);
+    const currentSummary =
+      summary(session.id) ?? (fallback ??= fallbackSummaries(sessions, children)).get(session.id)!;
     const done = completed.has(session.key);
     const pinned = pins.has(session.key);
     const inLater = later.has(session.key);

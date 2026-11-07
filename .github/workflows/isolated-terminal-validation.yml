@@ -1,0 +1,248 @@
+name: Isolated terminal validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/isolated-terminal-validation.yml"
+      - "scripts/**"
+      - "src/**"
+      - "assets/fonts/**"
+      - "package.json"
+      - "bun.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: isolated-terminal-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-graphical:
+    name: Ubuntu real terminal and input
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Prepare disposable runner
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends xvfb xauth xterm xdotool x11-utils imagemagick fontconfig
+          npm install --prefix "$RUNNER_TEMP/sidebar-tools" --no-audit --no-fund opencode-ai@1.18.30
+          echo "OPENCODE_BIN=$RUNNER_TEMP/sidebar-tools/node_modules/.bin/opencode" >> "$GITHUB_ENV"
+          echo "SIDEBAR_GRAPHICAL_FONT_FILE=$RUNNER_TEMP/sidebar-fonts/IosevkaNerdFontMono-Regular.ttf" >> "$GITHUB_ENV"
+          bun install --frozen-lockfile
+          bun run build
+          bun run fonts:prepare --download "$RUNNER_TEMP/sidebar-fonts"
+          bun run fonts:prepare --verify "$RUNNER_TEMP/sidebar-fonts"
+          mkdir -p .sidebar-lab/actions/graphical
+          git rev-parse HEAD > .sidebar-lab/actions/graphical/checkout-sha.txt
+          dpkg-query -W xterm xvfb xdotool fontconfig > .sidebar-lab/actions/graphical/terminal-versions.txt
+      - name: Real terminal organization and layout
+        id: sidebar
+        continue-on-error: true
+        env:
+          SIDEBAR_GRAPHICAL_DIR: ${{ github.workspace }}/.sidebar-lab/actions/graphical/sidebar
+          SIDEBAR_SMOKE_REPORT: ${{ github.workspace }}/.sidebar-lab/actions/graphical/sidebar.json
+          SIDEBAR_SMOKE_FRAMES:
+            ${{ github.workspace }}/.sidebar-lab/actions/graphical/sidebar-frames.json
+          SIDEBAR_SMOKE_DIAGNOSTICS:
+            ${{ github.workspace }}/.sidebar-lab/actions/graphical/sidebar-diagnostics.json
+        run:
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun run
+          smoke:sidebar
+      - name: Real terminal native child attention
+        id: attention
+        continue-on-error: true
+        env:
+          SIDEBAR_GRAPHICAL_DIR: ${{ github.workspace }}/.sidebar-lab/actions/graphical/attention
+          SIDEBAR_ATTENTION_REPORT:
+            ${{ github.workspace }}/.sidebar-lab/actions/graphical/attention.json
+          SIDEBAR_ATTENTION_FRAMES:
+            ${{ github.workspace }}/.sidebar-lab/actions/graphical/attention-frames.json
+        run:
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun run
+          smoke:sidebar:attention
+      - name: Approved design fixture in the real terminal
+        id: design
+        continue-on-error: true
+        env:
+          SIDEBAR_GRAPHICAL_DIR: ${{ github.workspace }}/.sidebar-lab/actions/graphical/design
+          SIDEBAR_DESIGN_DIR: ${{ github.workspace }}/.sidebar-lab/actions/graphical/design
+          SIDEBAR_DESIGN_REPORT: ${{ github.workspace }}/.sidebar-lab/actions/graphical/design.json
+        run:
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun
+          scripts/smoke-sidebar-design.ts
+      - name: Real terminal during transport loss and recovery
+        id: remote
+        continue-on-error: true
+        env:
+          SIDEBAR_GRAPHICAL_DIR: ${{ github.workspace }}/.sidebar-lab/actions/graphical/remote
+          SIDEBAR_REMOTE_REPORT: ${{ github.workspace }}/.sidebar-lab/actions/graphical/remote.json
+          SIDEBAR_REMOTE_FRAMES:
+            ${{ github.workspace }}/.sidebar-lab/actions/graphical/remote-frames.json
+        run:
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun
+          scripts/smoke-sidebar-remote.ts
+      - name: Retain real pixel screenshots and receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ubuntu-terminal-pixels
+          path: .sidebar-lab/actions/graphical/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Require all graphical scenarios
+        if: always()
+        env:
+          SIDEBAR_RESULT: ${{ steps.sidebar.outcome }}
+          ATTENTION_RESULT: ${{ steps.attention.outcome }}
+          DESIGN_RESULT: ${{ steps.design.outcome }}
+          REMOTE_RESULT: ${{ steps.remote.outcome }}
+        run:
+          test "$SIDEBAR_RESULT" = success && test "$ATTENTION_RESULT" = success && test
+          "$DESIGN_RESULT" = success && test "$REMOTE_RESULT" = success
+
+  remote-and-resources:
+    name: Native attach transport and resource comparison
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Prepare pinned native host
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sidebar-tools" --no-audit --no-fund opencode-ai@1.18.30
+          echo "OPENCODE_BIN=$RUNNER_TEMP/sidebar-tools/node_modules/.bin/opencode" >> "$GITHUB_ENV"
+          bun install --frozen-lockfile
+          bun run build
+          mkdir -p .sidebar-lab/actions/native
+          git rev-parse HEAD > .sidebar-lab/actions/native/checkout-sha.txt
+      - name: Native client disconnect and reconnect
+        id: remote
+        continue-on-error: true
+        env:
+          SIDEBAR_REMOTE_REPORT: ${{ github.workspace }}/.sidebar-lab/actions/native/remote.json
+          SIDEBAR_REMOTE_FRAMES:
+            ${{ github.workspace }}/.sidebar-lab/actions/native/remote-frames.json
+        run: bun scripts/smoke-sidebar-remote.ts
+      - name: Paired full sidebar CPU and RSS comparison
+        id: resources
+        continue-on-error: true
+        env:
+          SIDEBAR_RESOURCE_REPORT:
+            ${{ github.workspace }}/.sidebar-lab/actions/native/resources.json
+        run: bun run benchmark:sidebar:runtime
+      - name: Diagnostic resource trace, not an acceptance result
+        id: diagnostic
+        continue-on-error: true
+        env:
+          SIDEBAR_RESOURCE_DIAGNOSTIC: "true"
+          SIDEBAR_RESOURCE_REPORT:
+            ${{ github.workspace }}/.sidebar-lab/actions/native/resource-diagnostic.json
+        run: bun run benchmark:sidebar:runtime
+      - name: Additional delayed-start resource gate
+        id: delayed
+        continue-on-error: true
+        env:
+          SIDEBAR_RESOURCE_DELAYED: "true"
+          SIDEBAR_RESOURCE_REPORT:
+            ${{ github.workspace }}/.sidebar-lab/actions/native/resources-delayed.json
+        run: bun run benchmark:sidebar:runtime
+      - name: Retain native reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-transport-resources
+          path: .sidebar-lab/actions/native/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Require native scenario and budgets
+        if: always()
+        env:
+          REMOTE_RESULT: ${{ steps.remote.outcome }}
+          RESOURCE_RESULT: ${{ steps.resources.outcome }}
+          DIAGNOSTIC_RESULT: ${{ steps.diagnostic.outcome }}
+          DELAYED_RESULT: ${{ steps.delayed.outcome }}
+        run:
+          test "$REMOTE_RESULT" = success && test "$RESOURCE_RESULT" = success && test
+          "$DIAGNOSTIC_RESULT" = success && test "$DELAYED_RESULT" = success
+
+  macos-pilot:
+    name: macOS graphical capability pilot
+    runs-on: macos-15-intel
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Prepare isolated host and font
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sidebar-tools" --no-audit --no-fund opencode-ai@1.18.30
+          echo "SIDEBAR_OPENCODE=$RUNNER_TEMP/sidebar-tools/node_modules/.bin/opencode" >> "$GITHUB_ENV"
+          echo "SIDEBAR_BUN=$(command -v bun)" >> "$GITHUB_ENV"
+          echo "SIDEBAR_MACOS_FONT_FILE=$RUNNER_TEMP/sidebar-fonts/IosevkaNerdFontMono-Regular.ttf" >> "$GITHUB_ENV"
+          echo "SIDEBAR_MACOS_OBSERVER=$RUNNER_TEMP/sidebar-macos-observer/macos-observer" >> "$GITHUB_ENV"
+          bun install --frozen-lockfile
+          bun run build
+          bun run fonts:prepare --download "$RUNNER_TEMP/sidebar-fonts"
+          bun run fonts:prepare --install "$RUNNER_TEMP/sidebar-fonts" --apply
+          mkdir -p .sidebar-lab/actions/macos
+          git rev-parse HEAD > .sidebar-lab/actions/macos/checkout-sha.txt
+      - name: Prepare public macOS observer once
+        run:
+          python3 scripts/macos-graphical-pilot.py --prepare-observer
+          "$RUNNER_TEMP/sidebar-macos-observer" --output .sidebar-lab/actions/macos
+      - name: Default-font ASCII graphical pilot
+        id: ascii
+        continue-on-error: true
+        run:
+          python3 scripts/macos-graphical-pilot.py --observer "$SIDEBAR_MACOS_OBSERVER" --output
+          .sidebar-lab/actions/macos/ascii-default
+      - name: Pinned-font isolated Terminal profile
+        id: nerd
+        continue-on-error: true
+        run:
+          python3 scripts/macos-graphical-pilot.py --font-profile "$SIDEBAR_MACOS_FONT_FILE"
+          --observer "$SIDEBAR_MACOS_OBSERVER" --output .sidebar-lab/actions/macos/nerd-profile
+      - name: Approved design fixture in isolated Terminal profile
+        id: design
+        continue-on-error: true
+        run:
+          python3 scripts/macos-graphical-pilot.py --design --font-profile
+          "$SIDEBAR_MACOS_FONT_FILE" --observer "$SIDEBAR_MACOS_OBSERVER" --output
+          .sidebar-lab/actions/macos/approved-design
+      - name: Retain pilot outcome and any genuine screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: macos-graphical-pilot
+          path: .sidebar-lab/actions/macos/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Require all explicit graphical receipts
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for mode in ("ascii-default", "nerd-profile", "approved-design"):
+              result = json.loads((Path(".sidebar-lab/actions/macos") / mode / "macos-graphical-result.json").read_text())
+              assert result["status"] == "passed", f"{mode}: {result['status']}: {result.get('reason', '')}"
+          PY

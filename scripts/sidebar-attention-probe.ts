@@ -81,22 +81,15 @@ export default {
       return result;
     }
 
-    async function snapshot() {
-      if (promptError) throw promptError;
-      const [questions, permissions, statuses, organization] = await Promise.all([
-        api.client.question.list({ directory: scopeDirectory }),
-        api.client.permission.list({ directory: scopeDirectory }),
-        api.client.session.status({ directory: scopeDirectory }),
-        storage.read(scope),
-      ]);
+    function completedUi() {
       const frame = api.renderer.currentRenderBuffer;
+      const route = api.route.current;
       return {
-        parentId,
-        childId,
-        promptFinished,
-        events,
         dialogDepth: api.ui.dialog.depth,
-        route: api.route.current,
+        route: {
+          name: route.name,
+          ...("params" in route && route.params ? { params: { ...route.params } } : {}),
+        },
         geometry: geometry(),
         palette: Object.fromEntries(
           (["text", "textMuted", "success", "warning", "error"] as const).map((name) => [
@@ -104,10 +97,6 @@ export default {
             api.theme.current[name].toInts().slice(0, 3),
           ]),
         ),
-        questions: questions.data,
-        permissions: permissions.data,
-        statuses: statuses.data,
-        organization: organization.status === "loaded" ? organization.value : null,
         frame: {
           width: frame.width,
           height: frame.height,
@@ -122,6 +111,75 @@ export default {
             })),
           ),
         },
+      };
+    }
+
+    type CompletedUi = ReturnType<typeof completedUi>;
+    let latestUi: CompletedUi | undefined;
+    let uiError: unknown;
+    let initialFrameWaiter:
+      | {
+          resolve(value: CompletedUi): void;
+          reject(error: unknown): void;
+          timeout: ReturnType<typeof setTimeout>;
+        }
+      | undefined;
+    function observePaint() {
+      if (closed) return;
+      try {
+        latestUi = completedUi();
+        if (initialFrameWaiter) {
+          clearTimeout(initialFrameWaiter.timeout);
+          initialFrameWaiter.resolve(latestUi);
+          initialFrameWaiter = undefined;
+        }
+      } catch (error) {
+        uiError = error;
+        if (initialFrameWaiter) {
+          clearTimeout(initialFrameWaiter.timeout);
+          initialFrameWaiter.reject(error);
+          initialFrameWaiter = undefined;
+        }
+      }
+    }
+    // Pinned OpenTUI emits frame after renderNative succeeds. Capture first:
+    // later viewport/motion listeners may mutate live nodes for the next paint.
+    // Copy all UI fields synchronously and retain only the latest completed frame.
+    api.renderer.prependListener("frame", observePaint);
+    function observedUi(): Promise<CompletedUi> {
+      if (closed) return Promise.reject(new Error("Observer disposed before a native frame."));
+      if (uiError) return Promise.reject(uiError);
+      if (latestUi) return Promise.resolve(latestUi);
+      assert(!initialFrameWaiter, "Only one serialized snapshot may await its initial frame.");
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          initialFrameWaiter = undefined;
+          reject(new Error("No completed native frame within the five-second observation limit."));
+        }, 5_000);
+        initialFrameWaiter = { resolve, reject, timeout };
+        api.renderer.requestRender();
+      });
+    }
+
+    async function snapshot() {
+      if (promptError) throw promptError;
+      const [questions, permissions, statuses, organization] = await Promise.all([
+        api.client.question.list({ directory: scopeDirectory }),
+        api.client.permission.list({ directory: scopeDirectory }),
+        api.client.session.status({ directory: scopeDirectory }),
+        storage.read(scope),
+      ]);
+      return {
+        parentId,
+        childId,
+        promptFinished,
+        events: [...events],
+        ...(await observedUi()),
+        questions: questions.data,
+        permissions: permissions.data,
+        statuses: statuses.data,
+        organization: organization.status === "loaded" ? organization.value : null,
+        uiObservation: "single-completed-native-frame",
       };
     }
 
@@ -244,6 +302,13 @@ export default {
     api.lifecycle.onDispose(() => {
       closed = true;
       clearInterval(interval);
+      api.renderer.off("frame", observePaint);
+      if (initialFrameWaiter) {
+        clearTimeout(initialFrameWaiter.timeout);
+        initialFrameWaiter.reject(new Error("Observer disposed before its initial native frame."));
+        initialFrameWaiter = undefined;
+      }
+      latestUi = undefined;
       for (const unsubscribe of off) unsubscribe();
     });
     await writeFile(`${exchange}.ready.json`, JSON.stringify({ version: api.app.version }));

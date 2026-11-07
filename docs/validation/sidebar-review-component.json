@@ -1,0 +1,99 @@
+{
+  "scope": "synthetic-reactive-controller-before-and-after",
+  "baseCommit": "0462d1a98b8f53bb376a76cb47a4d6f678027755",
+  "before": {
+    "scope": "synthetic-reactive-controller",
+    "environment": {
+      "platform": "linux",
+      "arch": "x64",
+      "bun": "1.3.14"
+    },
+    "sessionCount": 250,
+    "activityUpdates": 500,
+    "inertTokenEvents": 500,
+    "budget": {
+      "burstMs": 500,
+      "additionalReads": 0
+    },
+    "observed": {
+      "burstMs": 178.258969,
+      "updateP50Ms": 0.30973900000000754,
+      "updateP95Ms": 0.5319250000000011,
+      "initialReads": {
+        "project": 1,
+        "list": 1,
+        "status": 1,
+        "permissions": 1,
+        "questions": 1,
+        "create": 0
+      },
+      "additionalReads": 0,
+      "changedRows": 500,
+      "inertRecomputations": 0,
+      "subscriptionsAfterDisposal": 0,
+      "lifecycleCallbacksAfterDisposal": 0
+    },
+    "passed": true
+  },
+  "after": {
+    "scope": "synthetic-reactive-controller",
+    "environment": {
+      "platform": "linux",
+      "arch": "x64",
+      "bun": "1.3.14"
+    },
+    "sessionCount": 250,
+    "activityUpdates": 500,
+    "inertTokenEvents": 500,
+    "budget": {
+      "burstMs": 500,
+      "additionalReads": 0
+    },
+    "observed": {
+      "burstMs": 201.618121,
+      "updateP50Ms": 0.33282400000001644,
+      "updateP95Ms": 0.7510469999999998,
+      "initialReads": {
+        "project": 1,
+        "list": 1,
+        "status": 1,
+        "permissions": 1,
+        "questions": 1,
+        "create": 0
+      },
+      "additionalReads": 0,
+      "changedRows": 500,
+      "inertRecomputations": 0,
+      "subscriptionsAfterDisposal": 0,
+      "lifecycleCallbacksAfterDisposal": 0
+    },
+    "passed": true
+  },
+  "afterSourceSha256": {
+    "scripts/benchmark-sidebar.ts": "51f7baa57ef71620ce3cec2ad98489dc217e57b3b13e37e2a706341aff78b4c8",
+    "src/adapters/opencode-v1/adapter.ts": "642ce987bf5de829a5dd8ecae1de4fbf50ace7b4f3b2696c4dd693042eaf593c",
+    "src/adapters/opencode-v1/index.ts": "8098c8a53962e7a28a86b37b543aa8bb358aa0dc53ed3ceb8eee597fd5ebe82a",
+    "src/adapters/opencode-v1/types.ts": "e453c4ecbb6616556f85a269e88cc356a9f37a4454076a33965e0795fc2f29ad",
+    "src/core/completion.ts": "12ef8ad644e12bcb18ccf5b9b94ed1097e92c3ac7eff24df7a997a8ef58bb9bf",
+    "src/core/index.ts": "c4d060233c52bda5ce64b54220a4781af8b7b00f7e29baed2e6d62d2316ec126",
+    "src/core/queue.ts": "0dc2d974c9e316bd8524a5881929126f5c66a994008e1581178cc318b5f5eb7d",
+    "src/core/types.ts": "9737b77b0d129d956e0f84d0d137c78fe74a086b88ca0b0dddc303326561efd9",
+    "src/index.ts": "b01988a714da27b4a7de7586531ac9260ae04d35d9a9976df6f4c9ec7fa07cca",
+    "src/organization/index.ts": "34fcbcac941e36707c96f887747dfb24b91975ae5ce32d60878646829320a860",
+    "src/organization/schema.ts": "241b7dd9d20299a0f4791b8d03dfbb6b25adb6a7dc38cf3f818b0d35fb2e43d2",
+    "src/organization/service.ts": "c6f2973e8bd4e4b746f7033bbcbfc4b9f984fa3b45956a68da76383f26f291fe",
+    "src/organization/types.ts": "665ba1323f8e459a6ba528db1620eeeec22d238da25e80408d8ff2fe0c9c4e64",
+    "src/storage/file.ts": "43fd7cbd02dfde55acc40c9b3f5530a68acea93c59b2c9a954c8b52c5d27d099",
+    "src/tui.tsx": "83e5629c2c2f8162278b9c4f348abf0bbf79b5bbda6b34142579f9a38ff3c416",
+    "src/ui/controller.ts": "772eff4f57e77a4f3c46bdc945a8dea3d4a26f4d22d851836eb3b7c5cd1e59e9",
+    "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+    "src/ui/motion.ts": "d94e645427082efd6647c9b2d7f08a1bfa08c8e99c2784cac5f348e8edbdd598",
+    "src/ui/view.tsx": "5e29d4689f81dfc9699f21a874c0931006494b79082ab7f8aa6e175c07b0033a",
+    "test/fixtures/ui-controller.ts": "c5759e7678ac4c19a888c26ca3f326a3a7db5724f28b4f01a613552e6ed54d90"
+  },
+  "limitations": [
+    "One run per revision on shared hardware; both satisfy the existing budget. These samples do not establish a controller speedup or regression.",
+    "This workload does not exercise unchanged attention refreshes or the model fallback without adapter summaries.",
+    "Not a stock-host CPU/memory comparison or remote/terminal performance measurement."
+  ]
+}

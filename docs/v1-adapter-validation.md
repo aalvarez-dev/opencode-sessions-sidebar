@@ -127,9 +127,12 @@ titles, and event workloads are synthetic.
 
 The headless runtime scenarios now include live attention, transport-owned disconnect/reconnect,
 explicit scope replacement, and a controlled startup/idle comparison. The native TUI still exposes
-no public transport-disconnected signal or stable server identity; the future integration must
-present those limits honestly. A real TUI scope switch and disconnect while attention is pending
-remain unverified. Runtime retry and rejected-question scenarios are also not established by these
-probes. Before release, validate the packaged sidebar, supported version range, visual/input
-behavior under load, persistence, and multi-instance behavior. Passing these headless checks does
-not mark the broader runtime and release gates complete.
+no public transport-disconnected signal or stable server identity. The rendered integration now uses
+the [bounded HTTP health fallback](performance.md#bounded-tui-transport-health-fallback), and
+`setTransportAvailable(false)` prevents buffered events or old snapshots from restoring false idle
+certainty. Native connection or confirmed HTTP recovery reconciles the snapshot. A real TUI scope
+switch and disconnect while attention is pending remain unverified. Runtime retry and
+rejected-question scenarios are also not established by these probes. Before release, validate the
+packaged sidebar, supported version range, visual/input behavior under load, persistence, and
+multi-instance behavior. Passing these headless checks does not mark the broader runtime and release
+gates complete.

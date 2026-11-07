@@ -5,26 +5,39 @@ import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from
 import { arch, cpus, release, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { startGraphicalTerminal, type GraphicalTerminal } from "./lib/graphical-terminal";
 
 const expectedVersion = "1.18.30";
 const binary = process.env.OPENCODE_BIN;
 assert(binary, "Set OPENCODE_BIN to stock OpenCode 1.18.30.");
 assert(process.platform !== "win32", "The rendered stock TUI smoke requires a POSIX PTY.");
 const executable = await realpath(binary);
+const plugin = await realpath(
+  process.env.SIDEBAR_PLUGIN_FILE ?? resolve(import.meta.dir, "../dist/tui.js"),
+);
 const root = await mkdtemp(join(tmpdir(), "sidebar-ui-smoke-"));
 const project = join(root, "project");
 const repositoryDirectory = join(root, "main-repository");
 const config = join(root, "config");
 const storage = join(root, "sidebar-state");
 const exchange = join(root, "exchange");
+const extensionOutput = join(root, "extension-report.json");
+const extensionEvents = join(root, "extension-events.jsonl");
 const lifetime = new AbortController();
 let child: ReturnType<typeof Bun.spawn> | undefined;
+let graphical: GraphicalTerminal | undefined;
+const graphicalOutput = process.env.SIDEBAR_GRAPHICAL_DIR;
+const graphicalReports: ReturnType<GraphicalTerminal["metadata"]>[] = [];
+let graphicalLaunches = 0;
 let requestId = 0;
 let outputTail = "";
-const deadline = setTimeout(() => {
-  lifetime.abort(new Error("Rendered sidebar smoke exceeded 180 seconds."));
-  child?.kill("SIGKILL");
-}, 180_000);
+const deadline = setTimeout(
+  () => {
+    lifetime.abort(new Error("Rendered sidebar smoke exceeded its bounded deadline."));
+    child?.kill("SIGKILL");
+  },
+  graphicalOutput ? 300_000 : 180_000,
+);
 
 // Declared before the first runtime measurement. Snapshot round trips include
 // the test observer's 10ms polling, one public host list read, and a local file receipt.
@@ -37,6 +50,7 @@ type Geometry = {
   width: number;
   height: number;
   visible: boolean;
+  text?: string;
 };
 type Snapshot = {
   version: string;
@@ -73,24 +87,36 @@ const sourceFiles = [
   "src/ui/controller.ts",
   "src/ui/model.ts",
   "src/ui/view.tsx",
+  "src/ui/end-label.tsx",
+  "src/ui/viewport.ts",
   "src/ui/motion.ts",
+  "src/ui/icons.ts",
+  "src/extensions/runtime.ts",
+  "src/extensions/types.ts",
+  "src/adapters/opencode-v1/completion-capabilities.ts",
   "src/adapters/opencode-v1/adapter.ts",
+  "src/adapters/opencode-v1/transport-health.ts",
   "src/adapters/opencode-v1/types.ts",
   "scripts/build.ts",
   "scripts/sidebar-probe.ts",
   "scripts/smoke-sidebar.ts",
+  "scripts/lib/graphical-terminal.ts",
   "dist/tui.js",
 ];
 async function artifactHashes() {
   return Object.fromEntries(
-    await Promise.all(
-      sourceFiles.map(async (file) => [
+    await Promise.all([
+      ...sourceFiles.map(async (file) => [
         file,
         createHash("sha256")
           .update(await readFile(resolve(import.meta.dir, "..", file)))
           .digest("hex"),
       ]),
-    ),
+      readFile(plugin).then((bytes) => [
+        "runtimePlugin",
+        createHash("sha256").update(bytes).digest("hex"),
+      ]),
+    ]),
   );
 }
 
@@ -99,6 +125,13 @@ async function pause(ms = 20) {
   await Bun.sleep(ms);
 }
 async function stopChild() {
+  if (graphical) {
+    graphicalReports.push(graphical.metadata());
+    await graphical.close();
+    graphical = undefined;
+    child = undefined;
+    return;
+  }
   if (!child) return;
   child.kill("SIGKILL");
   await child.exited;
@@ -192,21 +225,27 @@ function dialogText(snapshot: Snapshot) {
     .map((line) => line.slice(0, snapshot.frame.width - 42))
     .join("\n");
 }
-async function until(check: (value: Snapshot) => boolean, description: string, budget = 5_000) {
+async function until(
+  check: (value: Snapshot) => boolean | Promise<boolean>,
+  description: string,
+  budget = 5_000,
+) {
   const started = performance.now();
   let last: Snapshot | undefined;
   do {
     last = await request<Snapshot>("snapshot");
-    if (check(last)) return last;
+    if (await check(last)) return last;
     await pause();
   } while (performance.now() - started < budget);
   throw new Error(`${description}\n${last ? text(last) : outputTail}`);
 }
 function resize(cols: number, rows: number) {
+  if (graphical) return graphical.resize(cols, rows);
   assert(child?.terminal);
   child.terminal.resize(cols, rows);
 }
 function input(sequence: string) {
+  if (graphical) return graphical.input(sequence);
   assert(child?.terminal);
   child.terminal.write(sequence);
 }
@@ -216,7 +255,7 @@ async function click(label: string, occurrence = 0) {
   for (const [row, line] of lines(snapshot).entries()) {
     const column = line.indexOf(label);
     if (column < 0 || found++ !== occurrence) continue;
-    assert(child?.terminal);
+    assert(child);
     const x = column + Math.min(2, label.length);
     const y = row + 1;
     input(`\u001b[<0;${x};${y}M\u001b[<0;${x};${y}m`);
@@ -234,6 +273,7 @@ async function capture(name: string, theme: string, icons: string) {
   // Synthetic paths are temporary test details, not reproducible visual metadata.
   const sanitized = JSON.parse(JSON.stringify(snapshot.frame).replaceAll(root, "/synthetic"));
   frames.push({ name, theme, icons, frame: sanitized });
+  if (graphical) await graphical.capture(name);
   await writeFile(
     process.env.SIDEBAR_SMOKE_FRAMES ?? join(root, "frames.json"),
     JSON.stringify(frames),
@@ -350,8 +390,45 @@ try {
   });
   assert(built.success && built.outputs[0], "Could not build the stock-TUI observer.");
   await Bun.write(observer, built.outputs[0]);
-  const plugin = resolve(import.meta.dir, "../dist/tui.js");
   assert(await Bun.file(plugin).exists(), "Build the sidebar TUI entrypoint before the smoke.");
+  const extension = join(root, "synthetic-extension.mjs");
+  await writeFile(
+    extension,
+    `
+import { appendFile, rename, writeFile } from "node:fs/promises";
+export default {
+  apiVersion: 1,
+  id: "synthetic-review",
+  actions: [{ id: "report", title: "Synthetic extension report", async run(context) {
+    const key = JSON.stringify([context.scope.hostId, context.scope.projectId, context.session.id]);
+    const result = await context.dispatch({ type: "set-pin", sessionId: context.session.id,
+      pinned: context.organization.pins.includes(key) });
+    await writeFile(${JSON.stringify(extensionOutput + ".tmp")}, JSON.stringify({
+      sessionId: context.session.id, revision: context.organization.revision, status: result.status
+    }));
+    await rename(${JSON.stringify(extensionOutput + ".tmp")}, ${JSON.stringify(extensionOutput)});
+  }}],
+  async onEvent(event) {
+    await appendFile(${JSON.stringify(extensionEvents)}, JSON.stringify({
+      id: event.id, type: event.type, origin: event.origin.type, revision: event.revision
+    }) + "\\n");
+  }
+};
+`,
+  );
+  const disabledExtension = join(root, "disabled-extension.mjs");
+  const disabledMarker = join(root, "disabled-imported");
+  await writeFile(
+    disabledExtension,
+    `import { writeFileSync } from "node:fs";
+writeFileSync(${JSON.stringify(disabledMarker)}, "unexpected");
+throw new Error("Disabled modules must never be imported");`,
+  );
+  const fixtureBuild = await Bun.build({ entrypoints: [extension], target: "bun", format: "esm" });
+  assert(
+    fixtureBuild.success,
+    "The synthetic extension fixture must parse before launching the native smoke.",
+  );
 
   async function launch(
     theme: "dark" | "light",
@@ -369,6 +446,10 @@ try {
               storageDirectory: storage,
               icons,
               density: "balanced",
+              extensions: [
+                { module: pathToFileURL(extension).href },
+                { module: pathToFileURL(disabledExtension).href, enabled: false },
+              ],
             },
           ],
           pathToFileURL(observer).href,
@@ -378,35 +459,58 @@ try {
     await rm(`${exchange}.ready.json`, { force: true });
     await rm(`${exchange}.request.json`, { force: true });
     outputTail = "";
-    child = Bun.spawn([executable], {
-      cwd: currentDirectory,
-      env: {
-        ...env,
-        TERM: "xterm-256color",
-        LANG: "C.UTF-8",
-        SIDEBAR_SMOKE_EXCHANGE: exchange,
-        SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
-        SIDEBAR_SMOKE_STORAGE: storage,
-        SIDEBAR_SMOKE_GEOMETRY: process.env.SIDEBAR_SMOKE_GEOMETRY ?? "false",
-      },
-      terminal: {
+    const launchEnv = {
+      ...env,
+      TERM: "xterm-256color",
+      LANG: "C.UTF-8",
+      SIDEBAR_SMOKE_EXCHANGE: exchange,
+      SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
+      SIDEBAR_SMOKE_STORAGE: storage,
+      SIDEBAR_SMOKE_GEOMETRY: process.env.SIDEBAR_SMOKE_GEOMETRY ?? "false",
+    };
+    if (graphicalOutput) {
+      graphical = await startGraphicalTerminal({
+        executable,
+        cwd: currentDirectory,
+        env: launchEnv,
         cols: 140,
         rows: 40,
-        data(terminal, data) {
-          const output = new TextDecoder().decode(data);
-          outputTail = (outputTail + output).slice(-12_000);
-          if (output.includes("\u001b]10;?"))
-            terminal.write(
-              `\u001b]10;rgb:${theme === "light" ? "0000/0000/0000" : "ffff/ffff/ffff"}\u001b\\`,
-            );
-          if (output.includes("\u001b]11;?"))
-            terminal.write(
-              `\u001b]11;rgb:${theme === "dark" ? "0000/0000/0000" : "ffff/ffff/ffff"}\u001b\\`,
-            );
-          if (output.includes("\u001b[6n")) terminal.write("\u001b[1;1R");
+        theme,
+        directory: graphicalOutput,
+        label: `sidebar-${++graphicalLaunches}`,
+      });
+      child = graphical.process;
+    } else {
+      child = Bun.spawn([executable], {
+        cwd: currentDirectory,
+        env: {
+          ...env,
+          TERM: "xterm-256color",
+          LANG: "C.UTF-8",
+          SIDEBAR_SMOKE_EXCHANGE: exchange,
+          SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
+          SIDEBAR_SMOKE_STORAGE: storage,
+          SIDEBAR_SMOKE_GEOMETRY: process.env.SIDEBAR_SMOKE_GEOMETRY ?? "false",
         },
-      },
-    });
+        terminal: {
+          cols: 140,
+          rows: 40,
+          data(terminal, data) {
+            const output = new TextDecoder().decode(data);
+            outputTail = (outputTail + output).slice(-12_000);
+            if (output.includes("\u001b]10;?"))
+              terminal.write(
+                `\u001b]10;rgb:${theme === "light" ? "0000/0000/0000" : "ffff/ffff/ffff"}\u001b\\`,
+              );
+            if (output.includes("\u001b]11;?"))
+              terminal.write(
+                `\u001b]11;rgb:${theme === "dark" ? "0000/0000/0000" : "ffff/ffff/ffff"}\u001b\\`,
+              );
+            if (output.includes("\u001b[6n")) terminal.write("\u001b[1;1R");
+          },
+        },
+      });
+    }
     const started = performance.now();
     while (!(await Bun.file(`${exchange}.ready.json`).exists())) {
       assert(child.exitCode === null, `Stock TUI exited during plugin loading: ${outputTail}`);
@@ -440,11 +544,13 @@ try {
   // Stock onboarding reserves a fixed panel beneath the scroll viewport. Dismiss
   // it through its native close control so the long-list fixture has visible rows.
   if (text(seeded).includes("Getting started")) {
+    if (graphical) await graphical.capture("native-onboarding-before-close");
     await click("✕");
     await until(
       (snapshot) => !text(snapshot).includes("Getting started"),
       "Native onboarding did not close.",
     );
+    if (graphical) await graphical.capture("native-onboarding-after-close");
   }
   await until(
     (snapshot) =>
@@ -452,17 +558,24 @@ try {
     "Sidebar did not render its loaded sessions in the stock session route.",
   );
   await capture("wide-initial", "dark", "ascii");
+  const initialLayout = await request<Snapshot>("snapshot");
+  assert(!text(initialLayout).includes("Pinned sessions"), "Empty Pinned must be omitted.");
+  assert(!node(initialLayout, "sidebar-group-later"), "Empty Later must be omitted.");
+  assert(
+    nodeText(initialLayout, "sidebar-group-sessions-label").includes("Other sessions (19)"),
+    "Other must count its deduplicated visible session rows.",
+  );
   input("\u001b[<65;125;18M".repeat(12));
   await until(
     (snapshot) =>
-      !text(snapshot).includes("v Pinned sessions") && text(snapshot).includes("Synthetic"),
+      !text(snapshot).includes("Active session:") && text(snapshot).includes("Synthetic"),
     "Real mouse wheel did not scroll the long stock sidebar.",
   );
   await capture("wide-scrolled", "dark", "ascii");
   input("\u001b[<64;125;18M".repeat(50));
   await until(
     (snapshot) =>
-      text(snapshot).includes("v Pinned sessions") && text(snapshot).includes("Synthetic 18"),
+      text(snapshot).includes("Active session:") && text(snapshot).includes("Synthetic 18"),
     "Mouse wheel did not restore the sidebar top and Other session rows.",
   );
   checks.push("real mouse wheel scrolls many long-title rows and restores the sidebar top");
@@ -479,6 +592,20 @@ try {
     "Active controls and repository context must occupy separate rows.",
   );
   assert.equal(node(contextFrame, contextId)!.y, node(contextFrame, controlsId)!.y + 1);
+  assert(!node(contextFrame, `sidebar-session-${activeId}-menu`), "Active row must omit its menu.");
+  assert(node(contextFrame, `sidebar-session-${activeId}-completion`));
+  assert(!node(contextFrame, "sidebar-menu"), "The approved header has no extra menu.");
+  const heading = node(contextFrame, "sidebar-heading");
+  const create = node(contextFrame, "sidebar-create");
+  assert(heading && create, "Header label and creation action must both be mounted.");
+  assert.equal(heading.y, create.y, "Creation belongs on the same row as Active session.");
+  assert(create.x >= heading.x + heading.width, "The two header controls must not overlap.");
+  const completion = node(contextFrame, `sidebar-session-${activeId}-completion`)!;
+  assert.equal(completion.x, node(contextFrame, `sidebar-session-${activeId}-status`)!.x + 3);
+  assert.equal(
+    nodeText(contextFrame, `sidebar-session-${activeId}-completion`).trim(),
+    "Mark completed +",
+  );
   assert(!node(contextFrame, contextDetailsId), "Context must start collapsed.");
   for (const [field, expected] of [
     ["B", "synthetic"],
@@ -610,18 +737,46 @@ try {
     "completed title uses theme success, completion action uses theme warning, active/pin/Later primary row is deduplicated",
   );
   await capture("wide-organized", "dark", "ascii");
-  await click("v Pinned sessions");
+  if (graphical) {
+    for (const [mode, pin] of [
+      ["nerd", "\uEBA0"],
+      ["unicode", "◆"],
+      ["ascii", "P"],
+    ] as const) {
+      await request("command", { command: "sessions-sidebar.settings" });
+      await until((snapshot) => snapshot.dialogDepth > 0, "Icon settings did not open.");
+      input(`Icons: ${mode}\r`);
+      const changed = await until(
+        (snapshot) => snapshot.dialogDepth === 0 && nodeText(snapshot, controlsId).includes(pin),
+        `${mode} icons did not render in the organized active session.`,
+      );
+      assert.deepEqual(changed.organization, current.organization);
+      if (mode !== "ascii") await capture(`wide-organized-${mode}`, "dark", mode);
+    }
+    checks.push(
+      "real xterm pixels capture ASCII, Unicode and Nerd icons without changing organization",
+    );
+  }
+  assert(
+    !node(current, "sidebar-group-pins"),
+    "Active membership must not create an empty Pinned group.",
+  );
+  assert(
+    !node(current, "sidebar-group-later"),
+    "Active membership must not create an empty Later group.",
+  );
+  await click("v Other sessions");
   await until(
-    (snapshot) => text(snapshot).includes("> Pinned sessions"),
+    (snapshot) => text(snapshot).includes("> Other sessions (19)"),
     "Mouse collapse did not render.",
   );
   await capture("wide-collapsed", "dark", "ascii");
-  await click("> Pinned sessions");
+  await click("> Other sessions");
   await until(
-    (snapshot) => text(snapshot).includes("v Pinned sessions"),
+    (snapshot) => text(snapshot).includes("v Other sessions (19)"),
     "Mouse expansion did not render.",
   );
-  checks.push("real mouse collapses and expands Pinned with its activity summary retained");
+  checks.push("empty groups stay omitted; real mouse collapses and expands counted Other sessions");
 
   await browse("Synthetic Beta");
   await choose("Add to Later");
@@ -640,9 +795,16 @@ try {
 
   await browse("Synthetic Beta");
   await choose("Open session");
-  await until(
-    (snapshot) => snapshot.route.params?.sessionID === snapshot.initialIds[1],
+  current = await until(
+    (snapshot) =>
+      snapshot.route.params?.sessionID === snapshot.initialIds[1] &&
+      Boolean(node(snapshot, `sidebar-session-${activeId}-menu`)) &&
+      Boolean(node(snapshot, `sidebar-session-${snapshot.initialIds[1]}-completion`)),
     "Native navigation did not confirm opening Later session.",
+  );
+  assert(
+    !node(current, `sidebar-session-${current.initialIds[1]}-menu`),
+    "New active row must omit its menu while the previous row regains it.",
   );
   checks.push("real keyboard open observed on native route; Later membership retained");
   await click("Synthetic Alpha");
@@ -658,21 +820,26 @@ try {
     2,
     "Opening a row must preserve Later membership.",
   );
-  await click("...", 1);
+  assert(!node(current, `sidebar-session-${activeId}-menu`), "Active row menu reappeared.");
+  await clickNode(`sidebar-session-${activeId}-completion`);
+  current = await until(
+    (snapshot) => snapshot.organization?.completionStates.every((entry) => !entry.done) === true,
+    "Direct active-row completion control did not clear completion.",
+  );
+  assert.equal(current.route.params?.sessionID, activeId);
+  assert.equal(current.dialogDepth, 0);
+  assert.equal(current.organization?.later.length, 2);
+  await clickNode(`sidebar-session-${current.initialIds[1]}-menu`);
   await until(
     (snapshot) => text(snapshot).includes("Open session"),
-    "Explicit row action control did not open the shared menu.",
+    "Non-active row menu did not open its shared actions.",
   );
-  await choose("Unmark completed");
-  await until(
-    (snapshot) => snapshot.organization?.completionStates.every((entry) => !entry.done) === true,
-    "Explicit row menu did not clear completion.",
-  );
+  await dismiss();
   checks.push(
-    "real PTY mouse row opens its session directly; explicit row menu unmarks without changing Later",
+    "active row omits its ellipsis and direct completion unmarks without a dialog, navigation, or Later change; switching sessions transfers the menu to the non-active row, whose shared actions remain usable",
   );
 
-  await request("command", { command: "sessions-sidebar.create" });
+  await clickNode("sidebar-create");
   await until((snapshot) => snapshot.dialogDepth > 0, "Create prompt missing.");
   input("Synthetic disposable\r");
   await until(
@@ -714,7 +881,7 @@ try {
     "Confirmed deletion did not reach host.",
   );
   checks.push(
-    "native create/rename/delete via real keyboard, cancellation preserves session and explicit mouse confirmation deletes",
+    "native create through the inline header action, keyboard rename/delete, cancellation preserves session and explicit mouse confirmation deletes",
   );
 
   resize(88, 24);
@@ -776,12 +943,158 @@ try {
   resize(140, 40);
   await until((snapshot) => snapshot.frame.width === 140, "Wide resize was not applied.");
 
-  const beforeLifecycle = (await request<Snapshot>("snapshot")).organization;
-  await request("command", { command: "sessions-sidebar.browse" });
+  const beforeExtension = (await request<Snapshot>("snapshot")).organization;
+  await request("command", { command: "sessions-sidebar.extension-status" });
   await until(
-    (snapshot) => snapshot.dialogDepth > 0,
-    "Owned dialog did not open before deactivation.",
+    (snapshot) =>
+      dialogText(snapshot).includes("synthetic-review") &&
+      dialogText(snapshot).includes("ready") &&
+      !dialogText(snapshot).includes("failed"),
+    "Synthetic extension must remain ready after manual organization events.",
   );
+  await dismiss();
+  await browse("Synthetic Alpha");
+  await choose("Synthetic extension report");
+  await until(
+    async () => await Bun.file(extensionOutput).exists(),
+    "Local extension did not run from session actions.",
+  );
+  const extensionReport = JSON.parse(await readFile(extensionOutput, "utf8"));
+  assert.equal(extensionReport.status, "noop");
+  assert.equal(extensionReport.revision, beforeExtension?.revision);
+  assert.deepEqual((await request<Snapshot>("snapshot")).organization, beforeExtension);
+  await rm(extensionOutput);
+  input("\u0010");
+  await until(
+    (snapshot) => dialogText(snapshot).includes("Commands"),
+    "Extension palette missing.",
+  );
+  const extensionCommand = "Sessions sidebar: extension actions";
+  input(extensionCommand);
+  await until(
+    (snapshot) =>
+      dialogText(snapshot)
+        .split("\n")
+        .filter((line) => line.includes(extensionCommand)).length >= 2,
+    "Extension actions must be a reachable palette result.",
+  );
+  input("\r");
+  await until(
+    (snapshot) => dialogText(snapshot).includes("Synthetic extension report"),
+    "Extension palette action missing.",
+  );
+  await capture("wide-extension-actions", "dark", "ascii");
+  await choose("Synthetic extension report");
+  await until(
+    async () => await Bun.file(extensionOutput).exists(),
+    "Local extension did not run from palette.",
+  );
+  assert.equal(await Bun.file(disabledMarker).exists(), false);
+  const eventLines = (await readFile(extensionEvents, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  assert(eventLines.length > 0 && eventLines.every((event) => event.origin === "user"));
+  assert.equal(new Set(eventLines.map((event) => event.id)).size, eventLines.length);
+  checks.push(
+    "explicit local extension loads in stock host, receives committed user events once, runs guarded no-op actions from menu and palette, and disabled modules are never imported",
+  );
+
+  input("\u0010");
+  await until(
+    (snapshot) => dialogText(snapshot).includes("Commands"),
+    "Icon check palette missing.",
+  );
+  const iconCommand = "Sessions sidebar: check icons";
+  input(iconCommand);
+  await until(
+    (snapshot) =>
+      dialogText(snapshot)
+        .split("\n")
+        .filter((line) => line.includes(iconCommand)).length >= 2,
+    "Icon check must be a reachable palette result.",
+  );
+  input("\r");
+  await until(
+    (snapshot) => dialogText(snapshot).includes("Check sidebar icons"),
+    "Icon check did not open from the native palette.",
+  );
+  const wideIcons = await capture("wide-icon-check", "dark", "all three modes");
+  const wideIconViewport = node(wideIcons, "sidebar-icon-check-scroll");
+  assert(wideIconViewport && wideIconViewport.y + wideIconViewport.height < wideIcons.frame.height);
+  const wideIconFooter = wideIcons.geometry.find((entry) =>
+    entry.text?.includes("Up/Down or PgUp/PgDn or mouse wheel"),
+  );
+  assert(
+    wideIconFooter && wideIconFooter.y + wideIconFooter.height <= wideIcons.frame.height,
+    "Wide icon check must retain its wrapped footer inside the terminal.",
+  );
+  resize(88, 24);
+  const narrowIcons = await until(
+    (snapshot) => snapshot.frame.width === 88,
+    "Narrow icon check resize missing.",
+  );
+  assert(narrowIcons.dialogDepth > 0, "Icon check closed during terminal resize.");
+  const finalIconId = "sidebar-icon-check-checking-11";
+  for (let page = 0; page < 8; page++) {
+    const before = await request<Snapshot>("snapshot");
+    const viewport = node(before, "sidebar-icon-check-scroll");
+    const last = node(before, finalIconId);
+    assert(viewport && last, "Icon check controls must remain mounted while scrolling.");
+    if (last.y >= viewport.y && last.y + last.height <= viewport.y + viewport.height) break;
+    input("\u001b[6~");
+    await until(
+      (snapshot) => Boolean(node(snapshot, finalIconId) && node(snapshot, finalIconId)!.y < last.y),
+      "PgDn must advance the narrow icon check without closing it.",
+    );
+  }
+  await until(
+    (snapshot) => text(snapshot).includes("checking 12"),
+    "The final checking frame must remain reachable in the narrow icon check.",
+  );
+  await capture("narrow-icon-check-scrolled", "dark", "all three modes");
+  for (let page = 0; page < 4; page++) {
+    input("\u001b[6~");
+    await pause(30);
+  }
+  assert.equal(
+    (await request<Snapshot>("snapshot")).dialogDepth,
+    1,
+    "PgDn at the scroll boundary must not reach the underlying session.",
+  );
+  await dismiss();
+  resize(140, 40);
+  await until((snapshot) => snapshot.frame.width === 140, "Wide restore after icon check missing.");
+  checks.push(
+    "Check icons is reachable through real Ctrl+P and supports narrow scrolling and Esc; captured cells do not certify the client's font",
+  );
+
+  const beforeLifecycle = (await request<Snapshot>("snapshot")).organization;
+  input("\u0010");
+  await until(
+    (snapshot) => snapshot.dialogDepth > 0 && dialogText(snapshot).includes("Commands"),
+    "Ctrl+P did not open the native command palette.",
+  );
+  const paletteTitle = "Sessions sidebar: browse";
+  input(paletteTitle);
+  await until(
+    (snapshot) =>
+      dialogText(snapshot)
+        .split("\n")
+        .filter((line) => line.includes(paletteTitle)).length >= 2 &&
+      !dialogText(snapshot).includes("No results found"),
+    "Sidebar Browse must appear as a palette result, not only as typed filter text.",
+  );
+  input("\r");
+  await until(
+    (snapshot) =>
+      snapshot.dialogDepth > 0 &&
+      dialogText(snapshot).includes("Sessions sidebar") &&
+      dialogText(snapshot).includes("Create session") &&
+      !dialogText(snapshot).includes("Commands"),
+    "Selecting Browse from the native palette did not open the sidebar session dialog.",
+  );
+  checks.push("real Ctrl+P, palette filtering, and Enter open the sidebar Browse dialog");
   const deactivated = await request<{ changed: boolean }>("deactivate");
   assert(deactivated.changed);
   await until(
@@ -904,12 +1217,17 @@ try {
     },
     source: {
       baseCommit,
+      pluginSource: process.env.SIDEBAR_PLUGIN_FILE
+        ? "external packaged artifact"
+        : "local development build",
       sha256: measuredHashes,
       receipt:
         "Source and built TUI hashes captured before launch and verified unchanged after the final frame assertions.",
     },
-    scope:
-      "Actual stock TUI rendering, public native CRUD, real PTY keyboard/mouse; no model inference.",
+    graphical: graphicalReports,
+    scope: graphicalOutput
+      ? "Actual stock TUI in xterm, public native CRUD, XTEST keyboard/mouse and real window PNG captures; no model inference."
+      : "Actual stock TUI rendering, public native CRUD, real PTY keyboard/mouse; no model inference.",
     budgets,
     results: {
       checks,
@@ -938,6 +1256,9 @@ try {
   console.log(
     `Stock OpenCode ${expectedVersion}: rendered sidebar smoke passed (${checks.length} checks, ${frames.length} actual frames, input observation p95 ${p95.toFixed(1)}ms).`,
   );
+} catch (error) {
+  if (graphical) await graphical.capture("failure").catch(() => undefined);
+  throw error;
 } finally {
   clearTimeout(deadline);
   lifetime.abort();

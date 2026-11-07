@@ -1,0 +1,55 @@
+name: Codespaces lab
+
+on:
+  pull_request:
+    paths:
+      - ".devcontainer/**"
+      - ".github/workflows/codespaces-lab.yml"
+      - "scripts/**"
+      - "assets/fonts/**"
+      - "src/**"
+      - "test/**"
+      - "package.json"
+      - "bun.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codespaces-lab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lab:
+    name: Container and stock OpenCode smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Build the Codespaces image
+        run: docker build --tag sidebar-lab .devcontainer
+      - name: Verify inside the image
+        run: |
+          docker run --rm --user root --workdir /workspaces/sidebar \
+            --volume "$PWD:/workspaces/sidebar" sidebar-lab \
+            bash -c 'chown -R node:node /workspaces/sidebar && runuser -u node -- bash -c "bun install --frozen-lockfile && bun run lab:verify"'
+      - name: Restore runner ownership for receipts and checkout cleanup
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
+      - name: Retain synthetic smoke receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: codespaces-lab-receipts
+          path: |
+            .sidebar-lab/reports/*/sidebar.json
+            .sidebar-lab/reports/*/attention.json
+            .sidebar-lab/reports/*/sidebar-frames.json
+            .sidebar-lab/reports/*/attention-frames.json
+            .sidebar-lab/reports/*/package.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7

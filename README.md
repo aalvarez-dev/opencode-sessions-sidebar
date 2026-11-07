@@ -12,8 +12,10 @@ keyboard access through the host dialogs. Its Continuista layout keeps the activ
 Later, Pinned sessions, and Other sessions. Each row has a title/status line, a controls/agent line,
 and a collapsible context line with independent `[R][B][W]` selectors. Live subagents expand between
 controls and context; the active session's completion action stays below everything it expands. The
-package is still private and has not been released on npm. Extension loading/actions and a stable
-public extension API remain planned.
+package is still private and has not been released on npm. Explicit trusted local extensions can
+provide session actions and listen to committed organization changes through an experimental
+versioned contract; see [extensions](docs/extensions.md). Execution-correlated automation and a
+stable public extension API remain release work.
 
 See [sidebar setup and validation](docs/sidebar-validation.md) for loading the local build, the
 exact runtime evidence, and remaining release gates. The first integration targets stock **OpenCode
@@ -21,9 +23,25 @@ V1** through its public APIs. The minimum supported release will be published af
 runtime testing. A future V2 adapter can live in this repository and share the domain model; V2
 support is not currently implemented.
 
-See [terminal font setup](docs/terminal-fonts.md) for a pinned optional font family and terminal
-examples. Font preparation is explicit; activation never downloads fonts or changes terminal
-settings.
+The UI retains the entire session list but mounts native row contents only near the viewport to
+bound offscreen buffers. The pinned V1 TUI has no public disconnect signal, so its integration uses
+the [bounded transport health fallback](docs/performance.md#bounded-tui-transport-health-fallback).
+It detects unavailable HTTP transport; a silent event-stream-only fault is not certified by that
+check. The headless adapter does not poll.
+
+For an isolated browser-terminal trial, see the [Codespaces lab](docs/codespaces-lab.md). Its
+development container pins the tested toolchain and provides verification and separate scratch
+profiles without installing tools on the Mac. Actual Codespaces browser validation remains pending.
+
+See [terminal font setup](docs/terminal-fonts.md) for a pinned complete font family and terminal
+examples for Ubuntu/Linux and macOS. The centralized icon and animation catalog has a
+keyboard-accessible **Check icons** screen. Font download, verification, and user installation are
+explicit; activation never downloads fonts or changes terminal settings. Configure the displaying
+computer when using SSH.
+
+[Development package validation](docs/release.md) checks an offline installation without checkout
+dependencies and can exercise that installed artifact in stock OpenCode. A package check is not a
+public release or a guarantee about every terminal's active font.
 
 ## Intended behavior
 
@@ -51,7 +69,9 @@ sidebar smoke records its separate, limited end-to-end input observations.
 
 See [V1 adapter validation](docs/v1-adapter-validation.md) for the exact scope, reproducible checks,
 and outstanding compatibility gates. The adapter does not infer execution starts from busy or
-message events, so automatic completion reopening is not wired to this host yet.
+message events, so automatic completion reopening is not wired to this host yet. The
+[execution-correlation audit](docs/execution-correlation.md) records the exact host limitation;
+requesting an unsupported completion policy produces an explicit configuration error.
 
 See [organization storage and events](docs/storage-and-events.md) for schema migration, concurrency,
 restart behavior, event guarantees, and the explicit local-storage requirement. Persistence does not
