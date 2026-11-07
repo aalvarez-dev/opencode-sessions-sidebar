@@ -61,6 +61,9 @@ repository settings. The only additional privileged operation makes the known re
 file readable for analysis. Capture has a fixed 120-second timeout, with an interrupt and a
 five-second final kill bound. The resource harness also retains its six-minute watchdog, and the
 driver/job have outer bounds. Cleanup targets only owned child processes and temporary FIFO handles.
+Each ordinary analysis command has a 30-second bound and runs in its own process group. Cleanup
+terminates that owned group, including helpers left behind by its leader. Privileged capture retains
+its separate fixed timeout; no privileged process-group signalling is added.
 
 ## Exact native symbols
 
@@ -71,12 +74,21 @@ or replaces stock OpenCode. The symbol file stays outside the uploaded artifact 
 without executable permission.
 
 The parent repeats file identity checks using incremental hashing, avoiding large transient buffers
-near the measured TUI. Recording uses `--no-buildid-cache`; only after capture does the diagnostic
-populate a separate cache with the verified matching symbols. That cache also stays outside the
-uploaded evidence. Analysis retains full native call chains, reports grouped by thread and symbol,
+near the measured TUI. Matching build ID and text bytes alone do not permit using the profile ELF as
+the runtime image: their executable file offsets differ. Preflight extracts separate debug
+information with `objcopy --only-keep-debug` and prepares a private symbol filesystem containing the
+unchanged runtime at its recorded absolute path and the build-ID debug file. Recording uses
+`--no-buildid-cache`; analysis uses that filesystem with `--symfs` and a fresh empty build-ID cache.
+The profile ELF is never inserted into the runtime cache. These large files stay outside the
+uploaded evidence.
+
+Analysis uses `--no-inline` to omit expensive inline/source expansion while preserving recorded
+native frames and symbol names. It retains call-chain text, reports grouped by thread and symbol,
 the observed build IDs, unresolved frames and lost-event records. It requires actual samples from
 the expected TUI PID. JIT/generated code and some call chains can remain unresolved even when native
-build IDs match; no symbol name is fabricated to fill those gaps.
+build IDs match. A resolved leaf does not establish a caller or an allocating site; a one-frame
+stack supports only instruction attribution. No symbol name or missing caller is fabricated to fill
+those gaps.
 
 ## Outputs and preparation
 

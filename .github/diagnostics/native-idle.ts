@@ -15,6 +15,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { verifyNativeSymbols } from "./native-perf";
 
 const targetCommit = "2df3d858d1491749288bb92f330230b5b6d327f3";
 const targetBundle = "09ffee5a091ce92c470ca52f3f799be6d5d88d6e79110ee9e189430d0046eaed";
@@ -49,7 +50,7 @@ const summary: Record<string, unknown> = {
   limitations: [
     "One diagnostic pair with profiler overhead and equally prepared dependencies is not resource acceptance or a performance improvement.",
     "Userspace sampling covers existing threads of this owned TUI. --no-inherit excludes future threads and subprocesses; unexpected sampled processes invalidate the receipt.",
-    "Native symbols match the official runtime's build ID and text section. JIT/generated code, inline details and some stack frames can remain unresolved.",
+    "Native symbols use separate debug info with the unchanged official runtime. JIT/generated code and stack frames can remain unresolved; a resolved leaf alone does not establish callers or allocation sites. Inline source expansion is disabled.",
     "CPU sampling does not establish allocation ownership, retained objects or the cause of every RSS change. Lost samples and unknown symbols remain visible.",
     "No forced GC, changed product behavior, new polling, altered budgets, kernel policy changes or fallback privilege escalation is allowed.",
   ],
@@ -232,15 +233,7 @@ async function main() {
     );
     await cp(join(dependencies, "package.json"), join(output, "dependency-package.json"));
     await cp(join(dependencies, "package-lock.json"), join(output, "dependency-package-lock.json"));
-    const symbolReceipt = JSON.parse(
-      await readFile(process.env.SIDEBAR_NATIVE_SYMBOL_REPORT, "utf8"),
-    );
-    assert(symbolReceipt.completed && symbolReceipt.canResolveMatchingNativeTextSymbols);
-    assert.equal(await hashFile(process.env.OPENCODE_BIN), symbolReceipt.runtimeExecutableSha256);
-    assert.equal(
-      await hashFile(process.env.SIDEBAR_NATIVE_SYMBOL_FILE),
-      symbolReceipt.symbolFileSha256,
-    );
+    const symbolReceipt = await verifyNativeSymbols(process.env.OPENCODE_BIN);
     summary.symbolIdentity = symbolReceipt;
     const generated = join(output, "generated");
     await mkdir(generated, { recursive: true });

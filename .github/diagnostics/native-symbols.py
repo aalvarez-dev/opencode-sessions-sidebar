@@ -79,6 +79,13 @@ def elf_details(path):
         header = stream.read(64)
         if header[:6] != b"\x7fELF\x02\x01":
             raise ValueError("Expected a little-endian 64-bit ELF")
+        program_offset = struct.unpack_from("<Q", header, 32)[0]
+        program_size, program_count = struct.unpack_from("<HH", header, 54)
+        if program_size != 56 or not 0 < program_count < 128:
+            raise ValueError("Unsupported ELF program table")
+        stream.seek(program_offset)
+        programs = [struct.unpack("<IIQQQQQQ", stream.read(program_size))
+                    for _ in range(program_count)]
         offset = struct.unpack_from("<Q", header, 40)[0]
         size, count, strings_index = struct.unpack_from("<HHH", header, 58)
         if size != 64 or not count or strings_index >= count:
@@ -95,7 +102,7 @@ def elf_details(path):
         text = by_name[".text"]
         stream.seek(text[4])
         digest = hashlib.sha256()
-        remaining = text[5]
+        remaining = text[5] if text[1] != 8 else 0  # SHT_NOBITS in debug-only data.
         while remaining:
             block = stream.read(min(remaining, 1024 * 1024))
             if not block:
@@ -111,10 +118,124 @@ def elf_details(path):
             raise ValueError("Unexpected GNU build ID note")
         build_id = raw[desc_offset:desc_offset + desc_size].hex()
         return {"path": str(path), "buildId": build_id,
-                "text": {"virtualAddress": hex(text[3]), "bytes": text[5], "sha256": digest.hexdigest()},
+                "text": {"virtualAddress": hex(text[3]), "bytes": text[5],
+                         "sha256": digest.hexdigest() if text[1] != 8 else None},
+                "textFileOffset": hex(text[4]), "textSectionType": text[1],
+                "loadSegments": [{"offset": hex(item[2]), "virtualAddress": hex(item[3]),
+                                  "fileBytes": item[5], "memoryBytes": item[6],
+                                  "flags": item[1], "alignment": item[7]}
+                                 for item in programs if item[0] == 1],
+                "sectionTypes": {name: by_name[name][1] for name in
+                                 (".text", ".dynsym", ".symtab", ".eh_frame", ".debug_frame")
+                                 if name in by_name},
                 "unwindSections": {name: by_name[name][5] for name in (".eh_frame", ".eh_frame_hdr", ".debug_frame") if name in by_name},
                 "debugSections": {name: section[5] for name, section in by_name.items() if name.startswith(".debug")},
                 "symbolTableBytes": by_name.get(".symtab", (0,) * 10)[5]}
+
+
+def function_inventory(path):
+    """Bind native names and address ranges without retaining a huge symbol list."""
+    digest = hashlib.sha256()
+    count = 0
+    anchors = []
+    wanted = {"JSC::Heap::isMarked(void const*)",
+              "JSC::MarkedBlock::isMarked(unsigned int, void const*)",
+              "WTF::Dependency WTF::Dependency::loadAndFence<unsigned int>(unsigned int const*, unsigned int&)"}
+    with tempfile.TemporaryFile(mode="w+t") as output:
+        process = subprocess.run(["nm", "-n", "-S", "-C", "--defined-only", str(path)],
+                                 stdout=output, stderr=subprocess.PIPE,
+                                 text=True, timeout=45, check=False)
+        if process.returncode:
+            raise RuntimeError("nm function inventory failed: " + process.stderr)
+        output.seek(0)
+        for line in output:
+            match = re.match(r"^([0-9a-f]+)\s+([0-9a-f]+)\s+([tTwW])\s+(.*)$", line.strip())
+            if not match:
+                continue
+            start, size, kind, name = match.groups()
+            digest.update(f"{start} {size} {kind} {name}\n".encode())
+            count += 1
+            if name in wanted:
+                anchors.append({"start": hex(int(start, 16)), "bytes": int(size, 16), "name": name})
+    if len(anchors) != len(wanted):
+        raise ValueError("Pinned native address anchors are unavailable")
+    return {"sha256": digest.hexdigest(), "count": count, "anchors": anchors}
+
+
+def prepare_symbol_files(runtime, profile, output):
+    """Use a real runtime ELF plus conventional separate debug information.
+
+    OpenCode's stripped ELF has different executable file offsets from Bun's
+    profile ELF. Substituting the full profile in perf's ELF cache silently
+    mislabels addresses. A NOBITS debug file makes perf use the runtime's layout.
+    """
+    symfs = profile.parent / "native-symbol-symfs"
+    if symfs.is_symlink() or symfs.resolve().is_relative_to(output):
+        raise ValueError("The private symbol filesystem must stay outside artifacts")
+    symfs.mkdir(parents=True, exist_ok=True)
+    symfs = symfs.resolve()
+
+    def target(relative):
+        destination = symfs / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if not destination.parent.resolve().is_relative_to(symfs) or destination.is_symlink():
+            raise ValueError("Unsafe private symbol filesystem destination")
+        return destination
+
+    def install(destination, produce):
+        descriptor, temporary = tempfile.mkstemp(prefix="debug-data-", dir=destination.parent)
+        os.close(descriptor)
+        temporary = Path(temporary)
+        try:
+            produce(temporary)
+            os.chmod(temporary, 0o644)
+            if destination.exists():
+                if sha256(destination) != sha256(temporary):
+                    raise ValueError("Refusing to replace different existing symbol data")
+            else:
+                os.replace(temporary, destination)
+            if not destination.is_file() or stat.S_IMODE(destination.stat().st_mode) != 0o644:
+                raise ValueError("Symbol filesystem files must be regular, non-executable data")
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    mirror = target(runtime.as_posix().lstrip("/"))
+    # Copy instead of hardlink: making the mirror non-executable must never
+    # change the measured runtime's permissions or bytes.
+    install(mirror, lambda path: shutil.copyfile(runtime, path))
+    runtime_hash = sha256(runtime)
+    if sha256(mirror) != runtime_hash:
+        raise ValueError("The runtime mirror must exactly match the measured ELF")
+    build_id = EXPECTED_NATIVE["buildId"]
+    debug = target(Path("usr/lib/debug/.build-id") / build_id[:2] / (build_id[2:] + ".debug"))
+
+    def derive(path):
+        subprocess.run(["objcopy", "--only-keep-debug", str(profile), str(path)],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       timeout=45, check=True)
+
+    install(debug, derive)
+    details = elf_details(debug)
+    if (details["buildId"] != build_id or details["textSectionType"] != 8
+            or details["sectionTypes"].get(".dynsym") != 8
+            or details["sectionTypes"].get(".symtab") != 2
+            or details["text"]["virtualAddress"] != EXPECTED_NATIVE["text"]["virtualAddress"]
+            or details["text"]["bytes"] != EXPECTED_NATIVE["text"]["bytes"]):
+        raise ValueError("Derived debug data must retain symbols without a runtime text/dynsym image")
+    original_inventory = function_inventory(profile)
+    if function_inventory(debug) != original_inventory:
+        raise ValueError("Derived debug function addresses differ from the verified profile")
+    return {"symbolizationMode": "separate-debug-with-original-runtime",
+            "fullProfileAsRuntimeElfAllowed": False,
+            "symbolFilesystemPath": str(symfs),
+            "runtimeMirrorPath": str(mirror), "runtimeMirrorSha256": runtime_hash,
+            "runtimeMirrorMode": oct(stat.S_IMODE(mirror.stat().st_mode)),
+            "debugFilePath": str(debug), "debugFileSha256": sha256(debug),
+            "debugFileMode": oct(stat.S_IMODE(debug.stat().st_mode)),
+            "derivedDebugElf": details, "functionInventory": original_inventory,
+            "debugDerivation": ["objcopy", "--only-keep-debug", str(profile), str(debug)],
+            "requiredPerfOptions": ["--symfs", str(symfs), "--no-inline"],
+            "buildIdCachePolicy": "Use a separate empty cache; never add the full profile ELF."}
 
 
 def symbols(path, retained):
@@ -190,6 +311,10 @@ try:
     }
     if not all(report["matches"].values()):
         raise ValueError("Host and symbols must match the pinned native image; refusing symbol substitution")
+    report["runtimeAndProfileFileOffsetsMatch"] = (
+        report["executables"]["opencode"]["textFileOffset"]
+        == report["executables"]["profile"]["textFileOffset"])
+    report.update(prepare_symbol_files(args.opencode.resolve(), destination, args.output))
     report["symbols"] = symbols(destination, args.output / "gc-native-symbols.txt")
     report["canResolveMatchingNativeTextSymbols"] = (
         all(report["matches"].values()) and report["symbols"]["counts"]["heap"] > 0
@@ -198,7 +323,8 @@ try:
         raise ValueError("Matching native GC symbols are unavailable")
     report["limitations"] = [
         "Matching native text and symbols support native instruction-address symbolization only.",
-        "No perf permission, sampling support, call-stack unwinding, inline-source resolution, or JIT name mapping has been tested.",
+        "The full profile ELF must never substitute for the runtime ELF: file offsets can differ despite matching native text and Build ID.",
+        "Separate debug data supports native leaf symbols; caller unwinding, inline-source resolution and JIT names are not established. The retained pilot capture resolved only leaf frames.",
         "The profile file is symbol data only; the measured OpenCode runtime must remain unchanged.",
         "These symbols apply to this exact baseline native image, not automatically to another architecture or nonbaseline build.",
     ]

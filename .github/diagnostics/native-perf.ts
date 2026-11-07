@@ -39,6 +39,49 @@ export class PerfAckDecoder {
   }
 }
 
+/** Bound the whole owned analysis group, including helpers such as addr2line. */
+export async function runBoundedProcess(
+  args: string[],
+  options: { stdout: string; stderr: string; timeoutMs: number },
+) {
+  assert(args[0] !== "sudo", "Process-group cleanup is for ordinary analysis children only.");
+  const child = Bun.spawn(args, {
+    detached: true,
+    stdin: "ignore",
+    stdout: Bun.file(options.stdout),
+    stderr: Bun.file(options.stderr),
+    env: { ...process.env, DEBUGINFOD_URLS: "" },
+  });
+  let timedOut = false;
+  let groupCleanupSent = false;
+  let cleanupError: unknown;
+  function terminateGroup() {
+    try {
+      process.kill(-child.pid, "SIGKILL");
+      groupCleanupSent = true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ESRCH") return;
+      cleanupError = error;
+      child.kill("SIGKILL");
+    }
+  }
+  const timer = setTimeout(() => {
+    timedOut = true;
+    terminateGroup();
+  }, options.timeoutMs);
+  let exitCode: number;
+  try {
+    exitCode = await child.exited;
+  } finally {
+    clearTimeout(timer);
+    // detached:true creates a dedicated session/group. Also remove helpers left
+    // behind by an exited leader; never search for or signal processes by name.
+    terminateGroup();
+    if (cleanupError) throw cleanupError;
+  }
+  return { pid: child.pid, exitCode, timedOut, groupCleanupSent };
+}
+
 function openClock() {
   return dlopen("libc.so.6", {
     clock_gettime: { args: [FFIType.i32, FFIType.ptr], returns: FFIType.i32 },
@@ -68,6 +111,13 @@ interface SymbolReceipt {
   symbolFileSha256: string;
   profileBuildId: string;
   profileTextSha256: string;
+  symbolFilesystemPath: string;
+  runtimeMirrorPath: string;
+  runtimeMirrorSha256: string;
+  debugFilePath: string;
+  debugFileSha256: string;
+  symbolizationMode: "separate-debug-with-original-runtime";
+  fullProfileAsRuntimeElfAllowed: false;
 }
 
 export async function verifyNativeSymbols(executable: string) {
@@ -81,6 +131,36 @@ export async function verifyNativeSymbols(executable: string) {
   assert.equal(await hashFile(executable), report.runtimeExecutableSha256);
   assert.match(report.profileBuildId, /^[0-9a-f]{40}$/);
   assert.match(report.profileTextSha256, /^[0-9a-f]{64}$/);
+  assert.equal(report.symbolizationMode, "separate-debug-with-original-runtime");
+  assert.equal(report.fullProfileAsRuntimeElfAllowed, false);
+  assert(process.env.SIDEBAR_NATIVE_OUTPUT);
+  const symbolFilesystem = await realpath(report.symbolFilesystemPath);
+  const symbolRelative = relative(
+    await realpath(process.env.SIDEBAR_NATIVE_OUTPUT),
+    symbolFilesystem,
+  );
+  assert(
+    symbolRelative === ".." || symbolRelative.startsWith("../") || isAbsolute(symbolRelative),
+    "Keep the symbol filesystem outside uploaded evidence.",
+  );
+  assert.equal(
+    await realpath(report.runtimeMirrorPath),
+    join(symbolFilesystem, await realpath(executable)),
+    "The symbol filesystem must mirror the unchanged runtime at its recorded absolute path.",
+  );
+  assert.equal(report.runtimeMirrorSha256, report.runtimeExecutableSha256);
+  assert.equal(await hashFile(report.runtimeMirrorPath), report.runtimeMirrorSha256);
+  assert.equal(
+    await realpath(report.debugFilePath),
+    join(
+      symbolFilesystem,
+      "usr/lib/debug/.build-id",
+      report.profileBuildId.slice(0, 2),
+      `${report.profileBuildId.slice(2)}.debug`,
+    ),
+  );
+  assert.match(report.debugFileSha256, /^[0-9a-f]{64}$/);
+  assert.equal(await hashFile(report.debugFilePath), report.debugFileSha256);
   return report;
 }
 
@@ -165,17 +245,33 @@ export class NativePerfCapture {
   }
 
   private async run(args: string[], name: string, timeout = 30_000) {
-    const child = Bun.spawn(args, {
-      stdout: Bun.file(join(this.directory, `${name}.stdout.txt`)),
-      stderr: Bun.file(join(this.directory, `${name}.stderr.txt`)),
-      env: { ...process.env, DEBUGINFOD_URLS: "" },
-    });
-    const timer = setTimeout(() => child.kill("SIGKILL"), timeout);
-    try {
-      assert.equal(await child.exited, 0, `${name} failed; inspect retained output.`);
-    } finally {
-      clearTimeout(timer);
+    // The known sudo chmod command retains its existing bounded invocation;
+    // runner-owned process-group signals are only for unprivileged analysis.
+    if (args[0] === "sudo") {
+      const child = Bun.spawn(args, {
+        stdout: Bun.file(join(this.directory, `${name}.stdout.txt`)),
+        stderr: Bun.file(join(this.directory, `${name}.stderr.txt`)),
+        env: { ...process.env, DEBUGINFOD_URLS: "" },
+      });
+      const timer = setTimeout(() => child.kill("SIGKILL"), timeout);
+      try {
+        assert.equal(await child.exited, 0, `${name} failed; inspect retained output.`);
+      } finally {
+        clearTimeout(timer);
+      }
+      return;
     }
+    const result = await runBoundedProcess(args, {
+      stdout: join(this.directory, `${name}.stdout.txt`),
+      stderr: join(this.directory, `${name}.stderr.txt`),
+      timeoutMs: timeout,
+    });
+    await writeFile(
+      join(this.directory, `${name}.process.json`),
+      JSON.stringify({ ...result, timeoutMs: timeout }, null, 2) + "\n",
+    );
+    assert(!result.timedOut, `${name} exceeded its bounded processing timeout.`);
+    assert.equal(result.exitCode, 0, `${name} failed; inspect retained output.`);
   }
 
   async prepare() {
@@ -327,9 +423,19 @@ export class NativePerfCapture {
       assert(this.finished, "Analyze only a stopped, flushed capture.");
       await this.identity();
       const symbols = await verifyNativeSymbols(`/proc/${this.pid}/exe`);
-      await mkdir(this.cache, { recursive: true });
-      const prefix = [this.perf, "--buildid-dir", this.cache];
-      await this.run([...prefix, "buildid-cache", "--add", symbols.symbolFilePath], "symbol-cache");
+      const analysisCache = join(this.cache, "analysis-empty", `${this.pid}-${randomUUID()}`);
+      await mkdir(analysisCache, { recursive: true });
+      assert.deepEqual(await readdir(analysisCache), []);
+      // Matching text/build ID is not enough to substitute a profile ELF: its
+      // file offsets differ. Preserve the original runtime and use separate debug info.
+      const prefix = [this.perf, "--buildid-dir", analysisCache];
+      const symbolOptions = ["--symfs", symbols.symbolFilesystemPath, "--no-inline"];
+      this.receipt.analysis = {
+        symbolizationMode: symbols.symbolizationMode,
+        symbolFilesystemPath: symbols.symbolFilesystemPath,
+        emptyBuildIdCachePath: analysisCache,
+        inlineSourceExpansion: false,
+      };
       const data = join(this.directory, "perf.data");
       await this.run([...prefix, "buildid-list", "--with-hits", "--input", data], "buildids");
       const ids = await readFile(join(this.directory, "buildids.stdout.txt"), "utf8");
@@ -338,7 +444,16 @@ export class NativePerfCapture {
         "Profile does not contain the verified native build ID.",
       );
       await this.run(
-        [...prefix, "script", "--input", data, "--show-lost-events", "--show-task-events", "--ns"],
+        [
+          ...prefix,
+          "script",
+          "--input",
+          data,
+          ...symbolOptions,
+          "--show-lost-events",
+          "--show-task-events",
+          "--ns",
+        ],
         "script",
       );
       await this.run(
@@ -348,6 +463,7 @@ export class NativePerfCapture {
           "--input",
           data,
           "--hide-call-graph",
+          ...symbolOptions,
           "--fields",
           "comm,pid,tid,time,event,ip,sym,dso",
           "--ns",
@@ -361,6 +477,7 @@ export class NativePerfCapture {
           "--input",
           data,
           "--stdio",
+          ...symbolOptions,
           "--percent-limit",
           "0",
           "--sort",
