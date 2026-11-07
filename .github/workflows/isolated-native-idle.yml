@@ -1,0 +1,94 @@
+name: Isolated native idle diagnostic
+
+on:
+  pull_request:
+    paths:
+      - ".github/diagnostics/native-*"
+      - ".github/workflows/isolated-native-idle.yml"
+      - "docs/native-idle-diagnostic.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: isolated-native-idle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-idle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SIDEBAR_NATIVE_TARGET_COMMIT: 2df3d858d1491749288bb92f330230b5b6d327f3
+      SIDEBAR_NATIVE_PERF_SUDO: "true"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Prepare the disposable profiling tools and pinned target
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .sidebar-lab/actions/native-idle
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends linux-tools-generic binutils python3
+          sidebar_perf_candidates=(/usr/lib/linux-tools-*/perf)
+          sidebar_perf_bin="$(printf '%s\n' "${sidebar_perf_candidates[@]}" | sort -V | tail -n 1)"
+          test -x "$sidebar_perf_bin"
+          "$sidebar_perf_bin" --version > .sidebar-lab/actions/native-idle/perf-version.txt
+          cat /proc/sys/kernel/perf_event_paranoid > .sidebar-lab/actions/native-idle/perf-event-paranoid.txt
+          npm install --prefix "$RUNNER_TEMP/sidebar-native-tools" --no-audit --no-fund opencode-linux-x64-baseline@1.18.30
+          sidebar_opencode_bin="$RUNNER_TEMP/sidebar-native-tools/node_modules/opencode-linux-x64-baseline/bin/opencode"
+          test "$("$sidebar_opencode_bin" --version)" = "1.18.30"
+          bun install --frozen-lockfile
+          bun test ./.github/diagnostics/native-perf.test.ts
+          bun x tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --types bun --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --skipLibCheck .github/diagnostics/native-idle.ts .github/diagnostics/native-perf.ts .github/diagnostics/native-perf.test.ts
+          git worktree add --detach "$RUNNER_TEMP/sidebar-native-target" "$SIDEBAR_NATIVE_TARGET_COMMIT"
+          (
+            cd "$RUNNER_TEMP/sidebar-native-target"
+            bun install --frozen-lockfile
+            bun run build
+            printf '%s  %s\n' '09ffee5a091ce92c470ca52f3f799be6d5d88d6e79110ee9e189430d0046eaed' 'dist/tui.js' | sha256sum --check -
+          )
+          npm install --prefix "$RUNNER_TEMP/sidebar-native-dependencies" --save-exact --ignore-scripts --no-audit --no-fund @opencode-ai/plugin@1.18.30
+          echo "OPENCODE_BIN=$sidebar_opencode_bin" >> "$GITHUB_ENV"
+          echo "PERF_BIN=$sidebar_perf_bin" >> "$GITHUB_ENV"
+          echo "SIDEBAR_NATIVE_TARGET_REPO=$RUNNER_TEMP/sidebar-native-target" >> "$GITHUB_ENV"
+          echo "SIDEBAR_NATIVE_DEPENDENCIES=$RUNNER_TEMP/sidebar-native-dependencies" >> "$GITHUB_ENV"
+          echo "SIDEBAR_NATIVE_PERF_CACHE=$RUNNER_TEMP/sidebar-native-perf-cache" >> "$GITHUB_ENV"
+          echo "SIDEBAR_NATIVE_SYMBOL_FILE=$RUNNER_TEMP/sidebar-native-symbols/bun-profile-symbol-data" >> "$GITHUB_ENV"
+          echo "SIDEBAR_NATIVE_SYMBOL_REPORT=$GITHUB_WORKSPACE/.sidebar-lab/actions/native-idle/native-symbol-preflight.json" >> "$GITHUB_ENV"
+          echo "SIDEBAR_NATIVE_OUTPUT=$GITHUB_WORKSPACE/.sidebar-lab/actions/native-idle" >> "$GITHUB_ENV"
+          git rev-parse HEAD > .sidebar-lab/actions/native-idle/diagnostic-checkout-sha.txt
+      - name: Verify exact official native symbols before profiling
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            --output "$RUNNER_TEMP/sidebar-native-symbols.zip" \
+            https://github.com/oven-sh/bun/releases/download/bun-v1.3.14/bun-linux-x64-baseline-profile.zip
+          python3 .github/diagnostics/native-symbols.py \
+            --opencode "$OPENCODE_BIN" \
+            --symbols-archive "$RUNNER_TEMP/sidebar-native-symbols.zip" \
+            --output "$SIDEBAR_NATIVE_OUTPUT" \
+            --symbol-file "$SIDEBAR_NATIVE_SYMBOL_FILE"
+      - name: Capture only the synthetic OpenCode processes and retain native checks
+        run: bun .github/diagnostics/native-idle.ts
+      - name: Retain diagnostic evidence on success or failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-idle-profile
+          path: |
+            .sidebar-lab/actions/native-idle/
+            !.sidebar-lab/actions/native-idle/**/node_modules
+            !.sidebar-lab/actions/native-idle/**/node_modules/**
+            !.sidebar-lab/actions/native-idle/**/*.fifo
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
