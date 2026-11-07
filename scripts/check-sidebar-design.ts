@@ -7,6 +7,7 @@ import { designSessions } from "./sidebar-design-fixture";
 export interface DesignSnapshot {
   design: { nativeExecutionValidated: false; ids: Record<string, string>; productSha256: string };
   dialogDepth: number;
+  publicContext: { project: { worktree: string } };
   palette: Record<string, number[]>;
   geometry: {
     id: string;
@@ -94,6 +95,55 @@ export function checkDesign(snapshot: DesignSnapshot) {
     );
   assert(content(`sidebar-session-${ids.docs}-context`).includes("[R][B][W]"));
   checks.push("Later, Pinned and Other each show one session in the approved order.");
+  const repositoryName = snapshot.publicContext.project.worktree
+    .split(/[\\/]/)
+    .filter(Boolean)
+    .at(-1);
+  assert.equal(
+    repositoryName,
+    "opencode-sessions-sidebar",
+    "Use the approved deterministic repository fixture.",
+  );
+  const contextLabel = ` ${repositoryName}`;
+  const ellipsis = iconGlyph("menu", "nerd");
+  for (const key of ["release", "branches", "review", "docs"]) {
+    const contextRow = node(`sidebar-session-${ids[key]}-context`);
+    const lastSelector = node(`sidebar-session-${ids[key]}-context-select-W`);
+    const valueStart = lastSelector.x + lastSelector.width;
+    // Measure the space the parent actually owns, not a potentially overflowing
+    // label's own width: otherwise a clipped full string could falsely pass.
+    const available = contextRow.x + contextRow.width - valueStart;
+    assert(
+      available >= Bun.stringWidth(ellipsis),
+      "The context value must retain at least its truncation indicator.",
+    );
+    const rendered = [...lines[contextRow.y]!]
+      .slice(valueStart, valueStart + available)
+      .join("")
+      .trimEnd();
+    if (Bun.stringWidth(contextLabel) > available) {
+      assert(
+        rendered.endsWith(ellipsis),
+        `Clipped ${key} context must end with the Nerd ellipsis, not silently lose characters.`,
+      );
+      const expected =
+        Bun.sliceAnsi(contextLabel, 0, available - Bun.stringWidth(ellipsis)) + ellipsis;
+      assert.equal(
+        rendered,
+        expected,
+        `The ${key} context must preserve its beginning and put the ellipsis in its final visible cell.`,
+      );
+    } else {
+      assert.equal(
+        rendered,
+        contextLabel,
+        `The complete ${key} context fits and must not be shortened.`,
+      );
+    }
+  }
+  checks.push(
+    "All four context values either fit completely or end with the catalog ellipsis in their actual available width.",
+  );
   const colorAt = (id: string, wanted: string) => {
     const item = node(id);
     let column = 0;

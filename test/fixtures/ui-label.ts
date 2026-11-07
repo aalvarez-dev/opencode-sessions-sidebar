@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { Show, createComponent, createSignal } from "solid-js";
-import { testRender } from "@opentui/solid";
+import { createElement, insert, setProp, testRender } from "@opentui/solid";
+import { iconGlyph } from "../../src/ui/icons";
 import { EndLabel } from "../../src/ui/end-label";
 
 const [mounted, setMounted] = createSignal(false);
@@ -88,5 +89,83 @@ try {
 } finally {
   native.renderer.off("frame", observePaint);
   native.renderer.destroy();
+}
+// Model the actual context row: a padded column, fixed R/B/W selectors and a
+// flexible label. Its measured box must use only the remaining columns.
+const [contextMounted, setContextMounted] = createSignal(false);
+const contextValue = " opencode-sessions-sidebar";
+const [contextEllipsis, setContextEllipsis] = createSignal(iconGlyph("menu", "nerd"));
+function ContextRow() {
+  const padded = createElement("box");
+  setProp(padded, "paddingLeft", 3);
+  setProp(padded, "height", 1);
+  const row = createElement("box");
+  setProp(row, "id", "context-row");
+  setProp(row, "flexDirection", "row");
+  setProp(row, "height", 1);
+  const prefix = createElement("text");
+  setProp(prefix, "id", "context-prefix");
+  setProp(prefix, "content", "> [R][B][W]");
+  setProp(prefix, "flexShrink", 0);
+  insert(row, prefix);
+  insert(
+    row,
+    createComponent(EndLabel, {
+      id: "context-value",
+      fg: "#ffffff",
+      text: contextValue,
+      get ellipsis() {
+        return contextEllipsis();
+      },
+    }),
+  );
+  insert(padded, row);
+  return padded;
+}
+const compound = await testRender(
+  () =>
+    createComponent(Show, {
+      keyed: true,
+      get when() {
+        return contextMounted();
+      },
+      get children() {
+        return createComponent(ContextRow, {});
+      },
+    }),
+  { width: 37, height: 2 },
+);
+try {
+  await compound.flush();
+  for (const mode of ["nerd", "ascii", "unicode"] as const) {
+    setContextEllipsis(iconGlyph("menu", mode));
+    for (const columns of [37, 30, 50]) {
+      setContextMounted(false);
+      await compound.flush();
+      compound.resize(columns, 2);
+      await compound.flush();
+      setContextMounted(true);
+      await compound.flush();
+      const label = compound.renderer.root.findDescendantById("context-value")!;
+      const prefix = compound.renderer.root.findDescendantById("context-prefix")!;
+      const row = compound.renderer.root.findDescendantById("context-row")!;
+      const available = row.screenX + row.width - (prefix.screenX + prefix.width);
+      const visible = compound.captureCharFrame().split("\n")[0]!.trimEnd();
+      assert.equal(label.screenX, prefix.screenX + prefix.width);
+      assert.equal(
+        label.width,
+        available,
+        `Context label must use only the remaining row: ${JSON.stringify({ labelX: label.screenX, labelWidth: label.width, rowX: row.screenX, rowWidth: row.width, visible })}`,
+      );
+      const expected = Bun.sliceAnsi(contextValue, 0, available, { ellipsis: contextEllipsis() });
+      assert.equal(
+        visible,
+        "   > [R][B][W]" + expected,
+        "The first settled context after remount must use the exact catalog ellipsis.",
+      );
+    }
+  }
+} finally {
+  compound.renderer.destroy();
 }
 console.log(JSON.stringify({ scope: "native-opentui-label", passed: true }));

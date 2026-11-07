@@ -13,10 +13,13 @@ export function EndLabel(props: EndLabelProps) {
   // immediately and let the box clip that first frame; zero is a measured width,
   // not a placeholder. This also prevents a blank frame when scrolling remounts it.
   const [columns, setColumns] = createSignal<number>();
+  // Zero flex basis allocates only the columns left by fixed siblings. An auto
+  // basis lets the first full text determine its own width and overflow the row.
   return (
     <box
       flexGrow={1}
       flexShrink={1}
+      flexBasis={0}
       minWidth={0}
       height={1}
       overflow="hidden"

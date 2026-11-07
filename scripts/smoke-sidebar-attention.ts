@@ -240,6 +240,13 @@ function labelColor(snapshot: Snapshot, label: string) {
   }
   return undefined;
 }
+function collapsedAttentionSummaryReady(
+  snapshot: Snapshot,
+  attention: "questions" | "permissions",
+) {
+  const summary = nodeText(snapshot, "sidebar-group-pins-summary");
+  return summary.includes("- 1") && summary.includes(`${attention === "questions" ? "?" : "!"} 1`);
+}
 function assertVisible(
   snapshot: Snapshot,
   attention: "questions" | "permissions",
@@ -260,7 +267,7 @@ function assertVisible(
     const summary = nodeText(snapshot, "sidebar-group-pins-summary");
     assert(
       summary.includes("- 1") && summary.includes(`${attention === "questions" ? "?" : "!"} 1`),
-      "Collapsed pinned group hides descendant activity/attention.",
+      `Collapsed pinned group hides descendant activity/attention. Actual summary: ${JSON.stringify(summary)}. Frame ${snapshot.frame.frameId} (${snapshot.frame.width}x${snapshot.frame.height}):\n${text(snapshot)}`,
     );
     assert(
       !pinned.includes("Synthetic attention parent"),
@@ -779,8 +786,9 @@ try {
   );
   await click("Pinn");
   const collapsed = await until(
-    (snapshot) => text(snapshot).includes("> Pinn"),
-    "Pinned group did not collapse from mouse.",
+    (snapshot) =>
+      text(snapshot).includes("> Pinn") && collapsedAttentionSummaryReady(snapshot, "questions"),
+    "Pinned group did not collapse with its busy/question summary from mouse.",
   );
   assertVisible(collapsed, "questions", true);
   await capture("marked-parent-collapsed-question", collapsed);
@@ -814,16 +822,18 @@ try {
     child.terminal.resize(140, 40);
   }
   const wide = await until(
-    (snapshot) => snapshot.frame.width === 140 && text(snapshot).includes("> Pinn"),
-    "Wide collapsed group did not return.",
+    (snapshot) =>
+      snapshot.frame.width === 140 &&
+      text(snapshot).includes("> Pinn") &&
+      collapsedAttentionSummaryReady(snapshot, "questions"),
+    "Wide collapsed group did not return with its busy/question summary.",
   );
   assertVisible(wide, "questions", true);
   await request("reply-question");
   const permission = await until(
     (snapshot) =>
-      snapshot.permissions.length === 1 &&
-      nodeText(snapshot, "sidebar-group-pins-summary").includes("! 1"),
-    "Native permission did not reach collapsed pinned sidebar.",
+      snapshot.permissions.length === 1 && collapsedAttentionSummaryReady(snapshot, "permissions"),
+    "Native permission did not reach collapsed pinned sidebar with its busy/permission summary.",
   );
   assert.equal(permission.permissions[0]?.sessionID, permission.childId);
   assert.equal(permission.questions.length, 0);
