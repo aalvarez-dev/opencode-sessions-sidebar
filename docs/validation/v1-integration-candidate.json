@@ -1,0 +1,536 @@
+{
+  "schema": 1,
+  "candidateId": "v1-integration.1",
+  "status": "integration-trial-only",
+  "stableReleaseApproved": false,
+  "productSourceCommit": "4f5f1ba3cd5ac4facef0e93cd9668f6aaf32d417",
+  "productSha256": "a91d70019f34307548355234859f80130bac1cc8483adee6bdcc9535bf1a472d",
+  "packageVersion": "0.1.0-dev.0",
+  "private": true,
+  "stabilityRun": 42394045854,
+  "originalAcceptancePassed": false,
+  "campaigns": [
+    {
+      "campaign": 1,
+      "short": {
+        "passed": true,
+        "results": [
+          {
+            "sessions": 25,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": -186.18359375,
+                "cpuPoints": -52.76124393529392
+              },
+              {
+                "repetition": 2,
+                "rssMiB": 38.8984375,
+                "cpuPoints": -3.9894142400871857
+              },
+              {
+                "repetition": 3,
+                "rssMiB": 48.3671875,
+                "cpuPoints": -12.15617877631928
+              }
+            ],
+            "medianRssDeltaMiB": 38.8984375,
+            "medianCpuDeltaPoints": -12.15617877631928,
+            "passed": true
+          },
+          {
+            "sessions": 250,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": 114.59375,
+                "cpuPoints": -27.556261737215166
+              },
+              {
+                "repetition": 2,
+                "rssMiB": -30.79296875,
+                "cpuPoints": -14.159808882864752
+              },
+              {
+                "repetition": 3,
+                "rssMiB": 24.9609375,
+                "cpuPoints": 2.2255377362965447
+              }
+            ],
+            "medianRssDeltaMiB": 24.9609375,
+            "medianCpuDeltaPoints": -14.159808882864752,
+            "passed": true
+          }
+        ]
+      },
+      "delayed": {
+        "passed": true,
+        "results": [
+          {
+            "sessions": 250,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": 105.76953125,
+                "cpuPoints": 0.7002692612524315
+              },
+              {
+                "repetition": 2,
+                "rssMiB": 16.84375,
+                "cpuPoints": 0.7999917122727711
+              },
+              {
+                "repetition": 3,
+                "rssMiB": -12.30078125,
+                "cpuPoints": 0.8998017342692097
+              }
+            ],
+            "medianRssDeltaMiB": 16.84375,
+            "medianCpuDeltaPoints": 0.7999917122727711,
+            "passed": true
+          }
+        ]
+      }
+    },
+    {
+      "campaign": 2,
+      "short": {
+        "passed": false,
+        "results": [
+          {
+            "sessions": 25,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": -114.99609375,
+                "cpuPoints": -55.68619792527889
+              },
+              {
+                "repetition": 2,
+                "rssMiB": 95.203125,
+                "cpuPoints": -3.800539432857761
+              },
+              {
+                "repetition": 3,
+                "rssMiB": 86.10546875,
+                "cpuPoints": 2.202776448405288
+              }
+            ],
+            "medianRssDeltaMiB": 86.10546875,
+            "medianCpuDeltaPoints": -3.800539432857761,
+            "passed": false
+          },
+          {
+            "sessions": 250,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": 49.625,
+                "cpuPoints": 6.368896876474793
+              },
+              {
+                "repetition": 2,
+                "rssMiB": 72.66796875,
+                "cpuPoints": 1.7920156975112604
+              },
+              {
+                "repetition": 3,
+                "rssMiB": -2.31640625,
+                "cpuPoints": -0.4019878259698686
+              }
+            ],
+            "medianRssDeltaMiB": 49.625,
+            "medianCpuDeltaPoints": 1.7920156975112604,
+            "passed": false
+          }
+        ]
+      },
+      "delayed": {
+        "passed": false,
+        "results": [
+          {
+            "sessions": 250,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": 203.25,
+                "cpuPoints": 0.799955987138766
+              },
+              {
+                "repetition": 2,
+                "rssMiB": -10.19140625,
+                "cpuPoints": 1.2996605271783257
+              },
+              {
+                "repetition": 3,
+                "rssMiB": -30.6484375,
+                "cpuPoints": 1.1998544154494581
+              }
+            ],
+            "medianRssDeltaMiB": -10.19140625,
+            "medianCpuDeltaPoints": 1.1998544154494581,
+            "passed": false
+          }
+        ]
+      }
+    },
+    {
+      "campaign": 3,
+      "short": {
+        "passed": true,
+        "results": [
+          {
+            "sessions": 25,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": -115.484375,
+                "cpuPoints": -74.50680145407128
+              },
+              {
+                "repetition": 2,
+                "rssMiB": 4.80859375,
+                "cpuPoints": 12.798499541276442
+              },
+              {
+                "repetition": 3,
+                "rssMiB": 11.10546875,
+                "cpuPoints": -6.210677749470669
+              }
+            ],
+            "medianRssDeltaMiB": 4.80859375,
+            "medianCpuDeltaPoints": -6.210677749470669,
+            "passed": true
+          },
+          {
+            "sessions": 250,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": 60.75,
+                "cpuPoints": -1.9959202585418652
+              },
+              {
+                "repetition": 2,
+                "rssMiB": -48.5078125,
+                "cpuPoints": -6.601151879151793
+              },
+              {
+                "repetition": 3,
+                "rssMiB": -170.51171875,
+                "cpuPoints": 1.798384886685298
+              }
+            ],
+            "medianRssDeltaMiB": -48.5078125,
+            "medianCpuDeltaPoints": -1.9959202585418652,
+            "passed": true
+          }
+        ]
+      },
+      "delayed": {
+        "passed": true,
+        "results": [
+          {
+            "sessions": 250,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": 153.5390625,
+                "cpuPoints": -2.699209520461051
+              },
+              {
+                "repetition": 2,
+                "rssMiB": -77.4921875,
+                "cpuPoints": -0.40017344156224244
+              },
+              {
+                "repetition": 3,
+                "rssMiB": 17.44140625,
+                "cpuPoints": 0.8999913376509503
+              }
+            ],
+            "medianRssDeltaMiB": 17.44140625,
+            "medianCpuDeltaPoints": -0.40017344156224244,
+            "passed": true
+          }
+        ]
+      }
+    }
+  ],
+  "longIdle": {
+    "completed": true,
+    "acceptanceEvaluated": false,
+    "results": [
+      {
+        "sessions": 250,
+        "deltas": [
+          {
+            "repetition": 1,
+            "rssMiB": 34.91796875,
+            "cpuPoints": 0.8199879930532812
+          }
+        ],
+        "medianRssDeltaMiB": 34.91796875,
+        "medianCpuDeltaPoints": 0.8199879930532812
+      }
+    ],
+    "treatments": [
+      {
+        "label": "250-1-baseline",
+        "checkpoints": [
+          {
+            "elapsedMs": 0,
+            "rssMiB": 659.0859375,
+            "ticks": 1898
+          },
+          {
+            "elapsedMs": 60024.200915999994,
+            "rssMiB": 653.5390625,
+            "ticks": 2007
+          },
+          {
+            "elapsedMs": 120011.31460500002,
+            "rssMiB": 653.6171875,
+            "ticks": 2107
+          },
+          {
+            "elapsedMs": 180001.224823,
+            "rssMiB": 653.61328125,
+            "ticks": 2195
+          },
+          {
+            "elapsedMs": 240030.214656,
+            "rssMiB": 653.6953125,
+            "ticks": 2279
+          },
+          {
+            "elapsedMs": 300027.33476899995,
+            "rssMiB": 653.5390625,
+            "ticks": 2360
+          },
+          {
+            "elapsedMs": 360028.625853,
+            "rssMiB": 653.66015625,
+            "ticks": 2439
+          },
+          {
+            "elapsedMs": 420002.241315,
+            "rssMiB": 653.66015625,
+            "ticks": 2520
+          },
+          {
+            "elapsedMs": 480029.488776,
+            "rssMiB": 653.78125,
+            "ticks": 2606
+          },
+          {
+            "elapsedMs": 540021.1906900001,
+            "rssMiB": 653.63671875,
+            "ticks": 2687
+          },
+          {
+            "elapsedMs": 600022.466934,
+            "rssMiB": 653.75,
+            "ticks": 2773
+          },
+          {
+            "elapsedMs": 660013.537838,
+            "rssMiB": 651.69140625,
+            "ticks": 2880
+          },
+          {
+            "elapsedMs": 720001.8131660001,
+            "rssMiB": 651.6875,
+            "ticks": 2957
+          },
+          {
+            "elapsedMs": 780003.0422550001,
+            "rssMiB": 651.796875,
+            "ticks": 3040
+          },
+          {
+            "elapsedMs": 840004.235218,
+            "rssMiB": 651.796875,
+            "ticks": 3123
+          },
+          {
+            "elapsedMs": 900005.491777,
+            "rssMiB": 651.796875,
+            "ticks": 3202
+          },
+          {
+            "elapsedMs": 960006.739576,
+            "rssMiB": 651.77734375,
+            "ticks": 3283
+          },
+          {
+            "elapsedMs": 1020007.920041,
+            "rssMiB": 651.7578125,
+            "ticks": 3366
+          },
+          {
+            "elapsedMs": 1080009.1824029998,
+            "rssMiB": 651.875,
+            "ticks": 3446
+          },
+          {
+            "elapsedMs": 1140009.7589379998,
+            "rssMiB": 652,
+            "ticks": 3525
+          },
+          {
+            "elapsedMs": 1200010.941011,
+            "rssMiB": 651.8515625,
+            "ticks": 3608
+          }
+        ]
+      },
+      {
+        "label": "250-1-enabled",
+        "checkpoints": [
+          {
+            "elapsedMs": 0,
+            "rssMiB": 803.5703125,
+            "ticks": 1549
+          },
+          {
+            "elapsedMs": 60005.20132500003,
+            "rssMiB": 798.828125,
+            "ticks": 1705
+          },
+          {
+            "elapsedMs": 120010.51615200005,
+            "rssMiB": 686.44921875,
+            "ticks": 1902
+          },
+          {
+            "elapsedMs": 180024.371973,
+            "rssMiB": 686.484375,
+            "ticks": 2042
+          },
+          {
+            "elapsedMs": 240029.37030099984,
+            "rssMiB": 686.80859375,
+            "ticks": 2185
+          },
+          {
+            "elapsedMs": 300006.70970700006,
+            "rssMiB": 686.78125,
+            "ticks": 2325
+          },
+          {
+            "elapsedMs": 360022.55147399986,
+            "rssMiB": 686.83203125,
+            "ticks": 2459
+          },
+          {
+            "elapsedMs": 420005.22350199986,
+            "rssMiB": 686.6796875,
+            "ticks": 2590
+          },
+          {
+            "elapsedMs": 480023.6877959999,
+            "rssMiB": 686.78515625,
+            "ticks": 2724
+          },
+          {
+            "elapsedMs": 540029.711625,
+            "rssMiB": 686.84375,
+            "ticks": 2845
+          },
+          {
+            "elapsedMs": 600003.8752859998,
+            "rssMiB": 687.0234375,
+            "ticks": 2964
+          },
+          {
+            "elapsedMs": 660029.890287,
+            "rssMiB": 686.96875,
+            "ticks": 3084
+          },
+          {
+            "elapsedMs": 720015.132283,
+            "rssMiB": 686.36328125,
+            "ticks": 3234
+          },
+          {
+            "elapsedMs": 780021.23547,
+            "rssMiB": 686.45703125,
+            "ticks": 3359
+          },
+          {
+            "elapsedMs": 840017.3850139999,
+            "rssMiB": 686.53515625,
+            "ticks": 3481
+          },
+          {
+            "elapsedMs": 900020.4372140002,
+            "rssMiB": 686.76953125,
+            "ticks": 3605
+          },
+          {
+            "elapsedMs": 960029.4960699999,
+            "rssMiB": 686.51171875,
+            "ticks": 3731
+          },
+          {
+            "elapsedMs": 1020002.3214079998,
+            "rssMiB": 686.65234375,
+            "ticks": 3859
+          },
+          {
+            "elapsedMs": 1080018.6156640002,
+            "rssMiB": 686.8125,
+            "ticks": 3988
+          },
+          {
+            "elapsedMs": 1140015.061619,
+            "rssMiB": 686.7890625,
+            "ticks": 4117
+          },
+          {
+            "elapsedMs": 1200013.3538969997,
+            "rssMiB": 686.76953125,
+            "ticks": 4243
+          }
+        ]
+      }
+    ]
+  },
+  "lifecycle": {
+    "completed": true,
+    "checkpoints": 51,
+    "allCleanupCountersZero": true,
+    "finalCounters": {
+      "activations": 51,
+      "disposals": 51,
+      "liveEventListeners": 0,
+      "pendingHealth": 0,
+      "healthCalls": 51,
+      "healthFailures": 0,
+      "healthCallsAfterDisposal": 0,
+      "deliveredAfterDisposal": 0
+    }
+  },
+  "compatibilityTrial": {
+    "host": "1.19.3",
+    "platform": "linux-x64",
+    "bun": "1.3.14",
+    "packageStatus": "passed",
+    "archiveSha256": "3b63453554c8bfbf18124697ad382937d9c091ffda9386eb244670e473eaf5d7",
+    "archiveScope": "Pre-documentation archive; same runtime hash as retained candidate package.",
+    "sidebarChecks": 17,
+    "attentionChecks": 10,
+    "inputToObservedFrameP95Ms": 110.9995259999996,
+    "remoteStatus": "passed",
+    "firstAttempt": "Observer still asserted 1.18.30; failed before scenarios. Corrected observer/driver share an explicit version allowlist; original default and all budgets remain unchanged.",
+    "remoteChecks": 11
+  },
+  "limitations": [
+    "One repeatability campaign failed the original resource budgets.",
+    "No full harness integration or Ubuntu server deployment has run.",
+    "A new host compatibility trial does not replace the original 1.18.30 acceptance campaign.",
+    "Linux 1.19.3 evidence does not certify macOS 1.19.3 or every font.",
+    "No allocation ownership or absence of memory leaks established."
+  ]
+}

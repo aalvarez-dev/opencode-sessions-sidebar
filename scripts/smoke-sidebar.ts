@@ -8,9 +8,9 @@ import { pathToFileURL } from "node:url";
 import { iconGlyph } from "../src/ui/icons";
 import { startGraphicalTerminal, type GraphicalTerminal } from "./lib/graphical-terminal";
 
-const expectedVersion = "1.18.30";
+import { validationHostVersion as expectedVersion } from "./lib/validation-host";
 const binary = process.env.OPENCODE_BIN;
-assert(binary, "Set OPENCODE_BIN to stock OpenCode 1.18.30.");
+assert(binary, "Set OPENCODE_BIN to the explicitly selected stock OpenCode version.");
 assert(process.platform !== "win32", "The rendered stock TUI smoke requires a POSIX PTY.");
 const executable = await realpath(binary);
 const plugin = await realpath(
@@ -102,6 +102,7 @@ const sourceFiles = [
   "scripts/build.ts",
   "scripts/sidebar-probe.ts",
   "scripts/smoke-sidebar.ts",
+  "scripts/lib/validation-host.ts",
   "scripts/lib/graphical-terminal.ts",
   "dist/tui.js",
 ];
@@ -465,6 +466,7 @@ throw new Error("Disabled modules must never be imported");`,
       ...env,
       TERM: "xterm-256color",
       LANG: "C.UTF-8",
+      SIDEBAR_TEST_OPENCODE_VERSION: expectedVersion,
       SIDEBAR_SMOKE_EXCHANGE: exchange,
       SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
       SIDEBAR_SMOKE_STORAGE: storage,
@@ -489,6 +491,7 @@ throw new Error("Disabled modules must never be imported");`,
           ...env,
           TERM: "xterm-256color",
           LANG: "C.UTF-8",
+          SIDEBAR_TEST_OPENCODE_VERSION: expectedVersion,
           SIDEBAR_SMOKE_EXCHANGE: exchange,
           SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
           SIDEBAR_SMOKE_STORAGE: storage,
@@ -1198,7 +1201,8 @@ throw new Error("Disabled modules must never be imported");`,
   const processors = cpus();
   const report = {
     schema: 1,
-    runtime: { opencode: expectedVersion, opentui: "0.4.5", solid: "1.9.10", bun: Bun.version },
+    runtime: { opencode: expectedVersion, bun: Bun.version },
+    compiledAgainst: { opentui: "0.4.5", solid: "1.9.10" },
     environment: {
       platform: process.platform,
       architecture: arch(),

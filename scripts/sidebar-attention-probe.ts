@@ -1,5 +1,6 @@
 /** Test-only observer; native attention and actual frames from stock OpenCode. */
 import assert from "node:assert/strict";
+import { validationHostVersion } from "./lib/validation-host";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
 import type { Renderable } from "@opentui/core";
@@ -27,7 +28,7 @@ export default {
     const directory = process.env.SIDEBAR_ATTENTION_DIRECTORY;
     const storageDirectory = process.env.SIDEBAR_ATTENTION_STORAGE;
     assert(exchange && directory && storageDirectory, "Missing isolated probe environment.");
-    assert.equal(api.app.version, "1.18.30");
+    assert.equal(api.app.version, validationHostVersion);
     const scopeDirectory = directory;
     const storage = createFileStorage({ directory: storageDirectory });
     const project = await api.client.project.current({ directory: scopeDirectory });

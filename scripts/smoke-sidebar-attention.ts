@@ -8,8 +8,11 @@ import { pathToFileURL } from "node:url";
 import { iconGlyph } from "../src/ui/icons";
 import { startGraphicalTerminal, type GraphicalTerminal } from "./lib/graphical-terminal";
 
-const expectedVersion = "1.18.30";
-assert(process.env.OPENCODE_BIN, "Set OPENCODE_BIN to stock OpenCode 1.18.30.");
+import { validationHostVersion as expectedVersion } from "./lib/validation-host";
+assert(
+  process.env.OPENCODE_BIN,
+  "Set OPENCODE_BIN to the explicitly selected stock OpenCode version.",
+);
 assert(process.platform !== "win32", "The rendered attention smoke requires a POSIX PTY.");
 const executable = await realpath(process.env.OPENCODE_BIN);
 const root = await mkdtemp(join(tmpdir(), "sidebar-ui-attention-"));
@@ -85,6 +88,7 @@ async function artifactHashes() {
     "src/adapters/opencode-v1/types.ts",
     "scripts/sidebar-attention-probe.ts",
     "scripts/smoke-sidebar-attention.ts",
+    "scripts/lib/validation-host.ts",
     "scripts/lib/graphical-terminal.ts",
     "dist/tui.js",
   ];
@@ -493,6 +497,7 @@ try {
     OPENCODE_DISABLE_AUTOUPDATE: "true",
     TERM: "xterm-256color",
     LANG: "C.UTF-8",
+    SIDEBAR_TEST_OPENCODE_VERSION: expectedVersion,
     SIDEBAR_ATTENTION_EXCHANGE: exchange,
     SIDEBAR_ATTENTION_DIRECTORY: directory,
     SIDEBAR_ATTENTION_STORAGE: storageDirectory,

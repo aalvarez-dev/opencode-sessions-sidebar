@@ -43,6 +43,10 @@ computer when using SSH.
 dependencies and can exercise that installed artifact in stock OpenCode. A package check is not a
 public release or a guarantee about every terminal's active font.
 
+For the frozen integration trial and the outstanding resource blocker, see the
+[V1 integration candidate](docs/v1-integration-candidate.md). This is an experimental candidate for
+a disposable Ubuntu profile, not stable release approval.
+
 ## Intended behavior
 
 - Manage and navigate sessions, with pins, collapsible groups, and repository/branch context when

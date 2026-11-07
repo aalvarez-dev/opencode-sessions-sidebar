@@ -172,3 +172,13 @@ subtree summaries. An independent DFS oracle covers flat/deep/wide graphs at 25/
 structural changes, missing parents, cycles and attention/error facts. Deterministic operation
 counts establish improved scaling; these headless regressions do not close the rendered idle-CPU,
 prolonged-lifecycle or release acceptance gates.
+
+## V1 integration candidate 1
+
+The frozen product has completed the 20-minute-per-treatment and 50-cycle stability observations.
+Two of three original resource campaigns passed; campaign 2 failed, so stable release approval
+remains blocked. A separate Linux x64 OpenCode 1.19.3 compatibility trial passed installed-package
+sidebar/attention and remote recovery checks. See
+[the candidate handoff](v1-integration-candidate.md) for exact identity, all results, isolation,
+legacy-sidebar replacement and rollback. Full harness integration remains pending; no server
+installation or public package release has been performed.

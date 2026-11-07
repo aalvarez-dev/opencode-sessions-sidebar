@@ -15,7 +15,10 @@ assert.equal(Bun.version, "1.3.14", "Use the pinned Bun 1.3.14 toolchain.");
 const runtime = args[0] === "--runtime";
 if (runtime) {
   assert(process.platform !== "win32", "Stock-host package smoke requires a POSIX PTY.");
-  assert(process.env.OPENCODE_BIN, "Set OPENCODE_BIN to stock OpenCode 1.18.30.");
+  assert(
+    process.env.OPENCODE_BIN,
+    "Set OPENCODE_BIN to the explicitly selected stock OpenCode version.",
+  );
 }
 const npm = Bun.which("npm");
 assert(npm, "npm is required to create and install the local package archive.");
@@ -276,6 +279,7 @@ console.log("Fresh consumer exports passed.");
       const report = join(root, `${name}.json`);
       await run([process.execPath, join(repository, "scripts", script)], repository, {
         OPENCODE_BIN: resolve(process.env.OPENCODE_BIN!),
+        SIDEBAR_TEST_OPENCODE_VERSION: process.env.SIDEBAR_TEST_OPENCODE_VERSION ?? "1.18.30",
         SIDEBAR_PLUGIN_FILE: join(installed, "dist", "tui.js"),
         [variable]: report,
       });
