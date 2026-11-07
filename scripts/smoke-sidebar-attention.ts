@@ -71,6 +71,7 @@ async function artifactHashes() {
     "src/ui/controller.ts",
     "src/ui/model.ts",
     "src/ui/view.tsx",
+    "src/ui/end-label.tsx",
     "src/ui/viewport.ts",
     "src/ui/motion.ts",
     "src/ui/icons.ts",
@@ -256,8 +257,9 @@ function assertVisible(
     "Pinned group disclosure has the expected state.",
   );
   if (collapsed) {
+    const summary = nodeText(snapshot, "sidebar-group-pins-summary");
     assert(
-      pinned.includes("busy1") && pinned.includes(`${attention === "questions" ? "ask" : "perm"}1`),
+      summary.includes("- 1") && summary.includes(`${attention === "questions" ? "?" : "!"} 1`),
       "Collapsed pinned group hides descendant activity/attention.",
     );
     assert(
@@ -593,6 +595,7 @@ try {
   );
   const parentPrefix = `sidebar-session-${question.parentId}`;
   const childPrefix = `sidebar-session-${question.childId}`;
+  const childRowId = `sidebar-child-${question.childId}`;
   assert.equal(
     node(question, `${parentPrefix}-children-disclosure`)!.y,
     node(question, `${parentPrefix}-controls`)!.y,
@@ -637,34 +640,50 @@ try {
     (snapshot) => snapshot.dialogDepth === 0 && sidebarText(snapshot).includes("> 1"),
     "ASCII fallback did not return.",
   );
+  await request("activate-parent");
+  const defaultExpanded = await until(
+    (snapshot) =>
+      snapshot.route.params?.sessionID === snapshot.parentId && Boolean(node(snapshot, childRowId)),
+    "Selecting the parent must initially expose its live children without an extra click.",
+  );
+  assert.equal(node(defaultExpanded, childRowId)!.height, 1);
+  assert(!node(defaultExpanded, `${childPrefix}-controls`));
+  assert(!node(defaultExpanded, `${childPrefix}-context`));
+  await clickNode(`${parentPrefix}-children-disclosure`);
+  await until(
+    (snapshot) => !node(snapshot, childRowId),
+    "Explicit collapse did not hide the active child.",
+  );
+  await request("activate-current");
+  await until(
+    (snapshot) =>
+      snapshot.route.params?.sessionID !== snapshot.parentId &&
+      Boolean(node(snapshot, "sidebar-group-pins")),
+    "Pinned parent did not return after testing its active default.",
+  );
   await clickNode(`${parentPrefix}-children-disclosure`);
   const expanded = await until(
-    (snapshot) =>
-      groupText(snapshot, "Pinned sessions", "Other sessions").includes(
-        "Synthetic attention child",
-      ),
+    (snapshot) => Boolean(node(snapshot, childRowId)),
     "Line-two disclosure did not reveal the native child.",
   );
   assert(groupText(expanded, "Pinned sessions", "Other sessions").includes("v 1"));
   assert(
-    node(expanded, `${childPrefix}-controls`)!.y > node(expanded, `${parentPrefix}-controls`)!.y,
+    node(expanded, childRowId)!.y > node(expanded, `${parentPrefix}-controls`)!.y,
     "Expanded child must follow parent controls.",
   );
   assert(
-    node(expanded, `${childPrefix}-context`)!.y < node(expanded, `${parentPrefix}-context`)!.y,
+    node(expanded, childRowId)!.y < node(expanded, `${parentPrefix}-context`)!.y,
     "Expanded child must precede parent context.",
   );
-  const childLine = expanded.frame.lines.find((line) =>
-    line.some((span) => span.text.includes("Synthetic attention child")),
-  );
+  assert.equal(node(expanded, childRowId)!.height, 1, "A live child occupies exactly one row.");
+  assert.equal(nodeText(expanded, `${childRowId}-label`).trim(), "build");
   assert(
-    childLine?.some(
-      (span) =>
-        span.text.includes("?") &&
-        JSON.stringify(span.fg) === JSON.stringify(expanded.palette.warning),
-    ),
-    "Expanded child's question glyph must be yellow.",
+    !node(expanded, `${childPrefix}-controls`),
+    "Compact children have no duplicate controls.",
   );
+  assert(!node(expanded, `${childPrefix}-context`), "Compact children have no duplicate context.");
+  assert.equal(nodeText(expanded, `${childRowId}-status`).trim(), "?");
+  assert.deepEqual(nodeColor(expanded, `${childRowId}-status`), expanded.palette.warning);
   await capture("marked-parent-expanded-child-question", expanded);
   await request("activate-parent");
   await until(
@@ -678,14 +697,8 @@ try {
     (snapshot) => Boolean(node(snapshot, `${parentPrefix}-context-details`)),
     "Active parent context did not expand after its live children.",
   );
-  assert(
-    node(activeExpanded, `${parentPrefix}-controls`)!.y <
-      node(activeExpanded, `${childPrefix}-controls`)!.y,
-  );
-  assert(
-    node(activeExpanded, `${childPrefix}-context`)!.y <
-      node(activeExpanded, `${parentPrefix}-context`)!.y,
-  );
+  assert(node(activeExpanded, `${parentPrefix}-controls`)!.y < node(activeExpanded, childRowId)!.y);
+  assert(node(activeExpanded, childRowId)!.y < node(activeExpanded, `${parentPrefix}-context`)!.y);
   assert(
     node(activeExpanded, `${parentPrefix}-completion`)!.y >=
       node(activeExpanded, `${parentPrefix}-context-details`)!.y +
@@ -698,15 +711,15 @@ try {
   input("Density: comfortable\r");
   const comfortable = await until(
     (snapshot) =>
-      snapshot.dialogDepth === 0 && node(snapshot, `${parentPrefix}-window`)?.height === 12,
+      snapshot.dialogDepth === 0 && node(snapshot, `${parentPrefix}-window`)?.height === 10,
     "Comfortable density did not reserve the expanded parent and child height.",
   );
-  const childWindow = node(comfortable, `${childPrefix}-window`)!;
+  const childWindow = node(comfortable, `${childRowId}-window`)!;
   const parentWindow = node(comfortable, `${parentPrefix}-window`)!;
   assert.equal(
     childWindow.height,
-    4,
-    "The live child must retain its three lines plus the density gap.",
+    1,
+    "The live child stays a single compact row even with comfortable main-row density.",
   );
   assert.equal(
     node(comfortable, `${parentPrefix}-context`)!.y,
@@ -720,7 +733,7 @@ try {
   );
   assert.equal(
     parentWindow.y + parentWindow.height,
-    node(comfortable, `${parentPrefix}-completion`)!.y + 2,
+    node(comfortable, `${parentPrefix}-completion`)!.y + 3,
     "The parent shell must end after the completion line and comfortable gap.",
   );
   await capture("comfortable-active-parent-children-context", comfortable);
@@ -729,35 +742,29 @@ try {
   input("Density: balanced\r");
   await until(
     (snapshot) =>
-      snapshot.dialogDepth === 0 && node(snapshot, `${parentPrefix}-window`)?.height === 10,
+      snapshot.dialogDepth === 0 && node(snapshot, `${parentPrefix}-window`)?.height === 9,
     "Balanced density did not restore the expanded parent geometry.",
   );
   await clickNode(`${parentPrefix}-context-disclosure`);
   await request("activate-current");
   await until(
     (snapshot) =>
-      snapshot.route.params?.sessionID !== snapshot.parentId &&
-      groupText(snapshot, "Pinned sessions", "Other sessions").includes(
-        "Synthetic attention child",
-      ),
+      snapshot.route.params?.sessionID !== snapshot.parentId && Boolean(node(snapshot, childRowId)),
     "Pinned parent did not return with expanded children preserved.",
   );
   await clickNode(`${parentPrefix}-children-disclosure`);
   await until(
-    (snapshot) =>
-      !groupText(snapshot, "Pinned sessions", "Other sessions").includes(
-        "Synthetic attention child",
-      ),
+    (snapshot) => !node(snapshot, childRowId),
     "Line-two disclosure did not hide child rows.",
   );
   await action("Expand subagents");
   await until(
-    (snapshot) => Boolean(node(snapshot, `${childPrefix}-controls`)),
+    (snapshot) => Boolean(node(snapshot, childRowId)),
     "Keyboard subagent expansion did not reveal live children.",
   );
   await action("Collapse subagents");
   await until(
-    (snapshot) => !node(snapshot, `${childPrefix}-controls`),
+    (snapshot) => !node(snapshot, childRowId),
     "Keyboard subagent collapse did not hide live children.",
   );
   await click("Pinn");
@@ -805,7 +812,7 @@ try {
   const permission = await until(
     (snapshot) =>
       snapshot.permissions.length === 1 &&
-      groupText(snapshot, "Pinned sessions", "Other sessions").includes("perm1"),
+      nodeText(snapshot, "sidebar-group-pins-summary").includes("! 1"),
     "Native permission did not reach collapsed pinned sidebar.",
   );
   assert.equal(permission.permissions[0]?.sessionID, permission.childId);
@@ -818,8 +825,8 @@ try {
       snapshot.promptFinished &&
       snapshot.questions.length === 0 &&
       snapshot.permissions.length === 0 &&
-      !sidebarText(snapshot).includes("busy1") &&
-      !sidebarText(snapshot).includes("perm1"),
+      !nodeText(snapshot, "sidebar-group-pins-summary").includes("- 1") &&
+      !nodeText(snapshot, "sidebar-group-pins-summary").includes("! 1"),
     "Resolved attention did not repaint.",
   );
   assert(
@@ -844,9 +851,7 @@ try {
     !node(settled, `${parentPrefix}-children-disclosure`),
     "Settled idle children must leave the live-subagent count and disclosure.",
   );
-  assert(
-    !groupText(settled, "Pinned sessions", "Other sessions").includes("Synthetic attention child"),
-  );
+  assert(!node(settled, childRowId), "Settled native children must leave the compact tree.");
   await capture("marked-parent-settled-no-live-subagents", settled);
   await request("start-error");
   const terminalError = await until(
@@ -873,7 +878,7 @@ try {
     terminalError.palette.success,
   );
   assert(
-    !groupText(terminalError, "Pinned sessions", "Other sessions").includes("retry1"),
+    terminalError.statuses[terminalError.childId]?.type !== "retry",
     "Final error must not remain a retry.",
   );
   await capture("marked-parent-final-error", terminalError);
@@ -901,7 +906,7 @@ try {
       : "Actual stock TUI, actual sidebar, real PTY mark/pin/child disclosure/collapse, native retry, child question/permission and terminal error from deterministic loopback provider.",
     checks: [
       "Marked pinned parent retains completion while displaying child busy/question.",
-      "Mouse and keyboard line-two live-subagent disclosure expands and collapses native child rows above the parent's line-three context; deduplicated pinned parent retains its mark and success title color.",
+      "Selecting an active parent defaults to expanded live children; explicit collapse is respected. Mouse and keyboard disclosure toggles one-line agent trees without duplicate controls/context, above the parent's context; deduplicated pinned parent retains its mark and success title color.",
       "Active parent completion remains below both expanded live children and expanded R/B/W context.",
       "Viewport shells match actual child/context/completion geometry in comfortable density and restore balanced density without overlap.",
       "Collapsed Pinned sessions retains busy/question summary.",

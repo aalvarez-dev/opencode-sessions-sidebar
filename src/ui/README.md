@@ -21,10 +21,12 @@ across pointer, keyboard, and command palette access. Destructive actions must n
 visual marks.
 
 The collapsed row has three whole lines: title/status, controls/agent, and context. Live children
-expand after controls; context expands after its selector line. The active completion action is
-last. `[R][B][W]` selection and context disclosure have separate state. Keyboard session actions
-provide equivalent selectors and a bounded, scrollable details view for full host values. Context is
-sourced from the current public project/path/VCS data, with no local Git or per-row reads.
+expand as compact tree lines after controls; context expands after its selector line. The active
+session defaults to expanded children while preserving explicit user choices. The active completion
+action is last. `[R][B][W]` selection and context disclosure have separate state. Keyboard session
+actions provide equivalent selectors and a bounded, scrollable details view for full host values.
+Context is sourced from the current public project/path/VCS data, with no local Git or per-row
+reads.
 
 Idle child branches leave the live disclosure without leaving the loaded session model. Parent
 glyphs and summaries retain descendant attention/errors; a completion annotation cannot hide busy
@@ -34,11 +36,11 @@ work. See [font setup](../../docs/terminal-fonts.md) for the optional pinned fam
 
 Support three density choices without changing the meaning of data or actions:
 
-| Density     | Intended spacing policy                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Compact     | No additional empty row between session entries; minimize secondary content                                                 |
-| Balanced    | Keep each entry compact and use whitespace at section boundaries; distinguish entry content through hierarchy and alignment |
-| Comfortable | Allow a whole empty row between entries where space permits                                                                 |
+| Density     | Intended spacing policy                                                                |
+| ----------- | -------------------------------------------------------------------------------------- |
+| Compact     | No extra empty row after main sessions; compact one-line children.                     |
+| Balanced    | One whole empty row after each main session and separation at group boundaries.        |
+| Comfortable | Two whole empty rows after each main session; compact children retain one-line height. |
 
 The plugin configuration supplies the initial density; Settings changes it for the current
 activation. These settings do not modify terminal-wide preferences. Verify layouts at narrow widths
@@ -105,3 +107,7 @@ scoped separately, and another client's changes are read on explicit Refresh.
 - [OpenTUI 0.5.12 Yoga configuration](https://github.com/anomalyco/opentui/blob/v0.5.12/packages/native/src/yoga.zig)
 - [OpenTUI 0.5.12 text options](https://github.com/anomalyco/opentui/blob/v0.5.12/packages/core/src/renderables/TextBufferRenderable.ts)
 - [OpenTUI 0.5.12 box spacing options](https://github.com/anomalyco/opentui/blob/v0.5.12/packages/core/src/renderables/Box.ts)
+
+The [approved visual target](../../docs/visual-design.md) defines the inline creation header,
+counted nonempty groups, compact children and completion-action alignment. Functional receipts alone
+do not establish fidelity to that target.

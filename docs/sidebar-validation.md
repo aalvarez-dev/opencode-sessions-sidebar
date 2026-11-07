@@ -399,3 +399,30 @@ Independent source review found and resolved unknown/error summaries, promoted-c
 cumulative indentation, and completion-action placement above expanded children. The source review,
 model tests, real-host correctness probes, and limited performance workloads are complementary
 evidence; none substitutes for the pending packaged-release gates.
+
+## Approved design alignment — November 7
+
+The [visual target](visual-design.md) is now expressed by the inline header, compact live-child
+trees, counted nonempty groups, explicit active-child disclosure defaults, aligned completion
+action, readable inactive controls and clock icons. Main labels preserve their beginning when
+truncated.
+
+A native regression exposed a pinned OpenTUI behavior: text renderables override `onResize` without
+invoking the inherited `onSizeChange` callback. Measuring the text itself therefore kept the
+available width at zero. `EndLabel` measures a public box allocation and fits its inner text to that
+width. An actual renderer regression covers initial paint, reactive text, resize, CJK, combining
+graphemes and ASCII fallback; it does not infer runtime correctness from a pure helper.
+
+The local combined check passes 199 tests and 1,324 assertions. Independent stock OpenCode PTY
+checks pass 17 organization/layout checks and 10 native child-attention checks. A separate shared
+design fixture passes five geometry/color checks with all four main entries visible. Its activity,
+attention and age reads are explicitly synthetic (`nativeExecutionValidated: false`); the
+independent attention fixture still creates genuine host events through its local provider. These
+local receipts describe native frames, not terminal pixel captures.
+
+The isolated hosted workflow adds the same design fixture on Ubuntu and macOS. The macOS design
+scenario forwards unchanged native output through its own PTY and dismisses native onboarding with
+one bounded, observed mouse click, without editing host state or requiring accessibility
+permissions. Source, relay and product hashes accompany its real-window evidence. Record the hosted
+pixel review and exact campaign outcome separately; this change does not close an existing
+resource-budget or release gate.

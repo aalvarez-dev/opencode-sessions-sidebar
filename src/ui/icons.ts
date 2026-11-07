@@ -37,13 +37,18 @@ export const iconCatalog = Object.freeze({
   pinActive: entry("Pin active", glyph("◆"), glyph("P"), glyph("\uEBA0")),
   pinInactive: entry("Pin inactive", glyph("◇"), glyph("p"), glyph("\uEB2B")),
   // U+231B is wide in the Unicode width tables. A terminal may render it as emoji.
-  laterActive: entry("Later active", glyph("⌛", 2), glyph("L"), glyph("\uF4E3")),
-  laterInactive: entry("Later inactive", glyph("≡"), glyph("l"), glyph("\uF451")),
+  // Octicons clock-fill/clock in the pinned Nerd Font: the Later control is a clock,
+  // with separate filled/outline states so membership is not conveyed by color alone.
+  laterActive: entry("Later active", glyph("⌛", 2), glyph("L"), glyph("\uF4AB")),
+  laterInactive: entry("Later inactive", glyph("≡"), glyph("l"), glyph("\uF43A")),
   expanded: entry("Expanded", glyph("▾"), glyph("v")),
   collapsed: entry("Collapsed", glyph("▸"), glyph(">")),
   delete: entry("Delete", glyph("⌫"), glyph("del", 3), glyph("\uF48E")),
   menu: entry("Menu", glyph("…"), glyph("...", 3)),
   promoted: entry("Shown elsewhere", glyph("↗"), glyph(">>", 2)),
+  treeBranch: entry("Tree branch", glyph("├"), glyph("|")),
+  treeLast: entry("Tree last", glyph("└"), glyph("`")),
+  treeVertical: entry("Tree vertical", glyph("│"), glyph("|")),
   create: entry("Create", glyph("+"), glyph("+")),
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
-import { createSidebarViewport, sidebarRowHeights } from "../src/ui/viewport";
+import { createSidebarViewport, sidebarChildLines, sidebarRowHeights } from "../src/ui/viewport";
 import type { MotionNode } from "../src/ui/motion";
 import type { SidebarRow } from "../src/ui/model";
 
@@ -184,19 +184,19 @@ describe("viewport-bounded sidebar mounting", () => {
       topLevel: new Set(["parent", "promoted"]),
       expandedContext: new Set(["parent", "child"]),
       expandedChildren: new Set(["parent"]),
-      comfortable: true,
+      rowGap: 2,
       childrenFor: (id) => (id === "parent" ? rows.slice(1) : []),
     });
-    expect(heights.get("child")).toBe(7); // three lines, three context lines, one gap
-    expect(heights.get("promoted")).toBe(4);
-    expect(heights.get("parent")).toBe(16); // 8 own, 7 child, one promoted reference
+    expect(heights.get("child")).toBe(8); // Only applies if this row is promoted to a full session.
+    expect(heights.get("promoted")).toBe(5);
+    expect(heights.get("parent")).toBe(11); // 9 own, one compact child, one promoted reference
     const collapsed = sidebarRowHeights({
       rows,
       activeId: "parent",
       topLevel: new Set(["parent", "promoted"]),
       expandedContext: new Set(),
       expandedChildren: new Set(),
-      comfortable: false,
+      rowGap: 0,
       childrenFor: () => [],
     });
     expect([...collapsed.values()]).toEqual([4, 3, 3]);
@@ -210,10 +210,72 @@ describe("viewport-bounded sidebar mounting", () => {
       topLevel: new Set(["0"]),
       expandedContext: new Set(),
       expandedChildren: new Set(rows.map((entry) => entry.session.id)),
-      comfortable: false,
+      rowGap: 0,
       childrenFor: (id) => (Number(id) + 1 < rows.length ? [rows[Number(id) + 1]!] : []),
     });
-    expect(heights.get("0")).toBe(15001);
+    expect(heights.get("0")).toBe(5003);
     expect(heights.get("4999")).toBe(3);
+  });
+
+  test("flattens live descendants into one line each and stops at promoted roots", () => {
+    const rows = [
+      row("parent"),
+      row("child"),
+      row("grandchild"),
+      row("promoted"),
+      row("elsewhere"),
+    ];
+    const children = new Map([
+      ["parent", [rows[1]!, rows[3]!]],
+      ["child", [rows[2]!]],
+      ["promoted", [rows[4]!]],
+    ]);
+    const childrenFor = (id: string) => children.get(id) ?? [];
+    const topLevel = new Set(["parent", "promoted"]);
+    const lines = sidebarChildLines("parent", childrenFor, topLevel);
+    expect(
+      lines.map(({ row, depth, guides, last, promoted }) => [
+        row.session.id,
+        depth,
+        guides,
+        last,
+        promoted,
+      ]),
+    ).toEqual([
+      ["child", 0, 0, false, false],
+      ["grandchild", 1, 1, true, false],
+      ["promoted", 0, 0, true, true],
+    ]);
+    const heights = sidebarRowHeights({
+      rows,
+      activeId: "parent",
+      topLevel,
+      expandedContext: new Set(["child"]),
+      expandedChildren: new Set(["parent", "promoted"]),
+      rowGap: 1,
+      childrenFor,
+    });
+    expect(heights.get("parent")).toBe(8); // 3 + action + gap + three compact lines
+    expect(heights.get("promoted")).toBe(5); // its own child appears only here
+    expect(
+      sidebarChildLines("promoted", childrenFor, topLevel).map((line) => line.row.session.id),
+    ).toEqual(["elsewhere"]);
+  });
+
+  test("flattens deep trees iteratively with bounded guide metadata", () => {
+    const rows = Array.from({ length: 5000 }, (_, index) => row(String(index)));
+    let reads = 0;
+    const lines = sidebarChildLines(
+      "0",
+      (id) => {
+        reads++;
+        return Number(id) + 1 < rows.length ? [rows[Number(id) + 1]!] : [];
+      },
+      new Set(["0"]),
+    );
+    expect(lines.length).toBe(4999);
+    expect(lines.at(-1)?.depth).toBe(4998);
+    expect(lines.every((line) => line.guides <= 7)).toBe(true);
+    expect(reads).toBe(5000);
   });
 });

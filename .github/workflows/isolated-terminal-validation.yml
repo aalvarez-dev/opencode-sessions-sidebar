@@ -69,6 +69,16 @@ jobs:
         run:
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun run
           smoke:sidebar:attention
+      - name: Approved design fixture in the real terminal
+        id: design
+        continue-on-error: true
+        env:
+          SIDEBAR_GRAPHICAL_DIR: ${{ github.workspace }}/.sidebar-lab/actions/graphical/design
+          SIDEBAR_DESIGN_DIR: ${{ github.workspace }}/.sidebar-lab/actions/graphical/design
+          SIDEBAR_DESIGN_REPORT: ${{ github.workspace }}/.sidebar-lab/actions/graphical/design.json
+        run:
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun
+          scripts/smoke-sidebar-design.ts
       - name: Real terminal during transport loss and recovery
         id: remote
         continue-on-error: true
@@ -94,10 +104,11 @@ jobs:
         env:
           SIDEBAR_RESULT: ${{ steps.sidebar.outcome }}
           ATTENTION_RESULT: ${{ steps.attention.outcome }}
+          DESIGN_RESULT: ${{ steps.design.outcome }}
           REMOTE_RESULT: ${{ steps.remote.outcome }}
         run:
           test "$SIDEBAR_RESULT" = success && test "$ATTENTION_RESULT" = success && test
-          "$REMOTE_RESULT" = success
+          "$DESIGN_RESULT" = success && test "$REMOTE_RESULT" = success
 
   remote-and-resources:
     name: Native attach transport and resource comparison
@@ -172,7 +183,7 @@ jobs:
   macos-pilot:
     name: macOS graphical capability pilot
     runs-on: macos-15-intel
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -209,6 +220,13 @@ jobs:
         run:
           python3 scripts/macos-graphical-pilot.py --font-profile "$SIDEBAR_MACOS_FONT_FILE"
           --observer "$SIDEBAR_MACOS_OBSERVER" --output .sidebar-lab/actions/macos/nerd-profile
+      - name: Approved design fixture in isolated Terminal profile
+        id: design
+        continue-on-error: true
+        run:
+          python3 scripts/macos-graphical-pilot.py --design --font-profile
+          "$SIDEBAR_MACOS_FONT_FILE" --observer "$SIDEBAR_MACOS_OBSERVER" --output
+          .sidebar-lab/actions/macos/approved-design
       - name: Retain pilot outcome and any genuine screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -218,13 +236,13 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
-      - name: Require both explicit graphical receipts
+      - name: Require all explicit graphical receipts
         if: always()
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
-          for mode in ("ascii-default", "nerd-profile"):
+          for mode in ("ascii-default", "nerd-profile", "approved-design"):
               result = json.loads((Path(".sidebar-lab/actions/macos") / mode / "macos-graphical-result.json").read_text())
               assert result["status"] == "passed", f"{mode}: {result['status']}: {result.get('reason', '')}"
           PY

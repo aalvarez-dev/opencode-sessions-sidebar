@@ -87,6 +87,7 @@ const sourceFiles = [
   "src/ui/controller.ts",
   "src/ui/model.ts",
   "src/ui/view.tsx",
+  "src/ui/end-label.tsx",
   "src/ui/viewport.ts",
   "src/ui/motion.ts",
   "src/ui/icons.ts",
@@ -557,17 +558,24 @@ throw new Error("Disabled modules must never be imported");`,
     "Sidebar did not render its loaded sessions in the stock session route.",
   );
   await capture("wide-initial", "dark", "ascii");
+  const initialLayout = await request<Snapshot>("snapshot");
+  assert(!text(initialLayout).includes("Pinned sessions"), "Empty Pinned must be omitted.");
+  assert(!node(initialLayout, "sidebar-group-later"), "Empty Later must be omitted.");
+  assert(
+    nodeText(initialLayout, "sidebar-group-sessions-label").includes("Other sessions (19)"),
+    "Other must count its deduplicated visible session rows.",
+  );
   input("\u001b[<65;125;18M".repeat(12));
   await until(
     (snapshot) =>
-      !text(snapshot).includes("v Pinned sessions") && text(snapshot).includes("Synthetic"),
+      !text(snapshot).includes("Active session:") && text(snapshot).includes("Synthetic"),
     "Real mouse wheel did not scroll the long stock sidebar.",
   );
   await capture("wide-scrolled", "dark", "ascii");
   input("\u001b[<64;125;18M".repeat(50));
   await until(
     (snapshot) =>
-      text(snapshot).includes("v Pinned sessions") && text(snapshot).includes("Synthetic 18"),
+      text(snapshot).includes("Active session:") && text(snapshot).includes("Synthetic 18"),
     "Mouse wheel did not restore the sidebar top and Other session rows.",
   );
   checks.push("real mouse wheel scrolls many long-title rows and restores the sidebar top");
@@ -586,7 +594,18 @@ throw new Error("Disabled modules must never be imported");`,
   assert.equal(node(contextFrame, contextId)!.y, node(contextFrame, controlsId)!.y + 1);
   assert(!node(contextFrame, `sidebar-session-${activeId}-menu`), "Active row must omit its menu.");
   assert(node(contextFrame, `sidebar-session-${activeId}-completion`));
-  assert(node(contextFrame, "sidebar-menu"), "Global header menu must remain available.");
+  assert(!node(contextFrame, "sidebar-menu"), "The approved header has no extra menu.");
+  const heading = node(contextFrame, "sidebar-heading");
+  const create = node(contextFrame, "sidebar-create");
+  assert(heading && create, "Header label and creation action must both be mounted.");
+  assert.equal(heading.y, create.y, "Creation belongs on the same row as Active session.");
+  assert(create.x >= heading.x + heading.width, "The two header controls must not overlap.");
+  const completion = node(contextFrame, `sidebar-session-${activeId}-completion`)!;
+  assert.equal(completion.x, node(contextFrame, `sidebar-session-${activeId}-status`)!.x + 3);
+  assert.equal(
+    nodeText(contextFrame, `sidebar-session-${activeId}-completion`).trim(),
+    "Mark completed +",
+  );
   assert(!node(contextFrame, contextDetailsId), "Context must start collapsed.");
   for (const [field, expected] of [
     ["B", "synthetic"],
@@ -738,18 +757,26 @@ throw new Error("Disabled modules must never be imported");`,
       "real xterm pixels capture ASCII, Unicode and Nerd icons without changing organization",
     );
   }
-  await click("v Pinned sessions");
+  assert(
+    !node(current, "sidebar-group-pins"),
+    "Active membership must not create an empty Pinned group.",
+  );
+  assert(
+    !node(current, "sidebar-group-later"),
+    "Active membership must not create an empty Later group.",
+  );
+  await click("v Other sessions");
   await until(
-    (snapshot) => text(snapshot).includes("> Pinned sessions"),
+    (snapshot) => text(snapshot).includes("> Other sessions (19)"),
     "Mouse collapse did not render.",
   );
   await capture("wide-collapsed", "dark", "ascii");
-  await click("> Pinned sessions");
+  await click("> Other sessions");
   await until(
-    (snapshot) => text(snapshot).includes("v Pinned sessions"),
+    (snapshot) => text(snapshot).includes("v Other sessions (19)"),
     "Mouse expansion did not render.",
   );
-  checks.push("real mouse collapses and expands Pinned with its activity summary retained");
+  checks.push("empty groups stay omitted; real mouse collapses and expands counted Other sessions");
 
   await browse("Synthetic Beta");
   await choose("Add to Later");
@@ -812,7 +839,7 @@ throw new Error("Disabled modules must never be imported");`,
     "active row omits its ellipsis and direct completion unmarks without a dialog, navigation, or Later change; switching sessions transfers the menu to the non-active row, whose shared actions remain usable",
   );
 
-  await request("command", { command: "sessions-sidebar.create" });
+  await clickNode("sidebar-create");
   await until((snapshot) => snapshot.dialogDepth > 0, "Create prompt missing.");
   input("Synthetic disposable\r");
   await until(
@@ -854,7 +881,7 @@ throw new Error("Disabled modules must never be imported");`,
     "Confirmed deletion did not reach host.",
   );
   checks.push(
-    "native create/rename/delete via real keyboard, cancellation preserves session and explicit mouse confirmation deletes",
+    "native create through the inline header action, keyboard rename/delete, cancellation preserves session and explicit mouse confirmation deletes",
   );
 
   resize(88, 24);

@@ -205,8 +205,10 @@ full rows once with that priority without changing their independent saved membe
 the session directly. Non-active rows expose the shared actions menu through an ellipsis. The active
 row omits that ellipsis because its Mark/Unmark completed action remains visible at the bottom.
 Browse still exposes the active session's full actions, including rename. Delete retains native
-confirmation. The global header menu remains available for display management alongside the palette,
-rather than a permanent toolbar.
+confirmation. The header places `Active session:` and `new session +` on the same line; display
+management remains available through the command palette. Groups show their displayed top-level
+count and omit empty sections, except when Later must expose unavailable saved references. See the
+versioned [visual acceptance target](visual-design.md).
 
 Context selectors `[R][B][W]` switch the visible field without changing expansion. The selected
 field uses normal text color and the others muted color. A separate yellow disclosure expands
@@ -215,16 +217,19 @@ selecting an unavailable field never silently substitutes a different value. Ful
 available in the keyboard-accessible, scrollable details view. Render from public host context only;
 this exact-directory integration does not discover or navigate other worktrees.
 
-Live child rows expand between the controls line and context. Use the public configured agent color
-when available, otherwise muted gray. The live list includes busy/retrying/unknown branches and
-branches awaiting attention; idle intermediate parents remain to expose live descendants. Entirely
-idle branches leave this list, while unresolved errors remain in ancestor summaries. Completion
-marks never remove live work from the list. A child promoted to Active/Later/Pinned is referenced
-without duplicating its full row. Malformed parent cycles must not hide sessions or recurse
-indefinitely. Collapsed groups and parents retain known activity, attention, error, and uncertainty
-summaries. The parent status glyph includes descendant facts. The active session's Mark/Unmark
-completed action stays below all expanded child and context content. All loaded children remain
-available through Browse and native actions.
+Live child rows expand as compact one-line tree entries between the controls line and context,
+without repeating the main session controls or context. The active session starts expanded unless
+the user has explicitly chosen otherwise during this activation. Use the public configured agent
+color when available, otherwise muted gray. The live list includes busy/retrying/unknown branches
+and branches awaiting attention; idle intermediate parents remain to expose live descendants.
+Entirely idle branches leave this list, while unresolved errors remain in ancestor summaries.
+Completion marks never remove live work from the list. A child promoted to Active/Later/Pinned is
+referenced without duplicating its full row. Malformed parent cycles must not hide sessions or
+recurse indefinitely. Collapsed groups and parents retain known activity, attention, error, and
+uncertainty summaries. The parent status glyph includes descendant facts. The active session's
+Mark/Unmark completed action stays below all expanded child and context content, aligned with the
+indented content and followed by its completion glyph. All loaded children remain available through
+Browse and native actions.
 
 Questions and permissions use yellow; retry uses an orange tone derived from the host palette.
 Reserve the red cross for an observed non-abort failure followed by confirmed idle, not a retry or a

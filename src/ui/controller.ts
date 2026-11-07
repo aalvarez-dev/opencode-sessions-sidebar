@@ -85,7 +85,11 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   const [icons, setIcons] = createSignal<IconMode>(options.icons ?? "unicode");
   const [reducedMotion, setReducedMotion] = createSignal(options.reducedMotion ?? false);
   const [collapsed, setCollapsed] = createSignal<ReadonlySet<GroupId>>(new Set());
-  const [expandedChildren, setExpandedChildren] = createSignal<ReadonlySet<string>>(new Set());
+  // An absent choice follows selection: the active session opens its live subtree.
+  // Explicit open/closed choices survive route changes and snapshot refreshes.
+  const [childDisclosures, setChildDisclosures] = createSignal<ReadonlyMap<string, boolean>>(
+    new Map(),
+  );
   const [expandedContext, setExpandedContext] = createSignal<ReadonlySet<string>>(new Set());
   const [contextFields, setContextFields] = createSignal<ReadonlyMap<string, ContextField>>(
     new Map(),
@@ -109,9 +113,9 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   let epoch = 0;
   let scopeDirectory: string | undefined;
   const changed = () => {
-    setExpandedChildren((previous) => {
-      const retained = [...previous].filter((id) => adapter?.get(id));
-      return retained.length === previous.size ? previous : new Set(retained);
+    setChildDisclosures((previous) => {
+      const retained = [...previous].filter(([id]) => adapter?.get(id));
+      return retained.length === previous.size ? previous : new Map(retained);
     });
     setExpandedContext((previous) => {
       const retained = [...previous].filter((id) => adapter?.get(id));
@@ -153,6 +157,14 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   const groups = createMemo(() => model().groups);
   const rows = createMemo(() => model().rows);
   const activeRow = createMemo(() => model().activeRow);
+  const activeSessionId = createMemo(() => activeRow()?.session.id);
+  const expandedChildren = createMemo<ReadonlySet<string>>(() => {
+    const choices = childDisclosures();
+    const expanded = new Set([...choices].filter(([, open]) => open).map(([id]) => id));
+    const selected = activeSessionId();
+    if (selected && !choices.has(selected)) expanded.add(selected);
+    return expanded;
+  });
   const childrenFor = (id: string) => model().childrenFor(id);
   const liveChildrenFor = (id: string) => model().liveChildrenFor(id);
   const contextField = (id: string): ContextField => contextFields().get(id) ?? "repository";
@@ -208,7 +220,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     scopeDirectory = directory;
     const generation = ++epoch;
     stopScope();
-    setExpandedChildren(new Set<string>());
+    setChildDisclosures(new Map<string, boolean>());
     setExpandedContext(new Set<string>());
     setContextFields(new Map<string, ContextField>());
     setCollapsed(new Set<GroupId>());
@@ -407,12 +419,8 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   }
   function toggleChildren(id: string) {
     if (!active() || liveChildrenFor(id).length === 0) return;
-    setExpandedChildren((previous) => {
-      const next = new Set(previous);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const open = !expandedChildren().has(id);
+    setChildDisclosures((previous) => new Map(previous).set(id, open));
   }
   function selectContext(id: string, field: ContextField) {
     if (!active() || !adapter?.get(id) || contextField(id) === field) return;

@@ -10,9 +10,10 @@ The setup below is optional; plugin activation never downloads fonts or edits te
 The pinned profile now uses **Iosevka Nerd Font Mono Regular**, base **33.2.1**, patched by Nerd
 Fonts **3.4.0**. One unchanged upstream TTF is approximately **13.1 MB**. The regular face covers
 all sidebar controls, status symbols, Braille animation frames, and ordinary ASCII. The old optional
-JetBrains Mono profile lacked the retry arrow and Braille characters. Existing symbol codepoints,
-actions, and layout are preserved; glyph outlines follow the selected font rather than an
-unspecified system fallback.
+JetBrains Mono profile lacked the retry arrow and Braille characters. Glyph outlines follow the
+selected font rather than an unspecified system fallback. The approved presentation uses a pin,
+clock, and trash can for its controls; Nerd mode provides those shapes. Compatibility modes retain
+their explicit text substitutes.
 
 The shared [icon catalog](../src/ui/icons.ts) defines symbol text and expected terminal-cell widths.
 Font preparation verifies its complete union of ASCII/Unicode/Nerd glyphs plus ordinary ASCII and UI
@@ -30,15 +31,21 @@ Only the regular face is distributed, keeping the optional download small compar
 family. Current icon runs use regular text. The terminal may synthesize bold/italic text; check
 styled text in your terminal rather than assuming native style rendering has been certified.
 
-| Sidebar option       | Use                                                                                                             |
-| -------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `"icons": "nerd"`    | Uses the pinned font's private-use pin, Later, and delete icons, with the common status/animation symbols.      |
-| `"icons": "unicode"` | Retains the default Unicode controls. The pinned font covers these as well.                                     |
-| `"icons": "ascii"`   | Explicit fallback for icon/animation compatibility; other UI text and session titles can still contain Unicode. |
+| Sidebar option       | Use                                                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `"icons": "nerd"`    | Uses the pinned font's pin, filled/outline Later clocks, and trash can, with the common status/animation symbols. |
+| `"icons": "unicode"` | Retains the default Unicode controls. The pinned font covers these as well.                                       |
+| `"icons": "ascii"`   | Explicit fallback for icon/animation compatibility; other UI text and session titles can still contain Unicode.   |
 
 Put the option in the sidebar settings in `tui.json`, following
 [sidebar setup](sidebar-validation.md). A menu selection only lasts for the current activation; put
 your desired initial mode in configuration. Font setup does not silently change the icon mode.
+
+The clock pair is Octicons `clock-fill` (`U+F4AB`) and `clock` (`U+F43A`) from the
+[pinned Nerd Fonts glyph map](https://github.com/ryanoasis/nerd-fonts/blob/fa7b859994228a9c8759f99c55a8d31ee92a1b5e/glyphnames.json).
+The two outlines preserve the active/inactive distinction without depending only on color. The
+compact child tree uses single-cell `├`, `└`, and `│`, with printable ASCII substitutes in ASCII
+mode. Both the controls and tree connectors participate in font coverage and visual cell guides.
 
 ## Prepare or transfer the bundle
 
@@ -137,10 +144,10 @@ because ordinary text is readable.
 
 ## Verify the actual terminal
 
-Open **Sessions sidebar: check icons** through the command palette or the sidebar menu. The sample
-shows controls, state glyphs, every animation frame, and cell guides side by side for all three
-modes. Choose a mode explicitly if glyphs are missing or alignment differs. This is visual
-verification by the person viewing the terminal, not automatic discovery of its font.
+Open **Sessions sidebar: check icons** through the command palette. The sample shows controls, state
+glyphs, every animation frame, and cell guides side by side for all three modes. Choose a mode
+explicitly if glyphs are missing or alignment differs. This is visual verification by the person
+viewing the terminal, not automatic discovery of its font.
 
 Then verify normal/completed/busy/retry rows; active/inactive pin and Later controls; disclosure,
 menu, and delete; long titles; and narrow/wide layouts. Confirm icons and click targets stay aligned
@@ -148,14 +155,15 @@ and attention remains visible. Keep the same OpenCode theme, density, and icon m
 platforms. `reducedMotion: true` provides static activity glyphs.
 
 The bundled parser was independently checked against the official font with FontTools during
-implementation: all **137** currently required codepoints were present with a **500-unit** advance.
-Fixture tests cover TrueType cmap formats 4/12, missing glyphs, inconsistent advances, malformed
-bounds, offline integrity checks, dry-run, repeated placement, conflicts, and symlink refusal. Tests
-use temporary directories, not the tester's actual font folders. They establish preparation and
-placement behavior. The isolated campaign has captured genuine xterm windows with the pinned font,
-and a macOS Terminal.app pilot with its default font. The latter visibly demonstrates why ASCII is
-needed when the selected font lacks Nerd glyphs. These named configurations do not establish
-universal terminal compatibility.
+implementation. The revised clock and compact-tree catalog passes the pinned file's integrity,
+coverage, and advance checks: all **140** required codepoints are present with a **500-unit**
+advance. Fixture tests cover TrueType cmap formats 4/12, missing glyphs, inconsistent advances,
+malformed bounds, offline integrity checks, dry-run, repeated placement, conflicts, and symlink
+refusal. Tests use temporary directories, not the tester's actual font folders. They establish
+preparation and placement behavior. The isolated campaign has captured genuine xterm windows with
+the pinned font, and a macOS Terminal.app pilot with its default font. The latter visibly
+demonstrates why ASCII is needed when the selected font lacks Nerd glyphs. These named
+configurations do not establish universal terminal compatibility.
 
 The macOS workflow also has a separate selected-font scenario. It creates a uniquely named
 `.terminal` profile on a disposable GitHub-hosted runner, archives the resolved AppKit `NSFont`,

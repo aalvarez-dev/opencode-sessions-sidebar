@@ -8,45 +8,103 @@ export function sidebarRowHeights(options: {
   topLevel: ReadonlySet<string>;
   expandedContext: ReadonlySet<string>;
   expandedChildren: ReadonlySet<string>;
-  comfortable: boolean;
+  /** Whole-cell separation after a full session; compact child lines have no gap. */
+  rowGap: number;
   childrenFor(id: string): readonly SidebarRow[];
 }): ReadonlyMap<string, number> {
   const heights = new Map<string, number>();
+  const compactSizes = new Map<string, number>();
   const base = (id: string) =>
     3 +
     Number(id === options.activeId) +
-    Number(options.comfortable) +
+    options.rowGap +
     (options.expandedContext.has(id) ? 3 : 0);
-  // The read model supplies an acyclic forest. An iterative postorder also avoids
-  // using the JavaScript call stack for a long chain of expanded live descendants.
+  // Every live descendant is a single compact tree line. A promoted child is a
+  // reference and its subtree belongs to its full row elsewhere. Compute sizes
+  // once across the forest, even when several roots have their children open.
   for (const row of options.rows) {
     const pending = [{ id: row.session.id, finish: false }];
     while (pending.length > 0) {
       const item = pending.pop()!;
-      if (heights.has(item.id)) continue;
-      const children = options.expandedChildren.has(item.id) ? options.childrenFor(item.id) : [];
+      if (compactSizes.has(item.id)) continue;
+      const children = options.childrenFor(item.id);
       if (!item.finish) {
         pending.push({ ...item, finish: true });
         for (const child of children)
-          if (!options.topLevel.has(child.session.id) && !heights.has(child.session.id))
+          if (!options.topLevel.has(child.session.id) && !compactSizes.has(child.session.id))
             pending.push({ id: child.session.id, finish: false });
       } else {
-        heights.set(
+        compactSizes.set(
           item.id,
-          base(item.id) +
+          1 +
             children.reduce(
               (total, child) =>
                 total +
                 (options.topLevel.has(child.session.id)
                   ? 1
-                  : (heights.get(child.session.id) ?? base(child.session.id))),
+                  : (compactSizes.get(child.session.id) ?? 1)),
               0,
             ),
         );
       }
     }
   }
+  for (const row of options.rows)
+    heights.set(
+      row.session.id,
+      base(row.session.id) +
+        (options.expandedChildren.has(row.session.id)
+          ? (compactSizes.get(row.session.id) ?? 1) - 1
+          : 0),
+    );
   return heights;
+}
+
+export interface SidebarChildLine {
+  readonly row: SidebarRow;
+  readonly depth: number;
+  /** Only the first three ancestor guides can be shown in the narrow sidebar. */
+  readonly guides: number;
+  readonly last: boolean;
+  readonly promoted: boolean;
+}
+
+/** Flat iterative traversal keeps deep live trees scrollable without recursive components. */
+export function sidebarChildLines(
+  parentId: string,
+  childrenFor: (id: string) => readonly SidebarRow[],
+  topLevel: ReadonlySet<string>,
+): readonly SidebarChildLine[] {
+  const result: SidebarChildLine[] = [];
+  const seen = new Set([parentId]);
+  const pending: SidebarChildLine[] = [];
+  const add = (id: string, depth: number, guides: number) => {
+    const children = childrenFor(id);
+    for (let index = children.length - 1; index >= 0; index--) {
+      const row = children[index]!;
+      pending.push({
+        row,
+        depth,
+        guides,
+        last: index === children.length - 1,
+        promoted: topLevel.has(row.session.id),
+      });
+    }
+  };
+  add(parentId, 0, 0);
+  while (pending.length > 0) {
+    const line = pending.pop()!;
+    if (seen.has(line.row.session.id)) continue;
+    seen.add(line.row.session.id);
+    result.push(line);
+    if (!line.promoted)
+      add(
+        line.row.session.id,
+        line.depth + 1,
+        line.depth < 3 && !line.last ? line.guides | (1 << line.depth) : line.guides,
+      );
+  }
+  return result;
 }
 
 interface Clip {

@@ -604,6 +604,7 @@ try {
         "src/ui/controller.ts",
         "src/ui/model.ts",
         "src/ui/view.tsx",
+        "src/ui/end-label.tsx",
         "src/ui/viewport.ts",
         "src/adapters/opencode-v1/adapter.ts",
         "src/adapters/opencode-v1/transport-health.ts",

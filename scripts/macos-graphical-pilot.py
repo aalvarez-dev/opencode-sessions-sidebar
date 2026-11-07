@@ -315,6 +315,7 @@ def main():
     parser.add_argument("--font-profile", type=Path, help="Pinned TTF for a uniquely named, non-default Terminal profile on the disposable runner.")
     parser.add_argument("--prepare-observer", type=Path, help="Compile the public macOS helper once into this temporary directory.")
     parser.add_argument("--observer", type=Path, help="Prepared macOS helper executable with a matching source/binary receipt.")
+    parser.add_argument("--design", action="store_true", help="Capture the explicit synthetic approved-design fixture with the unchanged product renderer.")
     arguments = parser.parse_args()
     repo = Path(__file__).resolve().parent.parent
     output = Path(arguments.output).resolve()
@@ -330,6 +331,7 @@ def main():
         "checks": [],
         "captures": [],
         "transportAcceptanceEvaluated": False,
+        "nativeExecutionValidated": False,
         "observedHealthWarnings": [],
         "limitations": [
             "Not a Ghostty acceptance run or a complete macOS interaction suite.",
@@ -385,23 +387,37 @@ def main():
         mac_observer, report["observerPreparation"] = verified_observer(arguments.observer)
         report["revision"] = run(["git", "rev-parse", "HEAD"], cwd=repo).stdout.strip()
         plugin = repo / "dist/tui.js"
+        product = plugin
+        design_config = None
+        if arguments.design:
+            if not arguments.font_profile:
+                raise Blocked("The approved-design graphical scenario requires the pinned-font profile.")
+            design_config = json.loads(run([bun, "scripts/sidebar-design-fixture.ts"], cwd=repo).stdout)
+            report["limitations"].extend(design_config["limitations"])
+            report["scope"] = "Stock Terminal.app renderer with the shared synthetic approved-design public-read fixture"
         report["sourceHashes"] = {
             str(path.relative_to(repo)): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in (plugin, repo / "scripts/sidebar-probe.ts", Path(__file__).resolve())
+            for path in (plugin, repo / "scripts/sidebar-probe.ts", Path(__file__).resolve(), *(
+                (repo / "scripts/sidebar-design-fixture.ts", repo / "scripts/sidebar-design-wrapper.ts", repo / "scripts/check-sidebar-design.ts", repo / "scripts/lib/macos-design-relay.ts", repo / "scripts/lib/terminal-design-input.ts", repo / "src/ui/end-label.tsx") if arguments.design else ()
+            ))
         }
         fixture = Path(tempfile.mkdtemp(prefix="sidebar-macos-pilot-"))
-        project, config = fixture / "project", fixture / "config"
+        project, config = fixture / ("opencode-sessions-sidebar" if arguments.design else "project"), fixture / "config"
         storage, exchange = fixture / "sidebar-state", fixture / "exchange"
         for directory in (project, config / "opencode", fixture / "home", fixture / "managed"):
             directory.mkdir(parents=True)
-        run(["git", "init", "--initial-branch", "synthetic-macos", str(project)])
+        run(["git", "init", "--initial-branch", "feat/continuista-sidebar" if arguments.design else "synthetic-macos", str(project)])
         observer = fixture / "observer.mjs"
         run(
             [bun, "build", "scripts/sidebar-probe.ts", "--target", "bun", "--outfile", str(observer)],
             cwd=repo,
             timeout=30,
         )
-        (config / "opencode/opencode.json").write_text("{}")
+        if arguments.design:
+            plugin = fixture / "design-wrapper.mjs"
+            run([bun, "build", "scripts/sidebar-design-wrapper.ts", "--target", "bun", "--outfile", str(plugin)], cwd=repo, timeout=30)
+            report["wrapperSha256"] = hashlib.sha256(plugin.read_bytes()).hexdigest()
+        (config / "opencode/opencode.json").write_text(json.dumps({"agent": design_config["agent"]} if design_config else {}))
         (config / "opencode/tui.json").write_text(json.dumps({
             "plugin": [
                 [plugin.as_uri(), {
@@ -430,6 +446,12 @@ def main():
             "SIDEBAR_SMOKE_EXCHANGE": str(exchange),
             "SIDEBAR_SMOKE_DIRECTORY": str(project),
             "SIDEBAR_SMOKE_STORAGE": str(storage),
+            **({
+                "SIDEBAR_DESIGN": "true", "SIDEBAR_DESIGN_PRODUCT": str(product),
+                "SIDEBAR_DESIGN_OPENCODE": executable,
+                "SIDEBAR_DESIGN_RELAY_EXCHANGE": str(fixture / "relay"),
+                "GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "github-hosted",
+            } if arguments.design else {}),
         }
         launcher, pid_file = fixture / (fixture.name + ".command"), fixture / "pid"
         launcher.write_text(
@@ -441,7 +463,7 @@ def main():
             + "printf '\\033]2;" + fixture.name + "\\007\\033[8;" + ("48" if arguments.font_profile else "40") + ";140t'\n"
             + "exec /usr/bin/env -i "
             + " ".join(shlex.quote(key + "=" + value) for key, value in environment.items())
-            + " " + shlex.quote(executable) + "\n"
+            + " " + (shlex.quote(bun) + " " + shlex.quote(str(repo / "scripts/lib/macos-design-relay.ts")) if arguments.design else shlex.quote(executable)) + "\n"
         )
         launcher.chmod(0o700)
         phase = "terminal-automation"
@@ -592,6 +614,34 @@ def main():
                 time.sleep(0.1)
             raise RuntimeError("Expected native sidebar frame did not appear.")
 
+        def close_design_onboarding(snapshot):
+            # The frame identifies the stock close button. Input travels through
+            # the actual owned PTY; no host callback or private state is changed.
+            if "Getting started" not in frame_text(snapshot):
+                return snapshot
+            lines = frame_text(snapshot).splitlines()
+            candidates = [(line.index("✕") + 1, row + 1) for row, line in enumerate(lines) if "Getting started" in line and "✕" in line]
+            if len(candidates) != 1:
+                raise RuntimeError("The native onboarding close button is not unambiguously visible.")
+            column, row = candidates[0]
+            relay = fixture / "relay"
+            temporary = Path(str(relay) + ".request.tmp")
+            temporary.write_text(json.dumps({"id": 1, "type": "close-native-onboarding", "column": column, "row": row}))
+            temporary.replace(Path(str(relay) + ".request.json"))
+            started = time.monotonic()
+            response = Path(str(relay) + ".response.json")
+            while not response.exists():
+                if time.monotonic() - started > 10:
+                    raise RuntimeError("The owned native PTY did not acknowledge the onboarding close click.")
+                time.sleep(0.025)
+            receipt = json.loads(response.read_text())
+            if receipt.get("id") != 1 or not receipt.get("ok"):
+                raise RuntimeError("Unexpected design input acknowledgement.")
+            closed = until(lambda current: "Getting started" not in frame_text(current))
+            report["designOnboardingInput"] = receipt
+            report["checks"].append("Native onboarding closes through its observed button and the owned PTY input relay.")
+            return closed
+
         def capture(name, snapshot, expected_text):
             path = output / (name + ".png")
             # The TUI frame assertion can precede Terminal.app's final window paint.
@@ -637,9 +687,12 @@ def main():
             "Stock OpenCode loaded the actual sidebar plugin in Terminal.app.",
             "Synthetic sessions rendered in the native session route.",
         ])
+        expected_title = "Preparar la próxima versión" if arguments.design else "Synthetic Alpha"
+        if arguments.design and snapshot["frame"]["width"] < 140:
+            raise Blocked("The approved-design fixture requires the wide native sidebar; Browse is not substitute evidence.")
         if snapshot["frame"]["width"] >= 140:
             snapshot = until(lambda current:
-                "Active session:" in frame_text(current) and "Synthetic Alpha" in frame_text(current)
+                "Active session:" in frame_text(current) and expected_title in frame_text(current)
             )
             active_id = snapshot["initialIds"][0]
             identifiers = {node["id"] for node in snapshot["geometry"]}
@@ -648,7 +701,7 @@ def main():
             if "sidebar-session-" + active_id + "-completion" not in identifiers:
                 raise RuntimeError("The active row's direct completion control is absent.")
             report["checks"].append("The active row omits its ellipsis and retains the completion control.")
-            initial_capture = "macos-terminal-sidebar"
+            initial_capture = "macos-approved-design" if arguments.design else "macos-terminal-sidebar"
         else:
             request("command", command="sessions-sidebar.browse")
             snapshot = until(lambda current: current["dialogDepth"] > 0 and "Synthetic Alpha" in frame_text(current))
@@ -656,17 +709,33 @@ def main():
             report["limitations"].append("Terminal resize was not established at 140 columns; this macOS pilot covers Browse and icons, not wide-sidebar row geometry.")
             initial_capture = "macos-terminal-browse"
         phase = "window-capture"
+        if arguments.design:
+            snapshot = close_design_onboarding(snapshot)
         report["nativeOnboardingVisible"] = "Getting started" in frame_text(snapshot)
         report["visibleGroupLabels"] = [name for name in ("Later", "Pinned sessions", "Other sessions") if name in frame_text(snapshot)]
         if report["nativeOnboardingVisible"]:
             report["limitations"].append("Native Getting started remains visible; its panel can reduce the sidebar viewport. No host onboarding state was edited.")
-        capture(initial_capture, snapshot, "Synthetic Alpha")
-        phase = "icon-dialog"
-        request("command", command="sessions-sidebar.check-icons")
-        snapshot = until(lambda current: "Check sidebar icons" in frame_text(current))
-        phase = "window-capture"
-        capture("macos-terminal-icon-dialog", snapshot, "Check sidebar icons")
-        report["checks"].append("The actual icon comparison dialog opened through its public command.")
+        if arguments.design:
+            snapshot = until(lambda current: any(node["id"] == "sidebar-child-" + current["design"]["ids"]["backend"] and node["height"] == 1 for node in current["geometry"]))
+            design_frame = output / "approved-design-frame.json"
+            design_frame.write_text(json.dumps(snapshot, indent=2) + "\n")
+            result = run([bun, "scripts/check-sidebar-design.ts", str(design_frame)], cwd=repo, timeout=20, required=False)
+            if result.returncode:
+                # Keep the actual pixels even when semantic/layout assertions fail.
+                capture("macos-approved-design-failed", snapshot, expected_title)
+                raise RuntimeError("Approved-design geometry/color checks failed: " + result.stderr[-3000:])
+            report["designAcceptance"] = json.loads(result.stdout)
+            report["checks"].extend(report["designAcceptance"]["checks"])
+            if snapshot["design"]["productSha256"] != report["sourceHashes"]["dist/tui.js"]:
+                raise RuntimeError("Design wrapper did not render the measured product binary.")
+        capture(initial_capture, snapshot, expected_title)
+        if not arguments.design:
+            phase = "icon-dialog"
+            request("command", command="sessions-sidebar.check-icons")
+            snapshot = until(lambda current: "Check sidebar icons" in frame_text(current))
+            phase = "window-capture"
+            capture("macos-terminal-icon-dialog", snapshot, "Check sidebar icons")
+            report["checks"].append("The actual icon comparison dialog opened through its public command.")
         for source_path, expected_hash in report["sourceHashes"].items():
             if hashlib.sha256((repo / source_path).read_bytes()).hexdigest() != expected_hash:
                 raise RuntimeError("A measured source or plugin changed while the pilot was running.")

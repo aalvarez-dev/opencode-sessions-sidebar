@@ -36,10 +36,13 @@ describe("portable icon catalog", () => {
     expect(iconAnimations.checking.ascii.frames).toEqual(["..."]);
   });
 
-  test("font coverage includes every animated cell and all five private-use control glyphs", () => {
+  test("font coverage includes animated cells, compact trees, and private-use controls", () => {
     const points = iconCodepoints();
     expect([...points]).toEqual([...new Set(points)].sort((a, b) => a - b));
-    for (const point of [0x21bb, 0x2801, 0x280f, 0x2824, 0xeba0, 0xeb2b, 0xf4e3, 0xf451, 0xf48e])
+    for (const point of [
+      0x21bb, 0x2502, 0x2514, 0x251c, 0x2801, 0x280f, 0x2824, 0xeba0, 0xeb2b, 0xf4ab, 0xf43a,
+      0xf48e,
+    ])
       expect(points).toContain(point);
     expect(iconCodepoints("unicode")).not.toContain(0xeba0);
     expect(iconCodepoints("nerd")).toContain(0xeba0);
@@ -47,6 +50,17 @@ describe("portable icon catalog", () => {
     expect(Object.isFrozen(points)).toBe(true);
     expect(Object.isFrozen(iconCatalog.pinActive.nerd)).toBe(true);
     expect(Object.isFrozen(iconAnimations.busy.nerd.frames)).toBe(true);
+  });
+
+  test("the Later clock and compact tree retain distinct states in the font and fallback", () => {
+    expect(iconGlyph("laterActive", "nerd")).toBe("\uF4AB");
+    expect(iconGlyph("laterInactive", "nerd")).toBe("\uF43A");
+    for (const mode of iconModes) {
+      expect(iconGlyph("laterActive", mode)).not.toBe(iconGlyph("laterInactive", mode));
+      expect(iconGlyph("treeBranch", mode)).not.toBe(iconGlyph("treeLast", mode));
+      for (const name of ["treeBranch", "treeLast", "treeVertical"] as const)
+        expect(iconCatalog[name][mode].cells).toBe(1);
+    }
   });
 
   test("the visual proof aligns columns and includes the last frame of each animation", () => {

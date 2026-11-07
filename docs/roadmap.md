@@ -77,6 +77,14 @@ review. The [isolated campaign](isolated-terminal-validation.md) describes prove
 run-specific results are attached to the validation PR. There is no universal-terminal or Ghostty
 acceptance claim, and an SSE-only fault with healthy HTTP remains outside the health fallback.
 
+The November 7 visual alignment work uses the [approved design contract](visual-design.md): an
+inline creation header, compact live-subagent trees, default active expansion with explicit user
+choices, counted nonempty groups, aligned completion action and a verified clock icon family. A
+shared, explicitly synthetic design fixture exercises the unchanged built product inside stock
+OpenCode on Linux and macOS. This is presentation evidence only; native execution/attention checks
+remain independent. Revised-build pixel review is pending and does not close the outstanding
+rendered RSS release gate.
+
 ## Required runtime scenarios
 
 - Mark/unmark an idle session; restart and recover the correct state.
