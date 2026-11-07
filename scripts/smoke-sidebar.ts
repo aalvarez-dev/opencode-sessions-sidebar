@@ -5,6 +5,7 @@ import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from
 import { arch, cpus, release, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { iconGlyph } from "../src/ui/icons";
 import { startGraphicalTerminal, type GraphicalTerminal } from "./lib/graphical-terminal";
 
 const expectedVersion = "1.18.30";
@@ -91,6 +92,7 @@ const sourceFiles = [
   "src/ui/viewport.ts",
   "src/ui/motion.ts",
   "src/ui/icons.ts",
+  "src/ui/colors.ts",
   "src/extensions/runtime.ts",
   "src/extensions/types.ts",
   "src/adapters/opencode-v1/completion-capabilities.ts",
@@ -738,11 +740,8 @@ throw new Error("Disabled modules must never be imported");`,
   );
   await capture("wide-organized", "dark", "ascii");
   if (graphical) {
-    for (const [mode, pin] of [
-      ["nerd", "\uEBA0"],
-      ["unicode", "◆"],
-      ["ascii", "P"],
-    ] as const) {
+    for (const mode of ["nerd", "unicode", "ascii"] as const) {
+      const pin = iconGlyph("pinActive", mode);
       await request("command", { command: "sessions-sidebar.settings" });
       await until((snapshot) => snapshot.dialogDepth > 0, "Icon settings did not open.");
       input(`Icons: ${mode}\r`);

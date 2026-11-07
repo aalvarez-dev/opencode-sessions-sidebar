@@ -76,6 +76,17 @@ and exits between snapshots can be missed entirely. Matched thread CPU is theref
 attribution, never an alternative process total or a passing resource receipt. Reading these files
 also adds diagnostic overhead in the parent process. This mode does not evaluate acceptance.
 
+The diagnostic trace additionally parses `RssAnon`, `RssFile`, `RssShmem` and `VmSwap` from the
+`/proc/<pid>/status` content already read for each process sample. This adds no filesystem reads and
+does not change sample cadence. Kernel `kB` counts are recorded as KiB and converted to MiB; zero is
+a measured value, while missing, malformed or duplicate fields explicitly remain unavailable. No
+memory-breakdown parsing runs in either acceptance mode. The pure parser is included in source
+hashes. These counters distinguish anonymous, file-backed and shared resident memory; swap is
+separate from RSS. They do not identify a JavaScript object, native allocation or worker as the
+owner, and their sum need not match the separately sampled aggregate RSS exactly. No heap snapshot,
+forced garbage collection, extra stabilization interval or budget change is introduced by this
+diagnostic.
+
 ## Scope and remaining limits
 
 ### Additional delayed-start gate

@@ -11,6 +11,7 @@ import {
 } from "solid-js";
 import { RGBA, type Renderable, type ScrollBoxRenderable } from "@opentui/core";
 import { createSidebarMotion } from "./motion";
+import { readableMutedColor } from "./colors";
 import { EndLabel as MeasuredEndLabel, type EndLabelProps } from "./end-label";
 import {
   createSidebarViewport,
@@ -640,34 +641,48 @@ export function SidebarView(props: {
 }) {
   const c = props.controller;
   const theme = () => props.api.theme.current;
+  const muted = createMemo(() =>
+    readableMutedColor(theme().textMuted, theme().text, theme().backgroundPanel),
+  );
   const motion = createSidebarMotion(props.api.renderer);
   onCleanup(motion.dispose);
   const viewport = createSidebarViewport(props.api.renderer);
   onCleanup(viewport.dispose);
   const symbol = (name: IconName) => iconGlyph(name, c.icons());
   // Derived from the host palette; retry stays distinct from a terminal error.
-  const retryColor = () =>
+  const retryColor = createMemo(() =>
     RGBA.fromValues(
       (theme().warning.r * 2 + theme().error.r) / 3,
       (theme().warning.g * 2 + theme().error.g) / 3,
       (theme().warning.b * 2 + theme().error.b) / 3,
-    );
-  const mutedIcon = () => theme().textMuted;
+    ),
+  );
   const rowGap = () => (c.density() === "compact" ? 0 : c.density() === "comfortable" ? 2 : 1);
-  const contextValue = (field: ContextField) => {
-    const value = c.context()[field];
-    if (!value) return "Unavailable";
-    return safeLabel(
-      field === "repository" ? (value.split(/[\\/]/).filter(Boolean).at(-1) ?? value) : value,
-    );
-  };
+  // This adapter exposes one public project context, shared by every loaded row.
+  // Normalize it once per host change instead of splitting paths for each label.
+  const contextValues = createMemo(() => {
+    const context = c.context();
+    const label = (field: ContextField) => {
+      const value = context[field];
+      if (!value) return "Unavailable";
+      return safeLabel(
+        field === "repository" ? (value.split(/[\\/]/).filter(Boolean).at(-1) ?? value) : value,
+      );
+    };
+    return {
+      repository: label("repository"),
+      branch: label("branch"),
+      worktree: label("worktree"),
+    };
+  });
+  const contextValue = (field: ContextField) => contextValues()[field];
   const agentColor = (name?: string) => {
     const color = name && props.api.state.config.agent?.[name]?.color;
-    if (!color) return theme().textMuted;
+    if (!color) return muted();
     if (/^#[0-9a-f]{6}$/i.test(color)) return color;
     if (["primary", "secondary", "accent", "error", "warning", "success", "info"].includes(color))
       return theme()[color as "primary"];
-    return theme().textMuted;
+    return muted();
   };
   const summaryLabel = (row: { summary: SidebarRow["summary"] }) => {
     const s = row.summary;
@@ -824,7 +839,7 @@ export function SidebarView(props: {
             paddingLeft={3}
             onMouseUp={() => c.open(p.line.row.session.id)}
           >
-            <text fg={theme().textMuted} flexShrink={0}>
+            <text fg={muted()} flexShrink={0}>
               {guide()}
             </text>
             <StatusGlyph row={p.line.row} id={`sidebar-child-${p.line.row.session.id}-status`} />
@@ -834,7 +849,7 @@ export function SidebarView(props: {
               text={label()}
             />
             <Show when={p.line.promoted}>
-              <text fg={theme().textMuted} flexShrink={0}>
+              <text fg={muted()} flexShrink={0}>
                 {" "}
                 {symbol("promoted")} {promotedGroup()}
               </text>
@@ -886,13 +901,15 @@ export function SidebarView(props: {
             gap={1}
           >
             <text
-              fg={row().pinned ? theme().text : mutedIcon()}
+              id={`sidebar-session-${row().session.id}-pin`}
+              fg={row().pinned ? theme().text : muted()}
               onMouseUp={stop(() => props.actions.quick(row().session.id, "pin"))}
             >
               {row().pinned ? symbol("pinActive") : symbol("pinInactive")}
             </text>
             <text
-              fg={row().later ? theme().text : mutedIcon()}
+              id={`sidebar-session-${row().session.id}-later`}
+              fg={row().later ? theme().text : muted()}
               onMouseUp={stop(() => props.actions.quick(row().session.id, "later"))}
             >
               {row().later ? symbol("laterActive") : symbol("laterInactive")}
@@ -911,7 +928,7 @@ export function SidebarView(props: {
               fg={agentColor(row().session.agent)}
               text={row().session.agent ? `[${safeLabel(row().session.agent ?? "")}]` : ""}
             />
-            <text fg={theme().textMuted} flexShrink={0}>
+            <text id={`sidebar-session-${row().session.id}-age`} fg={muted()} flexShrink={0}>
               {age(row().session.updatedAt)}
             </text>
             <text
@@ -924,7 +941,7 @@ export function SidebarView(props: {
             <Show when={!p.active}>
               <text
                 id={`sidebar-session-${row().session.id}-menu`}
-                fg={theme().textMuted}
+                fg={muted()}
                 flexShrink={0}
                 onMouseUp={stop(() => props.actions.session(row().session.id))}
               >
@@ -955,9 +972,7 @@ export function SidebarView(props: {
                 {(field) => (
                   <text
                     id={`sidebar-session-${row().session.id}-context-select-${contextSymbols[field]}`}
-                    fg={
-                      c.contextField(row().session.id) === field ? theme().text : theme().textMuted
-                    }
+                    fg={c.contextField(row().session.id) === field ? theme().text : muted()}
                     flexShrink={0}
                     onMouseUp={stop(() => c.selectContext(row().session.id, field))}
                   >
@@ -966,7 +981,8 @@ export function SidebarView(props: {
                 )}
               </For>
               <EndLabel
-                fg={theme().textMuted}
+                id={`sidebar-session-${row().session.id}-context-value`}
+                fg={muted()}
                 text={" " + contextValue(c.contextField(row().session.id))}
                 onMouseUp={stop(() => props.actions.details(row().session.id))}
               />
@@ -980,11 +996,11 @@ export function SidebarView(props: {
                 <For each={contextFields}>
                   {(field) => (
                     <box flexDirection="row" height={1}>
-                      <text fg={theme().textMuted} flexShrink={0}>
+                      <text fg={muted()} flexShrink={0}>
                         [{contextSymbols[field]}]{" "}
                       </text>
                       <EndLabel
-                        fg={theme().textMuted}
+                        fg={muted()}
                         text={contextValue(field)}
                         onMouseUp={stop(() => props.actions.details(row().session.id))}
                       />
@@ -1090,9 +1106,7 @@ export function SidebarView(props: {
         <Show
           when={c.activeRow()}
           fallback={
-            <text fg={theme().textMuted}>
-              {c.connecting() ? "Loading sessions…" : "No active session"}
-            </text>
+            <text fg={muted()}>{c.connecting() ? "Loading sessions…" : "No active session"}</text>
           }
         >
           {(row: Accessor<SidebarRow>) => <WindowedRow row={row()} active />}

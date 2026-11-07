@@ -40,12 +40,12 @@ describe("portable icon catalog", () => {
     const points = iconCodepoints();
     expect([...points]).toEqual([...new Set(points)].sort((a, b) => a - b));
     for (const point of [
-      0x21bb, 0x2502, 0x2514, 0x251c, 0x2801, 0x280f, 0x2824, 0xea7c, 0xeab2, 0xeba0, 0xeb2b,
-      0xf4ab, 0xf43a, 0xf48e,
+      0x21bb, 0x2502, 0x2514, 0x251c, 0x2801, 0x280f, 0x2824, 0xea7c, 0xeab2, 0xf0403, 0xf0931,
+      0xf0954, 0xf0150, 0xf0a7a,
     ])
       expect(points).toContain(point);
-    expect(iconCodepoints("unicode")).not.toContain(0xeba0);
-    expect(iconCodepoints("nerd")).toContain(0xeba0);
+    expect(iconCodepoints("unicode")).not.toContain(0xf0403);
+    expect(iconCodepoints("nerd")).toContain(0xf0403);
     expect(iconCodepoints("nerd")).not.toContain(0x231b);
     expect(iconCodepoints("nerd")).not.toContain(0x2713);
     expect(iconCodepoints("nerd")).not.toContain(0x2026);
@@ -54,10 +54,13 @@ describe("portable icon catalog", () => {
     expect(Object.isFrozen(iconAnimations.busy.nerd.frames)).toBe(true);
   });
 
-  test("the Later clock and compact tree retain distinct states in the font and fallback", () => {
-    expect(iconGlyph("laterActive", "nerd")).toBe("\uF4AB");
-    expect(iconGlyph("laterInactive", "nerd")).toBe("\uF43A");
+  test("pin, Later clock and compact tree retain distinct states in the font and fallback", () => {
+    expect(iconGlyph("pinActive", "nerd")).toBe("\u{F0403}");
+    expect(iconGlyph("pinInactive", "nerd")).toBe("\u{F0931}");
+    expect(iconGlyph("laterActive", "nerd")).toBe("\u{F0954}");
+    expect(iconGlyph("laterInactive", "nerd")).toBe("\u{F0150}");
     for (const mode of iconModes) {
+      expect(iconGlyph("pinActive", mode)).not.toBe(iconGlyph("pinInactive", mode));
       expect(iconGlyph("laterActive", mode)).not.toBe(iconGlyph("laterInactive", mode));
       expect(iconGlyph("treeBranch", mode)).not.toBe(iconGlyph("treeLast", mode));
       for (const name of ["treeBranch", "treeLast", "treeVertical"] as const)

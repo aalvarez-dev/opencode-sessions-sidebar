@@ -165,6 +165,51 @@ export function checkDesign(snapshot: DesignSnapshot) {
   checks.push(
     "Completion, independent question status and configured agent colors are visible together.",
   );
+  const luminance = (rgb: readonly number[]) => {
+    assert.equal(rgb.length, 3);
+    const linear = rgb.map((channel) => {
+      const value = channel / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!;
+  };
+  const panel = snapshot.palette.backgroundPanel;
+  assert(panel, "Record the actual host panel color for contrast verification.");
+  const contrast = (rgb: readonly number[]) => {
+    const foreground = luminance(rgb);
+    const background = luminance(panel);
+    return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+  };
+  const normalContrast = contrast(snapshot.palette.text!);
+  for (const key of ["release", "branches", "review", "docs"]) {
+    for (const suffix of ["context-value", "age"]) {
+      const id = `sidebar-session-${ids[key]}-${suffix}`;
+      const color = colorAt(id, content(id));
+      assert(color, `Missing rendered color for ${id}.`);
+      assert(
+        contrast(color) >= Math.min(6, normalContrast) - 0.01,
+        `Secondary ${key} ${suffix} must approach 6:1 contrast on the actual host panel.`,
+      );
+      if (normalContrast > 6.1) assert(contrast(color) < normalContrast);
+    }
+  }
+  for (const [key, suffix, icon, selected] of [
+    ["release", "pin", "pinInactive", false],
+    ["review", "pin", "pinActive", true],
+    ["release", "later", "laterInactive", false],
+    ["branches", "later", "laterActive", true],
+  ] as const) {
+    const id = `sidebar-session-${ids[key]}-${suffix}`;
+    assert.equal(content(id), iconGlyph(icon, "nerd"));
+    assert.equal(node(id).width, 1, "Pin and clock controls must remain one terminal cell.");
+    const color = colorAt(id, iconGlyph(icon, "nerd"));
+    assert(color);
+    if (selected) assert.deepEqual(color, snapshot.palette.text);
+    else assert(contrast(color) >= Math.min(6, normalContrast) - 0.01);
+  }
+  checks.push(
+    "Context, ages and unselected controls retain readable panel contrast; fitted pin/clock states remain distinct.",
+  );
   assert(
     !text.includes("Session data incomplete"),
     "Health warnings must not be hidden in design evidence.",

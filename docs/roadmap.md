@@ -91,6 +91,17 @@ Both RSS medians passed in that campaign. The package remains experimental and u
 resource acceptance and execution correlation still open. See the exact
 [campaign record](sidebar-resource-benchmark.md#november-7-development-merge).
 
+The follow-up visual review distinguishes structural agreement from finishing the presentation. More
+legible one-cell Material pin/clock/trash glyphs and theme-derived secondary contrast are now
+implemented, with font-boundary and dark/light/custom-palette tests. Shared project-context labels
+and retry colors are memoized instead of recalculated per row. Native frame acceptance checks now
+also inspect the actual secondary-text/control colors and distinct pin/clock states. New terminal
+pixel review and unchanged resource gates remain necessary before recording this revision's result.
+The prior PR #9 candidate `852b140` passed functional and graphical checks but failed short
+250-session RSS at +84.4258 MiB versus 64 MiB. Its passing delayed median did not cancel that
+failure; the diagnostic now distinguishes anonymous, file-backed and shared RSS using existing
+process reads.
+
 ## Required runtime scenarios
 
 - Mark/unmark an idle session; restart and recover the correct state.

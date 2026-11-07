@@ -44,11 +44,18 @@ Put the option in the sidebar settings in `tui.json`, following
 [sidebar setup](sidebar-validation.md). A menu selection only lasts for the current activation; put
 your desired initial mode in configuration. Font setup does not silently change the icon mode.
 
-The clock pair is Octicons `clock-fill` (`U+F4AB`) and `clock` (`U+F43A`) from the
+Nerd mode uses Material Design `pin` (`U+F0403`) / `pin-outline` (`U+F0931`), `clock` (`U+F0954`) /
+`clock-outline` (`U+F0150`), and `trash-can-outline` (`U+F0A7A`) from the
 [pinned Nerd Fonts glyph map](https://github.com/ryanoasis/nerd-fonts/blob/fa7b859994228a9c8759f99c55a8d31ee92a1b5e/glyphnames.json).
-The two outlines preserve the active/inactive distinction without depending only on color. The
-compact child tree uses single-cell `├`, `└`, and `│`, with printable ASCII substitutes in ASCII
-mode. Both the controls and tree connectors participate in font coverage and visual cell guides.
+Both pairs preserve the active/inactive distinction without depending only on color. The pin states
+share an upright silhouette: their 832-unit height replaces the previous inactive pin's 346-unit
+horizontal shape. The clock and trash outlines have stronger strokes for small terminal cells. All
+five glyphs fit the original font's 500-unit advance; the file is not rescaled or patched. A
+one-cell circle still has a one-cell diameter, so these choices improve recognition rather than
+claiming the size of the prototype's freely sized vector icons. Actual terminal pixels still need
+review at the configured font size. The compact child tree uses single-cell `├`, `└`, and `│`, with
+printable ASCII substitutes in ASCII mode. Both the controls and tree connectors participate in font
+coverage and visual cell guides.
 
 Nerd mode also uses fitted Codicons for the completion check (`U+EAB2`), menu/truncation ellipsis
 (`U+EA7C`), retry loop (`U+EA77`), and down/right disclosures (`U+EB6E`/`U+EB70`), plus Octicons

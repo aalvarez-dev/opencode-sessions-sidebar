@@ -92,10 +92,9 @@ export default {
         version: api.app.version,
         theme: { mode: api.theme.mode(), selected: api.theme.selected },
         palette: Object.fromEntries(
-          (["text", "textMuted", "success", "warning", "error"] as const).map((name) => [
-            name,
-            api.theme.current[name].toInts().slice(0, 3),
-          ]),
+          (["text", "textMuted", "backgroundPanel", "success", "warning", "error"] as const).map(
+            (name) => [name, api.theme.current[name].toInts().slice(0, 3)],
+          ),
         ),
         route: api.route.current,
         publicContext: { project: project.data, path: api.state.path, vcs: api.state.vcs },

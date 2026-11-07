@@ -18,6 +18,11 @@ import { pathToFileURL } from "node:url";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2";
 import type { ResourceProbeResult } from "./sidebar-resource-probe";
 import {
+  parseProcessMemoryStatus,
+  processMemoryFields,
+  type ProcessMemoryStatus,
+} from "./process-memory-diagnostic";
+import {
   compareThreadSnapshots,
   sampleThreads,
   threadDiagnosticLimits,
@@ -110,6 +115,7 @@ async function hashes() {
     "scripts/benchmark-sidebar-runtime.ts",
     "scripts/sidebar-resource-probe.ts",
     "scripts/thread-cpu-diagnostic.ts",
+    "scripts/process-memory-diagnostic.ts",
   ];
   async function visit(directory: string) {
     for (const entry of await readdir(join(repository, directory), { withFileTypes: true })) {
@@ -145,7 +151,12 @@ async function sample(pid: number, pageSize: number) {
     Number(status.match(/^voluntary_ctxt_switches:\s+(\d+)/m)?.[1]) +
     Number(status.match(/^nonvoluntary_ctxt_switches:\s+(\d+)/m)?.[1]);
   assert([ticks, rssMiB, switches].every(Number.isFinite), "Invalid process counters.");
-  return { ticks, rssMiB, switches };
+  return {
+    ticks,
+    rssMiB,
+    switches,
+    ...(diagnostic ? { memory: parseProcessMemoryStatus(status) } : {}),
+  };
 }
 
 interface Measurement {
@@ -166,6 +177,7 @@ interface Measurement {
     rssMiB: number;
     mainThreadContextSwitches: number;
     threads: ThreadSnapshot;
+    memory: ProcessMemoryStatus;
     threadCpu?: ReturnType<typeof compareThreadSnapshots>;
   }[];
   lifecycleStatus: "pending" | "passed" | "failed";
@@ -256,6 +268,11 @@ try {
               "Matched TID/start-time identities only; transient or unreadable threads can be missed.",
             overhead:
               "Parent reads task stat files once per second; profiled results are not acceptance evidence.",
+          },
+          memoryDiagnostic: {
+            fields: processMemoryFields,
+            source: "Existing process status read; no additional filesystem reads.",
+            scope: "Process memory categories, not attribution to a plugin, worker or allocation.",
           },
         }
       : {}),
@@ -393,6 +410,7 @@ try {
         let diagnosticFinishedAt: number | undefined;
         const trace: NonNullable<Measurement["trace"]> = [];
         if (diagnostic) {
+          assert(before.memory, "Missing diagnostic memory counters.");
           let previous = before;
           let previousAt = performance.now();
           let previousThreads = await sampleThreads(ready.procPid, started);
@@ -403,6 +421,7 @@ try {
             rssMiB: before.rssMiB,
             mainThreadContextSwitches: 0,
             threads: previousThreads,
+            memory: before.memory,
           });
           for (let index = 0; index < 30; index++) {
             lifetime.signal.throwIfAborted();
@@ -412,6 +431,7 @@ try {
             diagnosticFinishedAt = now;
             const intervalMs = now - previousAt;
             const threads = await sampleThreads(ready.procPid, started);
+            assert(after.memory, "Missing diagnostic memory counters.");
             trace.push({
               elapsedMs: now - started,
               intervalMs,
@@ -419,6 +439,7 @@ try {
               rssMiB: after.rssMiB,
               mainThreadContextSwitches: after.switches - previous.switches,
               threads,
+              memory: after.memory,
               threadCpu: compareThreadSnapshots(previousThreads, threads, clockTicks),
             });
             previous = after;
