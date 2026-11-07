@@ -4,6 +4,11 @@ This handoff describes the frozen `a4d3bb6` candidate. A later
 [row-container optimization](windowed-row-containers.md) changes the runtime hash and still fails
 short-window CPU acceptance. Do not use the hashes below for that later build.
 
+The subsequent [quiet-health build](quiet-transport-health.md) has a different runtime identity
+again and passes its local short, delayed and sustained comparisons, but fails hosted delayed RSS.
+This frozen handoff does not describe that build; consult its own report before planning a new
+integration trial.
+
 **Prepared for an isolated integration trial, not approved as stable V1.** The package remains
 private at `0.1.0-dev.0`; identify this candidate by its source revision and hashes, not that shared
 development version string. No npm release or deployment is performed by these instructions.

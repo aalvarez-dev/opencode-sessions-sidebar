@@ -187,7 +187,7 @@ installation or public package release has been performed.
 
 Top-level groups now mount only nearby row containers, retaining complete scroll geometry through
 prefix heights and spacers. The 250-session fixture retains five row containers instead of 250;
-native navigation and attention remain available. Original short-window CPU acceptance still fails,
+native navigation and attention remain available. Its original short-window CPU acceptance failed,
 despite a passing delayed window. See [the optimization report](windowed-row-containers.md) and its
 machine-readable measurements. No session cap or feature restriction was introduced; stable V1 and
 combined-harness integration remain blocked.
@@ -198,6 +198,11 @@ real requests added +1.4786 and +0.9068 CPU points within their respective proce
 [health crossover](health-crossover-diagnostic.md). The owner subsequently accepted slower silent
 disconnect detection to prioritize idle performance. The
 [quiet health cadence](quiet-transport-health.md) now waits 60 seconds while healthy and 15 seconds
-after a known failure, preserving the two-second deadline and immediate native events. Unit and
-integration regressions pass; native resource and transport validation are in progress. Neither this
-decision nor prior passing campaigns close the new candidate's resource gates.
+after a known failure, preserving the two-second deadline and immediate native events. All 233 tests
+pass. The new local short/delayed resource gates and sustained observation pass; the latter covers
+three real health calls with zero extra frames. Stock OpenCode 1.19.3 passes eleven native
+attach/cut/recovery/restart checks. Hosted CI, container, graphical, short-resource and sustained
+checks pass, but hosted delayed RSS fails at +80.6641 MiB against the unchanged +64 MiB limit. Those
+failed samples finish before the first health request; further spacing cannot address their
+pre-probe memory difference. Allocation ownership remains unresolved. No cap, forced GC or budget
+relaxation was introduced. The PR remains draft and stable resource acceptance remains blocked.

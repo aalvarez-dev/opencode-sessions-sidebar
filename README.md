@@ -47,10 +47,13 @@ public release or a guarantee about every terminal's active font.
 
 The [row-container optimization](docs/windowed-row-containers.md) reduces the render tree; its
 short-window CPU acceptance failed. The latest
-[quiet health cadence](docs/quiet-transport-health.md) reduces background requests and is undergoing
-native resource validation. No session cap or feature restriction was introduced. The
-[V1 integration candidate](docs/v1-integration-candidate.md) describes the preceding frozen trial
-build; its hashes do not identify this newer optimization. Neither is stable release approval.
+[quiet health cadence](docs/quiet-transport-health.md) reduces background requests and passes its
+local short, delayed and sustained resource comparisons. Hosted delayed RSS still fails at +80.66
+MiB against the +64 MiB limit, so resource acceptance remains open. Native disconnect/recovery
+passes on OpenCode 1.19.3; full harness integration remains pending. No session cap or feature
+restriction was introduced. The [V1 integration candidate](docs/v1-integration-candidate.md)
+describes the preceding frozen trial build; its hashes do not identify this newer optimization.
+Neither is stable release approval.
 
 ## Intended behavior
 

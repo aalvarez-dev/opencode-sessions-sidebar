@@ -1,0 +1,1020 @@
+{
+  "schema": 1,
+  "codeCommit": "694868192447a93e3411f3666da344921948732c",
+  "runtimeSha256": "4ba1671d7074735ebb604f41be2b8a3ef2064db5d51c4b19c6a1a52f96899b57",
+  "policy": {
+    "healthyMs": 60000,
+    "unavailableMs": 15000,
+    "timeoutMs": 2000
+  },
+  "check": {
+    "passed": true,
+    "tests": 233,
+    "assertions": 26462
+  },
+  "protocol": {
+    "runtimeSha256": "4ba1671d7074735ebb604f41be2b8a3ef2064db5d51c4b19c6a1a52f96899b57",
+    "order": ["short", "delayed", "sustained", "remote-1.19.3"],
+    "retries": 0,
+    "resourceHost": "1.18.30",
+    "budgets": {
+      "rssMiB": 64,
+      "cpuPoints": 1
+    },
+    "short": {
+      "sessions": [25, 250],
+      "pairs": 3,
+      "settleMs": 2000,
+      "observeMs": 5000
+    },
+    "delayed": {
+      "sessions": [250],
+      "pairs": 3,
+      "settleMs": 20000,
+      "observeMs": 10000
+    },
+    "sustained": {
+      "sessions": [250],
+      "pairs": 1,
+      "settleMs": 20000,
+      "observeMs": 210000,
+      "minimumRealHealthRequests": 3
+    },
+    "transport": {
+      "healthyMs": 60000,
+      "unavailableMs": 15000,
+      "timeoutMs": 2000
+    },
+    "limitations": [
+      "Shared hardware, no confidence interval or universal performance guarantee",
+      "Short windows do not establish health-request cost; sustained window required",
+      "Keep failures; no rerun to green; no changed resource thresholds"
+    ]
+  },
+  "local": {
+    "short": {
+      "kind": "acceptance-comparison",
+      "completed": true,
+      "passed": true,
+      "acceptanceEvaluated": true,
+      "budgets": {
+        "medianRssDeltaMiB": 64,
+        "medianCpuDeltaPoints": 1
+      },
+      "results": [
+        {
+          "sessions": 25,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": 48.2578125,
+              "cpuPoints": 0.20028500350681444
+            },
+            {
+              "repetition": 2,
+              "rssMiB": -7.96875,
+              "cpuPoints": 0.20028635986549403
+            },
+            {
+              "repetition": 3,
+              "rssMiB": 9.1015625,
+              "cpuPoints": -0.19977687307669378
+            }
+          ],
+          "medianRssDeltaMiB": 9.1015625,
+          "medianCpuDeltaPoints": 0.20028500350681444,
+          "passed": true
+        },
+        {
+          "sessions": 250,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": 49.12109375,
+              "cpuPoints": -0.2002665568425972
+            },
+            {
+              "repetition": 2,
+              "rssMiB": 0.48828125,
+              "cpuPoints": -0.20012118861979755
+            },
+            {
+              "repetition": 3,
+              "rssMiB": 40.7421875,
+              "cpuPoints": 0.00033552741809339537
+            }
+          ],
+          "medianRssDeltaMiB": 40.7421875,
+          "medianCpuDeltaPoints": -0.20012118861979755,
+          "passed": true
+        }
+      ],
+      "failure": null,
+      "framesWhileReadyAndMeasuring": [
+        {
+          "sessions": 25,
+          "repetition": 1,
+          "enabled": false,
+          "frames": 2
+        },
+        {
+          "sessions": 25,
+          "repetition": 1,
+          "enabled": true,
+          "frames": 1
+        },
+        {
+          "sessions": 25,
+          "repetition": 2,
+          "enabled": true,
+          "frames": 2
+        },
+        {
+          "sessions": 25,
+          "repetition": 2,
+          "enabled": false,
+          "frames": 3
+        },
+        {
+          "sessions": 25,
+          "repetition": 3,
+          "enabled": false,
+          "frames": 3
+        },
+        {
+          "sessions": 25,
+          "repetition": 3,
+          "enabled": true,
+          "frames": 0
+        },
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": false,
+          "frames": 3
+        },
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": true,
+          "frames": 0
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": true,
+          "frames": 0
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": false,
+          "frames": 3
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": false,
+          "frames": 2
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": true,
+          "frames": 0
+        }
+      ],
+      "sourceHashesMatchCodeCommit": true
+    },
+    "delayed": {
+      "kind": "delayed-acceptance-comparison",
+      "completed": true,
+      "passed": true,
+      "acceptanceEvaluated": true,
+      "budgets": {
+        "medianRssDeltaMiB": 64,
+        "medianCpuDeltaPoints": 1
+      },
+      "results": [
+        {
+          "sessions": 250,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": -4.6875,
+              "cpuPoints": 0.0998178354407131
+            },
+            {
+              "repetition": 2,
+              "rssMiB": 6.15625,
+              "cpuPoints": 1.9997694932923662
+            },
+            {
+              "repetition": 3,
+              "rssMiB": 15.8203125,
+              "cpuPoints": -1.9001418467996976
+            }
+          ],
+          "medianRssDeltaMiB": 6.15625,
+          "medianCpuDeltaPoints": 0.0998178354407131,
+          "passed": true
+        }
+      ],
+      "failure": null,
+      "framesWhileReadyAndMeasuring": [
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": false,
+          "frames": 3
+        },
+        {
+          "sessions": 250,
+          "repetition": 1,
+          "enabled": true,
+          "frames": 0
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": true,
+          "frames": 0
+        },
+        {
+          "sessions": 250,
+          "repetition": 2,
+          "enabled": false,
+          "frames": 2
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": false,
+          "frames": 2
+        },
+        {
+          "sessions": 250,
+          "repetition": 3,
+          "enabled": true,
+          "frames": 0
+        }
+      ],
+      "sourceHashesMatchCodeCommit": true
+    },
+    "sustained": {
+      "completed": true,
+      "acceptanceEvaluated": false,
+      "protocol": {
+        "sessions": 250,
+        "pairs": 1,
+        "order": ["baseline", "sidebar"],
+        "settleMs": 20000,
+        "observationMs": 210000,
+        "requiredHealthyCallsInWindow": 3,
+        "referenceBudgets": {
+          "rssMiB": 64,
+          "cpuPoints": 1
+        },
+        "retries": 0
+      },
+      "runtimeSha256": "4ba1671d7074735ebb604f41be2b8a3ef2064db5d51c4b19c6a1a52f96899b57",
+      "limitations": [
+        "Single long-window pair with parent thread sampling; not repeatability or original acceptance.",
+        "Health wrapper forwards the original SDK method and records bounded timings in memory.",
+        "No telemetry writes until after measurement. No fake health, forced GC or session cap.",
+        "A passing long window cannot supersede a failed original short/delayed campaign."
+      ],
+      "wrapperSha256": "a8f16d359c30885fd457e2b27210126aec35e5bfebd96dd06939c3afe55a84d3",
+      "health": {
+        "activation": 1,
+        "outsideMeasurement": true,
+        "calls": [
+          {
+            "startedEpochMs": 1794083232508.2026,
+            "durationMs": 1.6854870000024675,
+            "healthy": true
+          },
+          {
+            "startedEpochMs": 1794083292514.5889,
+            "durationMs": 1.3554609999991953,
+            "healthy": true
+          },
+          {
+            "startedEpochMs": 1794083352521.376,
+            "durationMs": 1.5089670000015758,
+            "healthy": true
+          }
+        ],
+        "dropped": 0
+      },
+      "healthCallsInWindow": 3,
+      "results": [
+        {
+          "sessions": 250,
+          "deltas": [
+            {
+              "repetition": 1,
+              "rssMiB": -0.703125,
+              "cpuPoints": 0.22815073572817068
+            }
+          ],
+          "medianRssDeltaMiB": -0.703125,
+          "medianCpuDeltaPoints": 0.22815073572817068
+        }
+      ],
+      "referenceBudgetsMet": true,
+      "processes": [
+        {
+          "enabled": false,
+          "cpuPercent": 2.136768199648352,
+          "rssStartMiB": 609.91796875,
+          "rssEndMiB": 604.953125,
+          "observationMs": 210598.41684000002,
+          "readyToObservationMs": 20000.469113000003,
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": false,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 78.8523588180542,
+              "heapTotalMiB": 70.0244140625,
+              "externalMiB": 30.61270046234131,
+              "arrayBuffersMiB": 5.70949649810791
+            },
+            "finalFrame": {
+              "renderables": 172,
+              "textBufferRenderables": 79,
+              "mountedSessionRows": 0,
+              "sessionRowShells": 0,
+              "heapUsedMiB": 63.248958587646484,
+              "heapTotalMiB": 60.59765625,
+              "externalMiB": 13.828227996826172,
+              "arrayBuffersMiB": 0.12940216064453125
+            },
+            "lifecycle": [],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 3
+          }
+        },
+        {
+          "enabled": true,
+          "cpuPercent": 2.3649189353765228,
+          "rssStartMiB": 659.09765625,
+          "rssEndMiB": 604.25,
+          "observationMs": 210578.042465,
+          "readyToObservationMs": 20000.459642,
+          "probe": {
+            "passed": true,
+            "initialFrame": {
+              "sidebarVisible": true,
+              "hostSessionVisible": true,
+              "selectedSession": true,
+              "width": 140,
+              "height": 40,
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 82.8712043762207,
+              "heapTotalMiB": 70.8623046875,
+              "externalMiB": 33.05006790161133,
+              "arrayBuffersMiB": 5.356788635253906
+            },
+            "finalFrame": {
+              "renderables": 331,
+              "textBufferRenderables": 147,
+              "mountedSessionRows": 5,
+              "sessionRowShells": 5,
+              "heapUsedMiB": 87.86414813995361,
+              "heapTotalMiB": 62.5556640625,
+              "externalMiB": 33.49680805206299,
+              "arrayBuffersMiB": 5.357044219970703
+            },
+            "lifecycle": [
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 102.56850100000156
+              },
+              {
+                "deactivated": true,
+                "reactivated": true,
+                "activationMs": 92.05550200000289
+              }
+            ],
+            "measurementAcknowledged": true,
+            "readyThroughMeasurementFrames": 0,
+            "viewport": {
+              "totalRows": 250,
+              "mountedAtTop": 5,
+              "mountedAtBottom": 8,
+              "returnedToTop": true
+            }
+          }
+        }
+      ]
+    },
+    "remote": {
+      "status": "passed",
+      "version": "1.19.3",
+      "budgets": {
+        "totalMs": 240000,
+        "outageMs": 70000,
+        "reconnectMs": 35000,
+        "liveEventMs": 2000,
+        "observerResponseMs": 2000
+      },
+      "checks": [
+        {
+          "name": "stock attach loads the sidebar against a separate server and local client profile",
+          "status": "passed"
+        },
+        {
+          "name": "mark, pin and Later persist through real attached TUI actions",
+          "status": "passed"
+        },
+        {
+          "name": "local observer remains responsive throughout the real transport cut",
+          "status": "passed"
+        },
+        {
+          "name": "native sidebar marks activity uncertain while disconnected",
+          "status": "passed",
+          "detail": "After 70097 ms without transport, the rendered activity glyph was \"?\"; expected '?'. No invalidation or refresh was injected."
+        },
+        {
+          "name": "offline server changes do not leak through the severed client transport",
+          "status": "passed"
+        },
+        {
+          "name": "annotations are preserved during loss of transport",
+          "status": "passed"
+        },
+        {
+          "name": "native reconnect reconciles missed rename/create/delete without a manual refresh",
+          "status": "passed"
+        },
+        {
+          "name": "annotations survive native transport restoration",
+          "status": "passed"
+        },
+        {
+          "name": "the native event stream reopens after restoring transport",
+          "status": "passed",
+          "detail": "Observed 2 forwarded event subscriptions."
+        },
+        {
+          "name": "restored native events deliver new changes without a refresh",
+          "status": "passed"
+        },
+        {
+          "name": "client restart preserves mark/pin/Later and loads current server state",
+          "status": "passed"
+        }
+      ],
+      "reconnectElapsedMs": 20951.086941,
+      "proxyActivity": {
+        "forwarded": 98,
+        "rejected": 11,
+        "eventStreams": 3,
+        "cuts": 1
+      },
+      "limitations": [
+        "Controlled loopback transport, not SSH or arbitrary WAN behavior.",
+        "No injected adapter invalidation or transport event.",
+        "Automatic completion policies and correlated report exceptions are outside this transport probe.",
+        "Captured renderer buffers are not terminal-pixel screenshots."
+      ]
+    },
+    "execution": [
+      {
+        "name": "short",
+        "exitCode": 0,
+        "elapsedSeconds": 130.49853992462158
+      },
+      {
+        "name": "delayed",
+        "exitCode": 0,
+        "elapsedSeconds": 205.23915147781372
+      },
+      {
+        "name": "sustained",
+        "exitCode": 0,
+        "elapsedSeconds": 471.24960446357727
+      },
+      {
+        "name": "remote-1.19.3",
+        "exitCode": 0,
+        "elapsedSeconds": 99.25014591217041
+      }
+    ]
+  },
+  "stableReleaseApproved": false,
+  "limitations": [
+    "Independent processes on shared hardware; no confidence interval or universal performance guarantee.",
+    "Short and delayed measurements generally precede the first health request; sustained measurement covers real calls.",
+    "One sustained baseline/sidebar pair establishes coverage, not repeatability or allocation ownership.",
+    "Native controlled-loopback transport is not SSH, WAN or a combined-harness installation.",
+    "Historical results remain attributable only to their exact runtimes."
+  ],
+  "hosted": {
+    "codeCommit": "694868192447a93e3411f3666da344921948732c",
+    "runs": {
+      "ci": {
+        "id": 42410511268,
+        "status": "success"
+      },
+      "container": {
+        "id": 42410511226,
+        "status": "success"
+      },
+      "terminal": {
+        "id": 42410511222,
+        "status": "failure",
+        "nativeJob": 128517427026,
+        "ubuntuGraphical": "success",
+        "macosGraphical": "success"
+      }
+    },
+    "native": [
+      {
+        "kind": "acceptance-comparison",
+        "results": [
+          {
+            "sessions": 25,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": -83.171875,
+                "cpuPoints": -60.57969808262871
+              },
+              {
+                "repetition": 2,
+                "rssMiB": -39.4296875,
+                "cpuPoints": -2.8022661339607353
+              },
+              {
+                "repetition": 3,
+                "rssMiB": -45.52734375,
+                "cpuPoints": -6.999506355654482
+              }
+            ],
+            "medianRssDeltaMiB": -45.52734375,
+            "medianCpuDeltaPoints": -6.999506355654482,
+            "passed": true
+          },
+          {
+            "sessions": 250,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": 13.6015625,
+                "cpuPoints": -3.804305263457593
+              },
+              {
+                "repetition": 2,
+                "rssMiB": -35.28125,
+                "cpuPoints": -11.602618459736505
+              },
+              {
+                "repetition": 3,
+                "rssMiB": -25.609375,
+                "cpuPoints": -2.8065969182984105
+              }
+            ],
+            "medianRssDeltaMiB": -25.609375,
+            "medianCpuDeltaPoints": -3.804305263457593,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      {
+        "completed": true,
+        "acceptanceEvaluated": false,
+        "protocol": {
+          "sessions": 250,
+          "pairs": 1,
+          "order": ["baseline", "sidebar"],
+          "settleMs": 20000,
+          "observationMs": 210000,
+          "requiredHealthyCallsInWindow": 3,
+          "referenceBudgets": {
+            "rssMiB": 64,
+            "cpuPoints": 1
+          },
+          "retries": 0
+        },
+        "runtimeSha256": "4ba1671d7074735ebb604f41be2b8a3ef2064db5d51c4b19c6a1a52f96899b57",
+        "limitations": [
+          "Single long-window pair with parent thread sampling; not repeatability or original acceptance.",
+          "Health wrapper forwards the original SDK method and records bounded timings in memory.",
+          "No telemetry writes until after measurement. No fake health, forced GC or session cap.",
+          "A passing long window cannot supersede a failed original short/delayed campaign."
+        ],
+        "wrapperSha256": "f7035ad626181775d2fc9f97a53e2b05ba00cd26119fc218c47f22105e908283",
+        "health": {
+          "activation": 1,
+          "outsideMeasurement": true,
+          "calls": [
+            {
+              "startedEpochMs": 1794083329377.6516,
+              "durationMs": 1.329504999994242,
+              "healthy": true
+            },
+            {
+              "startedEpochMs": 1794083389381.5708,
+              "durationMs": 2.0323910000006435,
+              "healthy": true
+            },
+            {
+              "startedEpochMs": 1794083449387.177,
+              "durationMs": 1.6232310000050347,
+              "healthy": true
+            }
+          ],
+          "dropped": 0
+        },
+        "healthCallsInWindow": 3,
+        "results": [
+          {
+            "sessions": 250,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": 20.6171875,
+                "cpuPoints": 0.0901255018354663
+              }
+            ],
+            "medianRssDeltaMiB": 20.6171875,
+            "medianCpuDeltaPoints": 0.0901255018354663
+          }
+        ],
+        "referenceBudgetsMet": true
+      },
+      {
+        "kind": "delayed-acceptance-comparison",
+        "results": [
+          {
+            "sessions": 250,
+            "deltas": [
+              {
+                "repetition": 1,
+                "rssMiB": 102.296875,
+                "cpuPoints": -3.499358854106052
+              },
+              {
+                "repetition": 2,
+                "rssMiB": 13.97265625,
+                "cpuPoints": -0.9996560595087214
+              },
+              {
+                "repetition": 3,
+                "rssMiB": 80.6640625,
+                "cpuPoints": -5.0556732073880895e-5
+              }
+            ],
+            "medianRssDeltaMiB": 80.6640625,
+            "medianCpuDeltaPoints": -0.9996560595087214,
+            "passed": false
+          }
+        ],
+        "passed": false
+      }
+    ],
+    "delayedMeasurements": [
+      {
+        "sessions": 250,
+        "repetition": 1,
+        "enabled": false,
+        "bootToRenderedReadyMs": 3080.3436519999996,
+        "observationMs": 10001.693260000004,
+        "cpuPercent": 4.799187372798912,
+        "rssStartMiB": 845.25,
+        "rssEndMiB": 700.81640625,
+        "mainThreadContextSwitches": 89,
+        "readyToObservationMs": 20000.420521,
+        "lifecycleStatus": "passed",
+        "probe": {
+          "passed": true,
+          "initialFrame": {
+            "sidebarVisible": false,
+            "hostSessionVisible": true,
+            "selectedSession": true,
+            "width": 140,
+            "height": 40,
+            "renderables": 172,
+            "textBufferRenderables": 79,
+            "mountedSessionRows": 0,
+            "sessionRowShells": 0,
+            "heapUsedMiB": 82.25363159179688,
+            "heapTotalMiB": 67.18359375,
+            "externalMiB": 31.266193389892578,
+            "arrayBuffersMiB": 5.7093706130981445
+          },
+          "finalFrame": {
+            "renderables": 172,
+            "textBufferRenderables": 79,
+            "mountedSessionRows": 0,
+            "sessionRowShells": 0,
+            "heapUsedMiB": 85.79835605621338,
+            "heapTotalMiB": 62.3046875,
+            "externalMiB": 31.75776767730713,
+            "arrayBuffersMiB": 5.710137367248535
+          },
+          "lifecycle": [],
+          "measurementAcknowledged": true,
+          "readyThroughMeasurementFrames": 3
+        }
+      },
+      {
+        "sessions": 250,
+        "repetition": 1,
+        "enabled": true,
+        "bootToRenderedReadyMs": 3283.6343900000065,
+        "observationMs": 10001.319261000004,
+        "cpuPercent": 1.2998285186928595,
+        "rssStartMiB": 803.23828125,
+        "rssEndMiB": 803.11328125,
+        "mainThreadContextSwitches": 86,
+        "readyToObservationMs": 20007.862971999995,
+        "lifecycleStatus": "passed",
+        "probe": {
+          "passed": true,
+          "initialFrame": {
+            "sidebarVisible": true,
+            "hostSessionVisible": true,
+            "selectedSession": true,
+            "width": 140,
+            "height": 40,
+            "renderables": 331,
+            "textBufferRenderables": 147,
+            "mountedSessionRows": 5,
+            "sessionRowShells": 5,
+            "heapUsedMiB": 93.23551559448242,
+            "heapTotalMiB": 71.80859375,
+            "externalMiB": 41.621910095214844,
+            "arrayBuffersMiB": 14.744658470153809
+          },
+          "finalFrame": {
+            "renderables": 331,
+            "textBufferRenderables": 147,
+            "mountedSessionRows": 5,
+            "sessionRowShells": 5,
+            "heapUsedMiB": 82.38781547546387,
+            "heapTotalMiB": 63.3876953125,
+            "externalMiB": 28.62592887878418,
+            "arrayBuffersMiB": 0.12940216064453125
+          },
+          "lifecycle": [
+            {
+              "deactivated": true,
+              "reactivated": true,
+              "activationMs": 98.19737899999745
+            },
+            {
+              "deactivated": true,
+              "reactivated": true,
+              "activationMs": 89.7162260000041
+            }
+          ],
+          "measurementAcknowledged": true,
+          "readyThroughMeasurementFrames": 0,
+          "viewport": {
+            "totalRows": 250,
+            "mountedAtTop": 5,
+            "mountedAtBottom": 8,
+            "returnedToTop": true
+          }
+        }
+      },
+      {
+        "sessions": 250,
+        "repetition": 2,
+        "enabled": true,
+        "bootToRenderedReadyMs": 3514.9272159999964,
+        "observationMs": 10001.00523000001,
+        "cpuPercent": 1.4998492306557853,
+        "rssStartMiB": 865.8203125,
+        "rssEndMiB": 865.88671875,
+        "mainThreadContextSwitches": 79,
+        "readyToObservationMs": 20000.732425999988,
+        "lifecycleStatus": "passed",
+        "probe": {
+          "passed": true,
+          "initialFrame": {
+            "sidebarVisible": true,
+            "hostSessionVisible": true,
+            "selectedSession": true,
+            "width": 140,
+            "height": 40,
+            "renderables": 331,
+            "textBufferRenderables": 147,
+            "mountedSessionRows": 5,
+            "sessionRowShells": 5,
+            "heapUsedMiB": 91.61429023742676,
+            "heapTotalMiB": 71.951171875,
+            "externalMiB": 40.02538871765137,
+            "arrayBuffersMiB": 13.463175773620605
+          },
+          "finalFrame": {
+            "renderables": 331,
+            "textBufferRenderables": 147,
+            "mountedSessionRows": 5,
+            "sessionRowShells": 5,
+            "heapUsedMiB": 82.35914707183838,
+            "heapTotalMiB": 63.1376953125,
+            "externalMiB": 28.604371070861816,
+            "arrayBuffersMiB": 0.12940216064453125
+          },
+          "lifecycle": [
+            {
+              "deactivated": true,
+              "reactivated": true,
+              "activationMs": 66.98773800000345
+            },
+            {
+              "deactivated": true,
+              "reactivated": true,
+              "activationMs": 73.4570870000025
+            }
+          ],
+          "measurementAcknowledged": true,
+          "readyThroughMeasurementFrames": 0,
+          "viewport": {
+            "totalRows": 250,
+            "mountedAtTop": 5,
+            "mountedAtBottom": 8,
+            "returnedToTop": true
+          }
+        }
+      },
+      {
+        "sessions": 250,
+        "repetition": 2,
+        "enabled": false,
+        "bootToRenderedReadyMs": 3127.013453000007,
+        "observationMs": 10001.97923099999,
+        "cpuPercent": 2.4995052901645067,
+        "rssStartMiB": 857.69140625,
+        "rssEndMiB": 851.9140625,
+        "mainThreadContextSwitches": 129,
+        "readyToObservationMs": 20002.06783500001,
+        "lifecycleStatus": "passed",
+        "probe": {
+          "passed": true,
+          "initialFrame": {
+            "sidebarVisible": false,
+            "hostSessionVisible": true,
+            "selectedSession": true,
+            "width": 140,
+            "height": 40,
+            "renderables": 172,
+            "textBufferRenderables": 79,
+            "mountedSessionRows": 0,
+            "sessionRowShells": 0,
+            "heapUsedMiB": 84.14342594146729,
+            "heapTotalMiB": 67.103515625,
+            "externalMiB": 34.58353137969971,
+            "arrayBuffersMiB": 9.55471134185791
+          },
+          "finalFrame": {
+            "renderables": 172,
+            "textBufferRenderables": 79,
+            "mountedSessionRows": 0,
+            "sessionRowShells": 0,
+            "heapUsedMiB": 62.96918869018555,
+            "heapTotalMiB": 61.0166015625,
+            "externalMiB": 13.788448333740234,
+            "arrayBuffersMiB": 0.12940216064453125
+          },
+          "lifecycle": [],
+          "measurementAcknowledged": true,
+          "readyThroughMeasurementFrames": 3
+        }
+      },
+      {
+        "sessions": 250,
+        "repetition": 3,
+        "enabled": false,
+        "bootToRenderedReadyMs": 3114.97258099998,
+        "observationMs": 10000.937630999979,
+        "cpuPercent": 1.2998781193979059,
+        "rssStartMiB": 778.38671875,
+        "rssEndMiB": 778.26171875,
+        "mainThreadContextSwitches": 84,
+        "readyToObservationMs": 20000.458460000023,
+        "lifecycleStatus": "passed",
+        "probe": {
+          "passed": true,
+          "initialFrame": {
+            "sidebarVisible": false,
+            "hostSessionVisible": true,
+            "selectedSession": true,
+            "width": 140,
+            "height": 40,
+            "renderables": 172,
+            "textBufferRenderables": 79,
+            "mountedSessionRows": 0,
+            "sessionRowShells": 0,
+            "heapUsedMiB": 80.24120998382568,
+            "heapTotalMiB": 67.05859375,
+            "externalMiB": 30.72407054901123,
+            "arrayBuffersMiB": 5.70949649810791
+          },
+          "finalFrame": {
+            "renderables": 172,
+            "textBufferRenderables": 79,
+            "mountedSessionRows": 0,
+            "sessionRowShells": 0,
+            "heapUsedMiB": 85.52292823791504,
+            "heapTotalMiB": 61.9267578125,
+            "externalMiB": 31.51828956604004,
+            "arrayBuffersMiB": 5.710263252258301
+          },
+          "lifecycle": [],
+          "measurementAcknowledged": true,
+          "readyThroughMeasurementFrames": 2
+        }
+      },
+      {
+        "sessions": 250,
+        "repetition": 3,
+        "enabled": true,
+        "bootToRenderedReadyMs": 3324.5790489999927,
+        "observationMs": 10001.326616999984,
+        "cpuPercent": 1.299827562665832,
+        "rssStartMiB": 858.9296875,
+        "rssEndMiB": 858.92578125,
+        "mainThreadContextSwitches": 82,
+        "readyToObservationMs": 20000.86453600001,
+        "lifecycleStatus": "passed",
+        "probe": {
+          "passed": true,
+          "initialFrame": {
+            "sidebarVisible": true,
+            "hostSessionVisible": true,
+            "selectedSession": true,
+            "width": 140,
+            "height": 40,
+            "renderables": 331,
+            "textBufferRenderables": 147,
+            "mountedSessionRows": 5,
+            "sessionRowShells": 5,
+            "heapUsedMiB": 92.91786289215088,
+            "heapTotalMiB": 71.6396484375,
+            "externalMiB": 41.24802875518799,
+            "arrayBuffersMiB": 14.744914054870605
+          },
+          "finalFrame": {
+            "renderables": 331,
+            "textBufferRenderables": 147,
+            "mountedSessionRows": 5,
+            "sessionRowShells": 5,
+            "heapUsedMiB": 82.3810920715332,
+            "heapTotalMiB": 63.177734375,
+            "externalMiB": 28.607501983642578,
+            "arrayBuffersMiB": 0.12940216064453125
+          },
+          "lifecycle": [
+            {
+              "deactivated": true,
+              "reactivated": true,
+              "activationMs": 92.25307700000121
+            },
+            {
+              "deactivated": true,
+              "reactivated": true,
+              "activationMs": 98.09065399999963
+            }
+          ],
+          "measurementAcknowledged": true,
+          "readyThroughMeasurementFrames": 0,
+          "viewport": {
+            "totalRows": 250,
+            "mountedAtTop": 5,
+            "mountedAtBottom": 8,
+            "returnedToTop": true
+          }
+        }
+      }
+    ],
+    "limitation": "Step summaries report continue-on-error failures as success; raw delayed assertion and final required outcome show the failure."
+  },
+  "blocker": {
+    "scenario": "hosted delayed 250 sessions",
+    "rssDeltaMiB": 80.6640625,
+    "budgetMiB": 64,
+    "beforeFirstHealthRequest": true,
+    "allocationOwnership": "unresolved",
+    "rerun": false,
+    "sessionCapApplied": false
+  }
+}
