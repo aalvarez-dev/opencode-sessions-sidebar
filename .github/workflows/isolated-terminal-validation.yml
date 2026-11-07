@@ -55,8 +55,9 @@ jobs:
           SIDEBAR_SMOKE_DIAGNOSTICS:
             ${{ github.workspace }}/.sidebar-lab/actions/graphical/sidebar-diagnostics.json
         run:
-          xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun run
-          smoke:sidebar
+          xvfb-run --auto-servernum
+          --error-file="$GITHUB_WORKSPACE/.sidebar-lab/actions/graphical/xvfb-sidebar.log"
+          --server-args="-screen 0 1920x1200x24 -nolisten tcp -noreset" bun run smoke:sidebar
       - name: Real terminal native child attention
         id: attention
         continue-on-error: true
@@ -67,7 +68,9 @@ jobs:
           SIDEBAR_ATTENTION_FRAMES:
             ${{ github.workspace }}/.sidebar-lab/actions/graphical/attention-frames.json
         run:
-          xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun run
+          xvfb-run --auto-servernum
+          --error-file="$GITHUB_WORKSPACE/.sidebar-lab/actions/graphical/xvfb-attention.log"
+          --server-args="-screen 0 1920x1200x24 -nolisten tcp -noreset" bun run
           smoke:sidebar:attention
       - name: Approved design fixture in the real terminal
         id: design
@@ -77,7 +80,9 @@ jobs:
           SIDEBAR_DESIGN_DIR: ${{ github.workspace }}/.sidebar-lab/actions/graphical/design
           SIDEBAR_DESIGN_REPORT: ${{ github.workspace }}/.sidebar-lab/actions/graphical/design.json
         run:
-          xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun
+          xvfb-run --auto-servernum
+          --error-file="$GITHUB_WORKSPACE/.sidebar-lab/actions/graphical/xvfb-design.log"
+          --server-args="-screen 0 1920x1200x24 -nolisten tcp -noreset" bun
           scripts/smoke-sidebar-design.ts
       - name: Real terminal during transport loss and recovery
         id: remote
@@ -88,7 +93,9 @@ jobs:
           SIDEBAR_REMOTE_FRAMES:
             ${{ github.workspace }}/.sidebar-lab/actions/graphical/remote-frames.json
         run:
-          xvfb-run --auto-servernum --server-args="-screen 0 1920x1200x24 -nolisten tcp" bun
+          xvfb-run --auto-servernum
+          --error-file="$GITHUB_WORKSPACE/.sidebar-lab/actions/graphical/xvfb-remote.log"
+          --server-args="-screen 0 1920x1200x24 -nolisten tcp -noreset" bun
           scripts/smoke-sidebar-remote.ts
       - name: Retain real pixel screenshots and receipts
         if: always()

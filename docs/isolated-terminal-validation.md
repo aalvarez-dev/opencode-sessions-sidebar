@@ -55,6 +55,21 @@ job labels must never be replaced with `self-hosted` for this campaign. Artifact
 success and failure evidence. A new revision needs its own results; do not reuse a preceding green
 run to approve a changed head.
 
+Each graphical scenario owns one Xvfb display for its whole command. The main smoke deliberately
+closes its bootstrap xterm before opening the linked-worktree window, and later opens a fresh
+light-theme process. Xvfb now receives `-noreset`, preventing a server reset when its last client
+disconnects between those windows. The enclosing `xvfb-run` still cleans up its server when the
+scenario ends; TCP listening remains disabled. Separate `xvfb-sidebar.log`, `xvfb-attention.log`,
+`xvfb-design.log` and `xvfb-remote.log` files retain server stderr in the uploaded graphical
+artifact. No automatic retry or weaker assertion is introduced.
+
+The `20a89d5`
+[campaign](https://github.com/aalvarez-labs/opencode-sessions-sidebar/actions/runs/42370040836)
+failed to connect its second xterm to `:99` after the bootstrap observer had succeeded. This is
+consistent with a last-client reset race, but the old invocation did not retain Xvfb stderr, so the
+exact cause is not established. Preserve that failed run; subsequent results validate the corrected
+display lifecycle independently.
+
 For reproducibility, retain the workflow run URL, tested commit, original artifact ZIP/digest,
 reports and PNGs together. Artifact titles distinguish graphical pixels, transport/resource
 measurements, and the macOS capability pilot. Final acceptance must list failed or blocked gates
