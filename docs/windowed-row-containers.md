@@ -1,5 +1,9 @@
 # Windowed row containers: optimization and remaining blocker
 
+Follow-up: [function counters and a mirrored health crossover](health-crossover-diagnostic.md) now
+support a contribution from the real health request path. The product, original limits and failed
+acceptance outcome below remain unchanged; a detection-latency decision is pending.
+
 **Experimental optimization; resource acceptance still fails. Do not promote to stable V1 or
 interpret this change as approval for combined-harness deployment.**
 

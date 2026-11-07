@@ -1,0 +1,357 @@
+{
+  "schema": 1,
+  "status": "diagnostic-complete; health-transport contribution supported; product decision required",
+  "acceptanceEvaluated": false,
+  "productSource": "1f1ceda6d63b519705da610388188613b487ab0a",
+  "productRuntimeSha256": "a97cf2d85d921dd4915ea5429f470c235e9b92ab3668603e5fa72895691b2949",
+  "instrumentedRuntimeSha256": "36adad87c5304c46eef6bb21e5cd169c6e694ac27416aad9e5a306166e6ad1e9",
+  "entrySites": 578,
+  "initialEntryObservation": [
+    {
+      "enabled": false,
+      "cpuPercent": 2.3935020668945644,
+      "frameIncrements": 2,
+      "functionObservation": {
+        "entryCount": 0,
+        "truncated": false,
+        "durationMs": 32129.802648999997,
+        "functionCounts": {}
+      }
+    },
+    {
+      "enabled": true,
+      "cpuPercent": 3.4910735200438885,
+      "frameIncrements": 0,
+      "functionObservation": {
+        "entryCount": 36,
+        "truncated": false,
+        "durationMs": 32091.63056,
+        "functionCounts": {
+          "src/adapters/opencode-v1/transport-health.ts:41:27": 6,
+          "src/adapters/opencode-v1/transport-health.ts:47:3": 6,
+          "src/adapters/opencode-v1/transport-health.ts:8:35": 12,
+          "src/adapters/opencode-v1/transport-health.ts:10:10": 6,
+          "src/adapters/opencode-v1/transport-health.ts:39:3": 6
+        }
+      }
+    }
+  ],
+  "crossover": {
+    "completed": true,
+    "acceptanceEvaluated": false,
+    "sequences": [
+      {
+        "sequence": "ABBA",
+        "timingOffsetMs": 32.308349609375,
+        "phases": [
+          {
+            "index": 0,
+            "mode": "A",
+            "durationMs": 27082.962729,
+            "cpuMs": 1310.0,
+            "cpuPercent": 4.836989265569801,
+            "threadCpuTicks": {
+              "opencode": 62,
+              "HeapHelper": 42,
+              "JITWorker": 0,
+              "Bun Pool 0": 0,
+              "Bun Pool 1": 0,
+              "Bun Pool 2": 0,
+              "Bun Pool 3": 0,
+              "Worker": 23,
+              "ollector Thread": 0,
+              "HTTP Client": 0,
+              "fff-bg-0": 0,
+              "fff-bg-1": 0,
+              "fff-bg-2": 0,
+              "fff-bg-3": 0,
+              "notify-rs debou": 2,
+              "notify-rs inoti": 0,
+              "fff-watcher-own": 0,
+              "fs.watch": 0
+            },
+            "healthCalls": 6
+          },
+          {
+            "index": 1,
+            "mode": "B",
+            "durationMs": 27099.508221999997,
+            "cpuMs": 1020.0,
+            "cpuPercent": 3.7639059411858287,
+            "threadCpuTicks": {
+              "opencode": 51,
+              "HeapHelper": 35,
+              "JITWorker": 0,
+              "Bun Pool 0": 0,
+              "Bun Pool 1": 0,
+              "Bun Pool 2": 0,
+              "Bun Pool 3": 0,
+              "Worker": 14,
+              "HTTP Client": 0,
+              "fff-bg-0": 0,
+              "fff-bg-1": 0,
+              "fff-bg-2": 0,
+              "fff-bg-3": 0,
+              "notify-rs debou": 3,
+              "notify-rs inoti": 0,
+              "fff-watcher-own": 0,
+              "fs.watch": 0
+            },
+            "healthCalls": 6
+          },
+          {
+            "index": 2,
+            "mode": "B",
+            "durationMs": 27069.852884000007,
+            "cpuMs": 1080.0,
+            "cpuPercent": 3.989678128758314,
+            "threadCpuTicks": {
+              "opencode": 45,
+              "Worker": 18,
+              "HeapHelper": 41,
+              "Bun Pool 0": 0,
+              "Bun Pool 1": 0,
+              "Bun Pool 2": 0,
+              "Bun Pool 3": 0,
+              "HTTP Client": 0,
+              "fff-bg-0": 0,
+              "fff-bg-1": 0,
+              "fff-bg-2": 0,
+              "fff-bg-3": 0,
+              "notify-rs debou": 2,
+              "notify-rs inoti": 0,
+              "fff-watcher-own": 0,
+              "fs.watch": 0,
+              "JITWorker": 0
+            },
+            "healthCalls": 6
+          },
+          {
+            "index": 3,
+            "mode": "A",
+            "durationMs": 27068.292619999993,
+            "cpuMs": 1590.0,
+            "cpuPercent": 5.874031370656877,
+            "threadCpuTicks": {
+              "opencode": 51,
+              "HeapHelper": 75,
+              "Worker": 28,
+              "Bun Pool 0": 0,
+              "Bun Pool 1": 0,
+              "Bun Pool 2": 0,
+              "Bun Pool 3": 0,
+              "HTTP Client": 0,
+              "fff-bg-0": 0,
+              "fff-bg-1": 0,
+              "fff-bg-2": 0,
+              "fff-bg-3": 0,
+              "notify-rs debou": 3,
+              "notify-rs inoti": 0,
+              "fff-watcher-own": 0,
+              "fs.watch": 0,
+              "JITWorker": 0
+            },
+            "healthCalls": 6
+          }
+        ],
+        "weightedMeanCpu": {
+          "A": 5.3553698456476395,
+          "B": 3.876730234810534
+        },
+        "realMinusStubCpuPoints": 1.4786396108371056,
+        "frameIncrements": 0,
+        "functionObservation": {
+          "entryCount": 144,
+          "truncated": false,
+          "durationMs": 122414.180926,
+          "functionCounts": {
+            "src/adapters/opencode-v1/transport-health.ts:41:27": 24,
+            "src/adapters/opencode-v1/transport-health.ts:47:3": 24,
+            "src/adapters/opencode-v1/transport-health.ts:8:35": 48,
+            "src/adapters/opencode-v1/transport-health.ts:10:10": 24,
+            "src/adapters/opencode-v1/transport-health.ts:39:3": 24
+          }
+        }
+      },
+      {
+        "sequence": "BAAB",
+        "timingOffsetMs": 28.309814453125,
+        "phases": [
+          {
+            "index": 0,
+            "mode": "B",
+            "durationMs": 27166.000591999997,
+            "cpuMs": 580.0,
+            "cpuPercent": 2.1350216717981,
+            "threadCpuTicks": {
+              "opencode": 20,
+              "HeapHelper": 20,
+              "JITWorker": 0,
+              "Bun Pool 0": 0,
+              "Bun Pool 1": 0,
+              "Bun Pool 2": 0,
+              "Bun Pool 3": 0,
+              "Worker": 17,
+              "ollector Thread": 0,
+              "HTTP Client": 0,
+              "fff-bg-0": 0,
+              "fff-bg-1": 0,
+              "fff-bg-2": 0,
+              "fff-bg-3": 0,
+              "notify-rs debou": 2,
+              "notify-rs inoti": 0,
+              "fff-watcher-own": 0,
+              "fs.watch": 0
+            },
+            "healthCalls": 6
+          },
+          {
+            "index": 1,
+            "mode": "A",
+            "durationMs": 27080.608053999982,
+            "cpuMs": 810.0,
+            "cpuPercent": 2.991070209298191,
+            "threadCpuTicks": {
+              "opencode": 23,
+              "HeapHelper": 32,
+              "JITWorker": 1,
+              "Bun Pool 0": 0,
+              "Bun Pool 1": 0,
+              "Bun Pool 2": 0,
+              "Bun Pool 3": 0,
+              "Worker": 26,
+              "HTTP Client": 0,
+              "fff-bg-0": 0,
+              "fff-bg-1": 0,
+              "fff-bg-2": 0,
+              "fff-bg-3": 0,
+              "notify-rs debou": 2,
+              "notify-rs inoti": 0,
+              "fff-watcher-own": 0,
+              "fs.watch": 0
+            },
+            "healthCalls": 6
+          },
+          {
+            "index": 2,
+            "mode": "A",
+            "durationMs": 27099.264143000008,
+            "cpuMs": 790.0,
+            "cpuPercent": 2.915208309093752,
+            "threadCpuTicks": {
+              "notify-rs debou": 3,
+              "opencode": 20,
+              "HeapHelper": 27,
+              "Bun Pool 0": 0,
+              "Bun Pool 1": 0,
+              "Bun Pool 2": 0,
+              "Bun Pool 3": 0,
+              "Worker": 27,
+              "HTTP Client": 0,
+              "fff-bg-0": 0,
+              "fff-bg-1": 0,
+              "fff-bg-2": 0,
+              "fff-bg-3": 0,
+              "notify-rs inoti": 0,
+              "fff-watcher-own": 0,
+              "fs.watch": 0,
+              "JITWorker": 0
+            },
+            "healthCalls": 6
+          },
+          {
+            "index": 3,
+            "mode": "B",
+            "durationMs": 27076.278108,
+            "cpuMs": 530.0,
+            "cpuPercent": 1.9574329894454932,
+            "threadCpuTicks": {
+              "Worker": 13,
+              "opencode": 15,
+              "HeapHelper": 22,
+              "Bun Pool 0": 0,
+              "Bun Pool 1": 0,
+              "Bun Pool 2": 0,
+              "Bun Pool 3": 0,
+              "HTTP Client": 0,
+              "fff-bg-0": 0,
+              "fff-bg-1": 0,
+              "fff-bg-2": 0,
+              "fff-bg-3": 0,
+              "notify-rs debou": 3,
+              "notify-rs inoti": 0,
+              "fff-watcher-own": 0,
+              "fs.watch": 0,
+              "JITWorker": 1
+            },
+            "healthCalls": 6
+          }
+        ],
+        "weightedMeanCpu": {
+          "A": 2.953126198198367,
+          "B": 2.046374205883058
+        },
+        "realMinusStubCpuPoints": 0.9067519923153093,
+        "frameIncrements": 0,
+        "functionObservation": {
+          "entryCount": 144,
+          "truncated": false,
+          "durationMs": 122497.88260499999,
+          "functionCounts": {
+            "src/adapters/opencode-v1/transport-health.ts:41:27": 24,
+            "src/adapters/opencode-v1/transport-health.ts:47:3": 24,
+            "src/adapters/opencode-v1/transport-health.ts:8:35": 48,
+            "src/adapters/opencode-v1/transport-health.ts:10:10": 24,
+            "src/adapters/opencode-v1/transport-health.ts:39:3": 24
+          }
+        }
+      }
+    ],
+    "rawReceiptSha256": "163491a35e230c46149a2b873d691ca527648e975f7c9379b307656b51136d49"
+  },
+  "protocol": {
+    "kind": "within-process causal diagnostic, not acceptance",
+    "base": "1f1ceda6d63b519705da610388188613b487ab0a",
+    "product": "same instrumented function-entry build as prior diagnostic",
+    "runtimeSha256": "36adad87c5304c46eef6bb21e5cd169c6e694ac27416aad9e5a306166e6ad1e9",
+    "sequences": ["ABBA", "BAAB"],
+    "A": "original SDK health call",
+    "B": "healthy synthetic response; existing monitor cadence/deadline/disposal unchanged",
+    "phasesPerProcess": 4,
+    "phaseMs": 30000,
+    "settleMs": 2000,
+    "analysis": "CPU from trace intervals completely inside [phase start+1s, phase end-1s]; do not allocate partial intervals or compare independent process pair deltas. Report both per-process real-minus-stub contrasts, each phase, calls and frame changes. No resource acceptance.",
+    "retries": 0,
+    "limitations": [
+      "Carryover and time effects remain; mirrored order reduces but cannot eliminate them.",
+      "Synthetic response is not a product option or transport validation.",
+      "Function-entry instrumentation changes allocation and cannot establish uninstrumented savings."
+    ],
+    "generatedHashes": {
+      "thread-cpu-diagnostic.ts": "d36e153c6d9f7d95d5bf2362f154c1e79c295d999d8e14d8f2b6861c530d2fb0",
+      "sidebar-resource-probe.ts": "899b731403d4cbe15a9664523fa61119f4378a4c0874c5421e3dd1558e76a3b9",
+      "process-memory-diagnostic.ts": "0db86dc49eb5b3ab7837e106a191d5650f69ee73a334d559516c5f0c5990abb3",
+      "benchmark-sidebar-runtime.ts": "2a4c6aa571deef3a76b4e1345c6062f342834befa534b7a9962826771c6ee5bf"
+    },
+    "wrapperSha256": "60ff82f60a8b881c6cf317cc0da963e002dc390c94dbc83126ea52a2592a119e"
+  },
+  "limitations": [
+    "Function entries are counted, not async continuations or time within host/runtime/native libraries.",
+    "Same-process mirrored crossover reduces independent-process variation; two processes do not establish a universal cost or confidence interval.",
+    "Synthetic health responses exist only in a diagnostic wrapper, never in product code.",
+    "CPU points refer to one core; named HeapHelper thread time does not identify retaining paths or allocations.",
+    "The unchanged candidate failed the earlier local short 250-session gate. Hosted passing medians do not override that failure.",
+    "No longer cadence, disabled health, session cap, runtime flag changes, forced GC, private host API or budget change was applied."
+  ],
+  "receipts": {
+    "idle-counters-evidence/report.json": "4fde1c1799302da3da5ec4553d61b689e45b663e5f68384a9cebbb21346ac0f0",
+    "idle-counters-evidence/protocol.json": "faa7700bb1a58ccedfedf6505e0c3d80a68bfbfcdd3752f2664823411dc81e6b",
+    "idle-counters-evidence/instrument.cjs": "ee4ec7fa2cad7b5b78c04eff6901cee0da1b8d88f6fd2384e864dbda1d374643",
+    "idle-counters-evidence/function-catalog.json": "961da701ad8b410c2d6aa5a3d83f28b95e8c49863b4fb91eacd95fa733207134",
+    "health-crossover-evidence/report.json": "163491a35e230c46149a2b873d691ca527648e975f7c9379b307656b51136d49",
+    "health-crossover-evidence/analysis.json": "737af4ea88f88a5664bdf94103049f27e05cf3e153e17180acf2c8bec96237b9",
+    "health-crossover-evidence/protocol.json": "f1a18f9b1738a32f0a3797da13d06f3c32804eeafa44eeafb7942d93f015d9d0",
+    "health-crossover-evidence/analyze.py": "c4a812deeb4549c5f602665be5fff999ad728ddebc7ab9b01cc5e05190217565",
+    "health-crossover-evidence/wrapper.mjs": "60ff82f60a8b881c6cf317cc0da963e002dc390c94dbc83126ea52a2592a119e"
+  }
+}

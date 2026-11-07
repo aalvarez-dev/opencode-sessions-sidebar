@@ -191,3 +191,9 @@ native navigation and attention remain available. Original short-window CPU acce
 despite a passing delayed window. See [the optimization report](windowed-row-containers.md) and its
 machine-readable measurements. No session cap or feature restriction was introduced; stable V1 and
 combined-harness integration remain blocked.
+
+A subsequent diagnostic counted all product function entries and compared real/synthetic health
+responses within two processes in mirrored order. Only transport-health sites executed during idle;
+real requests added +1.4786 and +0.9068 CPU points within their respective processes. See the
+[health crossover](health-crossover-diagnostic.md). Changing the five-second interval would change
+disconnect detection latency and remains a product decision, not an applied optimization.
