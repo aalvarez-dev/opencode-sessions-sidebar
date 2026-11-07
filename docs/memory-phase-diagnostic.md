@@ -70,5 +70,44 @@ Separate forensic pairs, with full before control in each version:
 These are single diagnostic pairs, not comparative version acceptance. The snapshots do not explain
 the earlier hosted +199.70 MiB RSS failure and do not justify a speculative product change or a host
 upgrade claim. Original hosted failures remain blocking: delayed median +80.66 MiB in one campaign,
-sustained +199.70 MiB in another. The next experiment runs the same attribution protocol on a GitHub
-hosted runner, preserving every result. No user device or private server is required.
+sustained +199.70 MiB in another.
+
+## Hosted attribution result
+
+The
+[first hosted campaign](https://github.com/aalvarez-labs/opencode-sessions-sidebar/actions/runs/42425416143)
+completed all eight phases and both forensic captures on GitHub's Ubuntu runner. See
+[machine-readable results](validation/memory-phase-attribution.json). No user device or private
+server was used. The host binary SHA-256 is
+`87bd160e053af86b5b409daabf71f8dc05bbc3a2a3a5f563f36011cdf706a999`, matching the local 1.18.30
+executable byte-for-byte; different package-directory names did not imply different binaries here.
+
+| Mode            | First endpoint RSS (MiB) | Reverse endpoint RSS (MiB) |
+| --------------- | -----------------------: | -------------------------: |
+| Control         |                   678.26 |                     778.61 |
+| Import only     |                   838.27 |                     856.86 |
+| Data without UI |                   843.09 |                     821.01 |
+| Full sidebar    |                   831.66 |                     815.07 |
+
+The two controls differ by **100.35 MiB without importing or activating the product**. This exceeds
+the 64 MiB additional-memory budget before attributing any difference to the sidebar. All cases have
+zero additional frames between the 20- and 45-second observations. Data/full dispose all 12 observed
+subscriptions and leave no pending requests; full reactivation succeeds.
+
+The separate forensic pair reverses the RSS relationship: full reaches 696.89 MiB and control 834.63
+MiB at 45 seconds, before reading full process maps or capturing heaps. Immediately before the heap
+command the figures are 725.31 and 870.66 MiB; reading those large maps is itself observable
+overhead. Captured TUI shallow size is 69.97 versus 68.03 MiB, while server-worker shallow size is
+144.85 versus 155.21 MiB. These values do not account for all resident native pages.
+
+**Conclusion:** independent host startup/residency varies enough to confound this attribution. It
+does not prove that the product has zero overhead or that the runtime alone owns the previous
+failure. Import-only being high also means activation/rendering alone cannot explain these results.
+There is no evidence-based product correction or justification for limiting sessions yet.
+
+The next discriminating experiment should pair a no-product control with an identical no-product
+control, then compare activation/disposal within the same long-lived process, retaining the original
+RSS gates separately. Native allocation/release stacks are needed if resident-page ownership remains
+unresolved. Do not widen the budget, force collection in production, choose a favorable run, or mark
+V1 accepted from this diagnostic. This report-only update skips CI to avoid repeating the campaign
+with identical product bytes.
