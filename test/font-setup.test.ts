@@ -10,6 +10,7 @@ import {
   installFontBundle,
   parseFontManifest,
   readPreparedBundle,
+  verifyFontFile,
   writeFontBundle,
   type FontManifest,
 } from "../scripts/lib/font-bundle";
@@ -25,7 +26,12 @@ async function temporary() {
 }
 
 /** Minimal sfnt fixture: real cmap 4/12 and hmtx semantics, no drawable font outlines. */
-function fontFixture(points = fontCodepoints(), format = 12, wrongWidth?: number) {
+function fontFixture(
+  points = fontCodepoints(),
+  format = 12,
+  wrongWidth?: number,
+  outlines?: { format: 0 | 1; bounds?: ReadonlyMap<number, readonly [number, number]> },
+) {
   const cps = [...new Set(points)].sort((a, b) => a - b);
   const segments = cps.length + 1;
   const sub = Buffer.alloc(
@@ -71,15 +77,33 @@ function fontFixture(points = fontCodepoints(), format = 12, wrongWidth?: number
   cps.forEach((cp, i) => hmtx.writeUInt16BE(cp === wrongWidth ? 1000 : 500, (i + 1) * 4));
   const maxp = Buffer.alloc(6);
   maxp.writeUInt16BE(cps.length + 1, 4);
-  const tables = { cmap, hhea, hmtx, maxp };
+  const tables: Record<string, Buffer> = { cmap, hhea, hmtx, maxp };
+  if (outlines) {
+    const head = Buffer.alloc(54),
+      glyf = Buffer.alloc((cps.length + 1) * 10),
+      loca = Buffer.alloc((cps.length + 2) * (outlines.format === 0 ? 2 : 4));
+    head.writeInt16BE(outlines.format, 50);
+    for (let i = 0; i <= cps.length + 1; i++) {
+      if (outlines.format === 0) loca.writeUInt16BE(i * 5, i * 2);
+      else loca.writeUInt32BE(i * 10, i * 4);
+    }
+    cps.forEach((cp, i) => {
+      const at = (i + 1) * 10,
+        [min, max] = outlines.bounds?.get(cp) ?? [0, 500];
+      glyf.writeInt16BE(min, at + 2);
+      glyf.writeInt16BE(max, at + 6);
+      glyf.writeInt16BE(600, at + 8);
+    });
+    Object.assign(tables, { head, loca, glyf });
+  }
   const result = Buffer.alloc(
     12 +
       Object.keys(tables).length * 16 +
       Object.values(tables).reduce((sum, value) => sum + value.length, 0),
   );
   result.writeUInt32BE(0x00010000, 0);
-  result.writeUInt16BE(4, 4);
-  let offset = 12 + 4 * 16;
+  result.writeUInt16BE(Object.keys(tables).length, 4);
+  let offset = 12 + Object.keys(tables).length * 16;
   Object.entries(tables).forEach(([name, bytes], i) => {
     const at = 12 + i * 16;
     result.write(name, at, "ascii");
@@ -92,7 +116,7 @@ function fontFixture(points = fontCodepoints(), format = 12, wrongWidth?: number
 }
 
 function bundle() {
-  const font = fontFixture(),
+  const font = fontFixture(undefined, 12, undefined, { format: 1 }),
     license = Buffer.from("Synthetic test license\n");
   const manifest: FontManifest = {
     id: "synthetic-font-v1",
@@ -145,6 +169,68 @@ describe("portable font coverage", () => {
     expect(() =>
       assertFontCoverage(fontFixture(fontCodepoints(), 12, 0x280b), fontCodepoints()),
     ).toThrow("inconsistent glyph advances");
+  });
+  test("outline checks catch clipping despite equal advances in both loca formats", () => {
+    const points = [0x4d, 0x2026, 0xeab2];
+    for (const format of [0, 1] as const) {
+      const font = fontFixture(points, 12, undefined, {
+        format,
+        bounds: new Map([
+          [0x2026, [89, 911] as const],
+          [0xeab2, [0, 500] as const],
+        ]),
+      });
+      expect(inspectFontCoverage(font, points).differentAdvance).toEqual([]);
+      expect(inspectFontCoverage(font, points, [0xeab2]).outsideCell).toEqual([]);
+      expect(inspectFontCoverage(font, points, [0x2026]).outsideCell).toEqual([0x2026]);
+      expect(() => assertFontCoverage(font, points, [0x2026])).toThrow("U+2026");
+      const leftOverflow = fontFixture(points, 12, undefined, {
+        format,
+        bounds: new Map([[0xeab2, [-1, 499] as const]]),
+      });
+      expect(() => assertFontCoverage(leftOverflow, points, [0xeab2])).toThrow("U+EAB2");
+    }
+    // Coverage-only callers still accept fonts whose outline tables are not requested.
+    expect(() => assertFontCoverage(fontFixture(points), points)).not.toThrow();
+    expect(() => assertFontCoverage(fontFixture(points), points, [0xeab2])).toThrow("head");
+  });
+  test("bounds malformed outline tables and explicit outline requests", () => {
+    const points = [0x4d, 0xeab2];
+    const sample = () => fontFixture(points, 12, undefined, { format: 1 });
+    const tableStart = (font: Buffer, name: string) => {
+      for (let i = 0; i < font.readUInt16BE(4); i++) {
+        const at = 12 + i * 16;
+        if (font.toString("ascii", at, at + 4) === name) return font.readUInt32BE(at + 8);
+      }
+      throw new Error(`Missing fixture table ${name}`);
+    };
+    const locaFormat = sample();
+    locaFormat.writeInt16BE(2, tableStart(locaFormat, "head") + 50);
+    expect(() => inspectFontCoverage(locaFormat, points, points)).toThrow("loca format");
+    const offsets = sample();
+    offsets.writeUInt32BE(0xffffffff, tableStart(offsets, "loca") + 8);
+    expect(() => inspectFontCoverage(offsets, points, points)).toThrow("glyph offsets");
+    const shortGlyph = sample();
+    shortGlyph.writeUInt32BE(25, tableStart(shortGlyph, "loca") + 8);
+    expect(() => inspectFontCoverage(shortGlyph, points, points)).toThrow("Truncated");
+    const inverted = sample();
+    inverted.writeInt16BE(501, tableStart(inverted, "glyf") + 20 + 2);
+    expect(() => inspectFontCoverage(inverted, points, points)).toThrow("glyph bounds");
+    expect(() => inspectFontCoverage(sample(), points, [NaN])).toThrow("request");
+    expect(() => inspectFontCoverage(sample(), points, [0xffff])).toThrow("Missing outline");
+  });
+  test("pinned-file verification rejects Nerd overhang even when the hash and advances match", () => {
+    const check = (bounds: ReadonlyMap<number, readonly [number, number]>) => {
+      const font = fontFixture(undefined, 12, undefined, { format: 1, bounds });
+      verifyFontFile(
+        { name: "synthetic.ttf", path: "synthetic.ttf", bytes: font.length, sha256: digest(font) },
+        font,
+        true,
+      );
+    };
+    // Unicode compatibility glyphs can overhang; the fitted guarantee is Nerd-only.
+    expect(() => check(new Map([[0x2026, [89, 911] as const]]))).not.toThrow();
+    expect(() => check(new Map([[0xea7c, [89, 911] as const]]))).toThrow("U+EA7C");
   });
   test("bounds malformed directories, tables, cmaps, and caller requests", () => {
     const directory = fontFixture();

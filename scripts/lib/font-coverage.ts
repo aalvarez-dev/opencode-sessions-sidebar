@@ -1,10 +1,17 @@
 /** Bounded inspection of the TrueType tables needed by the pinned font bundle. */
-export function inspectFontCoverage(bytes: Uint8Array, codepoints: readonly number[]) {
+export function inspectFontCoverage(
+  bytes: Uint8Array,
+  codepoints: readonly number[],
+  outlineCodepoints?: readonly number[],
+) {
   if (bytes.length < 12 || bytes.length > 20 * 1024 * 1024)
     throw new Error("Invalid TrueType font size.");
   if (
     codepoints.length > 4096 ||
-    codepoints.some((cp) => !Number.isInteger(cp) || cp < 0 || cp > 0x10ffff)
+    (outlineCodepoints?.length ?? 0) > 4096 ||
+    [...codepoints, ...(outlineCodepoints ?? [])].some(
+      (cp) => !Number.isInteger(cp) || cp < 0 || cp > 0x10ffff,
+    )
   )
     throw new Error("Invalid font coverage request.");
   const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -153,15 +160,53 @@ export function inspectFontCoverage(bytes: Uint8Array, codepoints: readonly numb
     if (!glyph || glyph >= glyphCount) missing.push(cp);
     else if (advance(glyph) !== cellAdvance) differentAdvance.push(cp);
   }
-  return { cellAdvance, missing, differentAdvance };
+  if (outlineCodepoints === undefined) return { cellAdvance, missing, differentAdvance };
+  // Advance width alone does not prove that a glyph fits in one terminal cell.
+  // Check the stored TrueType outline bounds without interpreting/rasterizing contours.
+  const head = table("head", 54),
+    formatLoca = data.getInt16(head.start + 50);
+  if (formatLoca !== 0 && formatLoca !== 1) throw new Error("Invalid TrueType loca format.");
+  const loca = table("loca", (glyphCount + 1) * (formatLoca === 0 ? 2 : 4)),
+    glyf = table("glyf", 0);
+  const offsetFor = (glyph: number) =>
+    formatLoca === 0 ? u16(loca.start + glyph * 2) * 2 : u32(loca.start + glyph * 4);
+  let previousOffset = 0;
+  for (let glyph = 0; glyph <= glyphCount; glyph++) {
+    const offset = offsetFor(glyph);
+    if (offset < previousOffset || offset > glyf.end - glyf.start)
+      throw new Error("Invalid TrueType glyph offsets.");
+    previousOffset = offset;
+  }
+  const outsideCell: number[] = [];
+  for (const cp of new Set(outlineCodepoints)) {
+    const glyph = lookup(cp);
+    if (!glyph || glyph >= glyphCount) throw new Error("Missing outline glyph.");
+    const start = glyf.start + offsetFor(glyph),
+      end = glyf.start + offsetFor(glyph + 1);
+    if (start === end) continue; // Empty glyphs such as ASCII space have no outline.
+    bound(start, 10, end);
+    const xMin = data.getInt16(start + 2),
+      yMin = data.getInt16(start + 4),
+      xMax = data.getInt16(start + 6),
+      yMax = data.getInt16(start + 8);
+    if (xMin > xMax || yMin > yMax) throw new Error("Invalid TrueType glyph bounds.");
+    if (xMin < 0 || xMax > cellAdvance) outsideCell.push(cp);
+  }
+  return { cellAdvance, missing, differentAdvance, outsideCell };
 }
 
-export function assertFontCoverage(bytes: Uint8Array, codepoints: readonly number[]): void {
-  const result = inspectFontCoverage(bytes, codepoints);
+export function assertFontCoverage(
+  bytes: Uint8Array,
+  codepoints: readonly number[],
+  outlineCodepoints?: readonly number[],
+): void {
+  const result = inspectFontCoverage(bytes, codepoints, outlineCodepoints);
   const label = (values: number[]) =>
     values.map((cp) => `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`).join(", ");
   if (result.missing.length)
     throw new Error(`Font is missing sidebar glyphs: ${label(result.missing)}.`);
   if (result.differentAdvance.length)
     throw new Error(`Font has inconsistent glyph advances: ${label(result.differentAdvance)}.`);
+  if (result.outsideCell?.length)
+    throw new Error(`Font outlines exceed one terminal cell: ${label(result.outsideCell)}.`);
 }

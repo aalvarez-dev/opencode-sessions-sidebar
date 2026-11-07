@@ -742,7 +742,7 @@ export function SidebarView(props: {
   // Measure a layout box: the pinned native text renderer does not invoke its
   // inherited onSizeChange callback. No timer or per-frame measurement is needed.
   function EndLabel(p: EndLabelProps) {
-    return <MeasuredEndLabel {...p} ellipsis={c.icons() === "ascii" ? "..." : "…"} />;
+    return <MeasuredEndLabel {...p} ellipsis={symbol("menu")} />;
   }
   function StatusGlyph(p: { row: SidebarRow; id?: string; width?: number }) {
     const [motionGlyph, setMotionGlyph] = createSignal("");

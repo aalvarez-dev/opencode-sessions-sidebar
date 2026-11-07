@@ -40,13 +40,15 @@ describe("portable icon catalog", () => {
     const points = iconCodepoints();
     expect([...points]).toEqual([...new Set(points)].sort((a, b) => a - b));
     for (const point of [
-      0x21bb, 0x2502, 0x2514, 0x251c, 0x2801, 0x280f, 0x2824, 0xeba0, 0xeb2b, 0xf4ab, 0xf43a,
-      0xf48e,
+      0x21bb, 0x2502, 0x2514, 0x251c, 0x2801, 0x280f, 0x2824, 0xea7c, 0xeab2, 0xeba0, 0xeb2b,
+      0xf4ab, 0xf43a, 0xf48e,
     ])
       expect(points).toContain(point);
     expect(iconCodepoints("unicode")).not.toContain(0xeba0);
     expect(iconCodepoints("nerd")).toContain(0xeba0);
     expect(iconCodepoints("nerd")).not.toContain(0x231b);
+    expect(iconCodepoints("nerd")).not.toContain(0x2713);
+    expect(iconCodepoints("nerd")).not.toContain(0x2026);
     expect(Object.isFrozen(points)).toBe(true);
     expect(Object.isFrozen(iconCatalog.pinActive.nerd)).toBe(true);
     expect(Object.isFrozen(iconAnimations.busy.nerd.frames)).toBe(true);

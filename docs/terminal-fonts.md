@@ -18,8 +18,11 @@ their explicit text substitutes.
 The shared [icon catalog](../src/ui/icons.ts) defines symbol text and expected terminal-cell widths.
 Font preparation verifies its complete union of ASCII/Unicode/Nerd glyphs plus ordinary ASCII and UI
 punctuation. It checks the pinned file hash, a bounded TrueType Unicode `cmap`, and `hmtx` glyph
-advances against the font's Latin `M`. It does not trust the name of an installed font as evidence
-of coverage. No Python, FontTools, font editor, or runtime patching is required by this helper.
+advances against the font's Latin `M`. For every Nerd-mode control and animation frame, it also
+checks the stored `glyf` horizontal bounds through bounded short/long `loca` tables: the outline
+must fit between zero and one cell's advance. It does not trust the name of an installed font as
+evidence of coverage. No Python, FontTools, font editor, or runtime patching is required by this
+helper. This is a bounds check, not a replacement for native pixel review or a font rasterizer.
 
 Font advances are not terminal width negotiation: the Unicode hourglass can occupy two terminal
 cells even though its outline has the same advance as other font glyphs. The icon catalog preserves
@@ -46,6 +49,26 @@ The clock pair is Octicons `clock-fill` (`U+F4AB`) and `clock` (`U+F43A`) from t
 The two outlines preserve the active/inactive distinction without depending only on color. The
 compact child tree uses single-cell `├`, `└`, and `│`, with printable ASCII substitutes in ASCII
 mode. Both the controls and tree connectors participate in font coverage and visual cell guides.
+
+Nerd mode also uses fitted Codicons for the completion check (`U+EAB2`), menu/truncation ellipsis
+(`U+EA7C`), retry loop (`U+EA77`), and down/right disclosures (`U+EB6E`/`U+EB70`), plus Octicons
+`arrow-up-right` (`U+F46C`) for a session shown elsewhere. Unicode and ASCII modes keep their
+existing semantic substitutes. Native xterm review exposed why matching advances alone was
+insufficient: the unchanged pinned font's Unicode outlines extend beyond their 500-unit cell:
+
+| Unicode glyph            | Stored horizontal bounds |
+| ------------------------ | ------------------------ |
+| Completion `U+2713`      | 190–813                  |
+| Ellipsis `U+2026`        | 89–911                   |
+| Retry `U+21BB`           | 136–864                  |
+| Expanded `U+25BE`        | 277–723                  |
+| Collapsed `U+25B8`       | 316–684                  |
+| Shown elsewhere `U+2197` | 105–883                  |
+
+The Nerd replacements fit entirely within that cell. They preserve control/state meaning and avoid
+clipping the check or losing ellipsis dots in a cell-clipping terminal. The outline gate covers the
+complete Nerd catalog, including animation frames; it does not claim that arbitrary Unicode text or
+another selected font fits the same bounds.
 
 ## Prepare or transfer the bundle
 
@@ -156,14 +179,15 @@ platforms. `reducedMotion: true` provides static activity glyphs.
 
 The bundled parser was independently checked against the official font with FontTools during
 implementation. The revised clock and compact-tree catalog passes the pinned file's integrity,
-coverage, and advance checks: all **140** required codepoints are present with a **500-unit**
-advance. Fixture tests cover TrueType cmap formats 4/12, missing glyphs, inconsistent advances,
-malformed bounds, offline integrity checks, dry-run, repeated placement, conflicts, and symlink
-refusal. Tests use temporary directories, not the tester's actual font folders. They establish
-preparation and placement behavior. The isolated campaign has captured genuine xterm windows with
-the pinned font, and a macOS Terminal.app pilot with its default font. The latter visibly
-demonstrates why ASCII is needed when the selected font lacks Nerd glyphs. These named
-configurations do not establish universal terminal compatibility.
+coverage, advance, and Nerd-outline checks: all **146** required codepoints are present with a
+**500-unit** advance, and all **38** distinct Nerd glyph/animation codepoints fit horizontally.
+Fixture tests cover TrueType cmap formats 4/12, missing glyphs, inconsistent advances, malformed
+bounds, offline integrity checks, dry-run, repeated placement, conflicts, and symlink refusal. Tests
+use temporary directories, not the tester's actual font folders. They establish preparation and
+placement behavior. The isolated campaign has captured genuine xterm windows with the pinned font,
+and a macOS Terminal.app pilot with its default font. The latter visibly demonstrates why ASCII is
+needed when the selected font lacks Nerd glyphs. These named configurations do not establish
+universal terminal compatibility.
 
 The macOS workflow also has a separate selected-font scenario. It creates a uniquely named
 `.terminal` profile on a disposable GitHub-hosted runner, archives the resolved AppKit `NSFont`,

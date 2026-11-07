@@ -398,7 +398,7 @@ def main():
         report["sourceHashes"] = {
             str(path.relative_to(repo)): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in (plugin, repo / "scripts/sidebar-probe.ts", Path(__file__).resolve(), *(
-                (repo / "scripts/sidebar-design-fixture.ts", repo / "scripts/sidebar-design-wrapper.ts", repo / "scripts/check-sidebar-design.ts", repo / "scripts/lib/macos-design-relay.ts", repo / "scripts/lib/terminal-design-input.ts", repo / "src/ui/end-label.tsx") if arguments.design else ()
+                (repo / "scripts/sidebar-design-fixture.ts", repo / "scripts/sidebar-design-wrapper.ts", repo / "scripts/check-sidebar-design.ts", repo / "scripts/lib/macos-design-relay.ts", repo / "scripts/lib/terminal-design-input.ts", repo / "src/ui/end-label.tsx", repo / "src/ui/icons.ts") if arguments.design else ()
             ))
         }
         fixture = Path(tempfile.mkdtemp(prefix="sidebar-macos-pilot-"))

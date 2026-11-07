@@ -77,7 +77,7 @@ export function parseFontManifest(bytes: Uint8Array): FontManifest {
 export function verifyFontFile(file: FontFile, bytes: Uint8Array, font = false): void {
   if (bytes.length !== file.bytes || digest(bytes) !== file.sha256)
     throw new Error(`Integrity check failed for ${file.name}.`);
-  if (font) assertFontCoverage(bytes, fontCodepoints());
+  if (font) assertFontCoverage(bytes, fontCodepoints(), iconCodepoints("nerd"));
 }
 
 /** Read exactly the expected size; symlinks and unbounded file growth are rejected. */

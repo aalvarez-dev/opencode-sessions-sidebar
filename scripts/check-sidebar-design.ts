@@ -1,6 +1,7 @@
 /** Shared geometry/color acceptance of the real TUI frame; pixel review remains separate. */
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { iconGlyph } from "../src/ui/icons";
 import { designSessions } from "./sidebar-design-fixture";
 
 export interface DesignSnapshot {
@@ -72,7 +73,11 @@ export function checkDesign(snapshot: DesignSnapshot) {
   assert.equal(context.y, controls.y + 3);
   assert.equal(completion.y, context.y + 1);
   assert.equal(completion.x, parentTitle.x, "Completion action must align with title content.");
-  assert(/Unmark completed\s+[✓+]$/.test(content(completion.id)));
+  assert.equal(
+    content(completion.id),
+    `Unmark completed ${iconGlyph("completion", "nerd")}`,
+    "The pinned-font design scenario must render the exact catalog completion glyph after its action label.",
+  );
   assert(!snapshot.geometry.some((item) => item.id === `sidebar-session-${ids.security}-controls`));
   assert(!snapshot.geometry.some((item) => item.id === `sidebar-session-${ids.backend}-context`));
   checks.push(

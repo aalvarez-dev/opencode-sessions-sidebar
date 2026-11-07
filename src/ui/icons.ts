@@ -27,13 +27,15 @@ const entry = (
 export const iconCatalog = Object.freeze({
   permission: entry("Permission", glyph("!"), glyph("!")),
   question: entry("Question", glyph("?"), glyph("?")),
-  retry: entry("Retry", glyph("↻"), glyph("~")),
+  retry: entry("Retry", glyph("↻"), glyph("~"), glyph("\uEA77")),
   busy: entry("Busy", glyph("⠋"), glyph("-")),
   error: entry("Error", glyph("×"), glyph("x")),
   checking: entry("Checking", glyph("⠤⠄", 2), glyph("...", 3)),
   unknown: entry("Unknown", glyph("◌"), glyph("?")),
   idle: entry("Idle", glyph("·"), glyph(".")),
-  completion: entry("Completed", glyph("✓"), glyph("+")),
+  // The pinned font's Unicode check/ellipsis outlines exceed their one-cell advances.
+  // Codicons provides fitted one-cell outlines for Nerd mode, including label truncation.
+  completion: entry("Completed", glyph("✓"), glyph("+"), glyph("\uEAB2")),
   pinActive: entry("Pin active", glyph("◆"), glyph("P"), glyph("\uEBA0")),
   pinInactive: entry("Pin inactive", glyph("◇"), glyph("p"), glyph("\uEB2B")),
   // U+231B is wide in the Unicode width tables. A terminal may render it as emoji.
@@ -41,11 +43,11 @@ export const iconCatalog = Object.freeze({
   // with separate filled/outline states so membership is not conveyed by color alone.
   laterActive: entry("Later active", glyph("⌛", 2), glyph("L"), glyph("\uF4AB")),
   laterInactive: entry("Later inactive", glyph("≡"), glyph("l"), glyph("\uF43A")),
-  expanded: entry("Expanded", glyph("▾"), glyph("v")),
-  collapsed: entry("Collapsed", glyph("▸"), glyph(">")),
+  expanded: entry("Expanded", glyph("▾"), glyph("v"), glyph("\uEB6E")),
+  collapsed: entry("Collapsed", glyph("▸"), glyph(">"), glyph("\uEB70")),
   delete: entry("Delete", glyph("⌫"), glyph("del", 3), glyph("\uF48E")),
-  menu: entry("Menu", glyph("…"), glyph("...", 3)),
-  promoted: entry("Shown elsewhere", glyph("↗"), glyph(">>", 2)),
+  menu: entry("Menu", glyph("…"), glyph("...", 3), glyph("\uEA7C")),
+  promoted: entry("Shown elsewhere", glyph("↗"), glyph(">>", 2), glyph("\uF46C")),
   treeBranch: entry("Tree branch", glyph("├"), glyph("|")),
   treeLast: entry("Tree last", glyph("└"), glyph("`")),
   treeVertical: entry("Tree vertical", glyph("│"), glyph("|")),
