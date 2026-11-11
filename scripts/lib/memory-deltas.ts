@@ -60,11 +60,7 @@ function findPhase(arm: ArmRun, phase: string): SnapshotMetrics | undefined {
 }
 
 /** Post-minus-pre delta within a single arm's process. */
-export function withinProcessDelta(
-  arm: ArmRun,
-  fromPhase: string,
-  toPhase: string,
-): MetricDelta {
+export function withinProcessDelta(arm: ArmRun, fromPhase: string, toPhase: string): MetricDelta {
   const before = findPhase(arm, fromPhase);
   const after = findPhase(arm, toPhase);
   if (!before || !after) return {};
@@ -95,7 +91,11 @@ export function pairDid(pair: PairRun, fromPhase: string, toPhase: string): DidV
 }
 
 /** Whole-process CPU as percentage points over a phase window. */
-export function cpuPointsBetween(arm: ArmRun, fromPhase: string, toPhase: string): number | undefined {
+export function cpuPointsBetween(
+  arm: ArmRun,
+  fromPhase: string,
+  toPhase: string,
+): number | undefined {
   const before = findPhase(arm, fromPhase);
   const after = findPhase(arm, toPhase);
   if (!before || !after) return undefined;
@@ -192,11 +192,14 @@ function assessMetric(
   const usable = samples.filter((value) => Number.isFinite(value));
   const med = median(usable);
   const spread = interquartileRange(usable);
-  let verdict: MetricVerdict;
-  if (usable.length < criteria.minEvaluablePairs) verdict = "INCONCLUSIVE";
-  else if (med > budget) verdict = med > criteria.signalIqrMultiple * spread ? "FAIL" : "INCONCLUSIVE";
-  else if (spread > budget) verdict = "INCONCLUSIVE";
-  else verdict = "PASS";
+  let verdict: MetricVerdict = "PASS";
+  if (usable.length < criteria.minEvaluablePairs) {
+    verdict = "INCONCLUSIVE";
+  } else if (med > budget) {
+    verdict = med > criteria.signalIqrMultiple * spread ? "FAIL" : "INCONCLUSIVE";
+  } else if (spread > budget) {
+    verdict = "INCONCLUSIVE";
+  }
   return { metric, evaluable: usable.length, median: med, iqr: spread, budget, verdict };
 }
 

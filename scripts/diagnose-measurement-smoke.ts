@@ -27,7 +27,9 @@ function probeHeapStats(): ApiCheck {
       name: "bun:jsc.heapStats (heapSize, heapCapacity, objectTypeCounts)",
       required: true,
       present,
-      detail: present ? "objectTypeCounts available for per-type live-set deltas" : "unexpected shape",
+      detail: present
+        ? "objectTypeCounts available for per-type live-set deltas"
+        : "unexpected shape",
     };
   } catch (error) {
     return { name: "bun:jsc.heapStats", required: true, present: false, detail: String(error) };

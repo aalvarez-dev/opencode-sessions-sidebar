@@ -25,7 +25,9 @@ const input = process.argv[2] ?? process.env.SIDEBAR_ATTRIBUTION_SUMMARY;
 const output = process.argv[3] ?? process.env.SIDEBAR_ATTRIBUTION_VERDICT;
 
 if (!input) {
-  console.error("usage: bun scripts/analyze-activation-attribution.ts <summary.json> [output.json]");
+  console.error(
+    "usage: bun scripts/analyze-activation-attribution.ts <summary.json> [output.json]",
+  );
   process.exitCode = 2;
 } else {
   const report = JSON.parse(await readFile(resolve(input), "utf8")) as CampaignReport;

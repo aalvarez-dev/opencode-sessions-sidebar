@@ -25,7 +25,9 @@ assert(["1.18.30", "1.19.3"].includes(version));
 const output = resolve(process.env.SIDEBAR_ATTRIBUTION_DIR!);
 await mkdir(output, { recursive: true });
 const pairs = Number(process.env.SIDEBAR_ATTRIBUTION_PAIRS ?? attributionCriteria.pairs);
-const idleMs = Number(process.env.SIDEBAR_ATTRIBUTION_IDLE_MS ?? attributionCriteria.windows.idleMs);
+const idleMs = Number(
+  process.env.SIDEBAR_ATTRIBUTION_IDLE_MS ?? attributionCriteria.windows.idleMs,
+);
 const eventCount = Number(process.env.SIDEBAR_ATTRIBUTION_EVENTS ?? 20);
 const product = resolve(repository, "dist/tui.js");
 const hash = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
@@ -275,7 +277,14 @@ try {
     } catch (error) {
       if (lifetime.signal.aborted) throw error;
       console.error(`FAIL ${label}: ${String(error)}`);
-      return { arm, completed: false, snapshots: [], injectedEvents: 0, deliveredEvents: 0, failure: String(error) };
+      return {
+        arm,
+        completed: false,
+        snapshots: [],
+        injectedEvents: 0,
+        deliveredEvents: 0,
+        failure: String(error),
+      };
     } finally {
       await writeFile(join(output, `${label}.terminal.log`), terminalText);
       await stop(child);
@@ -292,7 +301,8 @@ try {
       if (arm === "product") productArm = result;
       else controlArm = result;
     }
-    report.pairs.push({ index, order, product: productArm!, control: controlArm! } satisfies PairRun);
+    const pair: PairRun = { index, order, product: productArm!, control: controlArm! };
+    report.pairs.push(pair);
     await writeFile(join(output, "summary.json"), JSON.stringify(report, null, 2));
   }
   assert.equal(hash(await readFile(product)), report.productSha256);
