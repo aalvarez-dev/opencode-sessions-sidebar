@@ -38,6 +38,8 @@ jobs:
             test/memory-deltas.test.ts \
             test/memory-phase-reanalysis.test.ts \
             docs/validation/activation-attribution-criteria.md \
+            docs/validation/activation-attribution.json \
+            docs/validation/activation-attribution-results.md \
             .github/workflows/isolated-activation-attribution.yml
       - name: Typecheck
         continue-on-error: true
