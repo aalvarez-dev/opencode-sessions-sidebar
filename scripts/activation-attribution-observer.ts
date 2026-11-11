@@ -6,7 +6,7 @@
  */
 
 import assert from "node:assert/strict";
-import { writeFile } from "node:fs/promises";
+import { rename, writeFile } from "node:fs/promises";
 import { snapshot, type AttributionState } from "./activation-attribution-subject";
 import { attributionCriteria } from "./lib/attribution-criteria";
 
@@ -96,7 +96,8 @@ async function measure(api: any): Promise<void> {
     result.snapshots = state().snapshots;
     result.injectedEvents = state().injectedEvents;
     result.deliveredEvents = state().deliveredEvents;
-    await writeFile(output, JSON.stringify(result));
+    await writeFile(`${output}.tmp`, JSON.stringify(result));
+    await rename(`${output}.tmp`, output);
   }
 }
 
