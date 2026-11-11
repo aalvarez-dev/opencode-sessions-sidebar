@@ -1,0 +1,58 @@
+name: Format report (temporary)
+
+on:
+  push:
+    branches:
+      - "perf/idle-render-20261107"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Normalize formatting of the changed files
+        run: |
+          bunx prettier --write \
+            scripts/diagnose-measurement-smoke.ts \
+            scripts/lib/attribution-criteria.ts \
+            scripts/lib/memory-deltas.ts \
+            scripts/lib/memory-phase-reanalysis.ts \
+            scripts/analyze-memory-phases.ts \
+            scripts/analyze-activation-attribution.ts \
+            scripts/activation-attribution-subject.ts \
+            scripts/activation-attribution-observer.ts \
+            scripts/diagnose-activation-attribution.ts \
+            test/activation-attribution-criteria.test.ts \
+            test/memory-deltas.test.ts \
+            test/memory-phase-reanalysis.test.ts \
+            docs/validation/activation-attribution-criteria.md \
+            .github/workflows/isolated-activation-attribution.yml
+      - name: Typecheck
+        continue-on-error: true
+        run: bunx tsc --noEmit
+      - name: Test
+        continue-on-error: true
+        run: bun test
+      - name: Upload normalized source
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: formatted
+          path: |
+            scripts/
+            test/
+            docs/validation/
+            .github/workflows/isolated-activation-attribution.yml
+          include-hidden-files: true
+          retention-days: 3
