@@ -76,7 +76,7 @@ async function measure(api: any): Promise<void> {
         text.includes("0 tokens")
       );
     }, "Native session not ready");
-    await until(() => (tree(api).rows > 0) === (arm === "product"), "Unexpected sidebar geometry");
+    await until(() => tree(api).rows > 0 === (arm === "product"), "Unexpected sidebar geometry");
     snapshot("ready");
     for (let index = 0; index < eventCount; index += 1) {
       await api.client.session.create(
