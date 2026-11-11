@@ -17,15 +17,7 @@
       "idleMs": 70000,
       "sampleIntervalMs": 1000
     },
-    "idleCheckpointsSeconds": [
-      0,
-      2,
-      5,
-      10,
-      20,
-      30,
-      70
-    ]
+    "idleCheckpointsSeconds": [0, 2, 5, 10, 20, 30, 70]
   },
   "verdict": {
     "verdict": "FAIL_CPU",
@@ -59,10 +51,7 @@
       "evaluablePairs": 8,
       "totalPairs": 10,
       "droppedPairs": [],
-      "warmupDiscarded": [
-        0,
-        1
-      ],
+      "warmupDiscarded": [0, 1],
       "rssMiB": {
         "median": 18.791015625,
         "iqr": 65.654296875
@@ -78,10 +67,7 @@
       "evaluablePairs": 8,
       "totalPairs": 10,
       "droppedPairs": [],
-      "warmupDiscarded": [
-        0,
-        1
-      ],
+      "warmupDiscarded": [0, 1],
       "rssMiB": {
         "median": 1.3046875,
         "iqr": 15.8447265625
@@ -97,10 +83,7 @@
       "evaluablePairs": 8,
       "totalPairs": 10,
       "droppedPairs": [],
-      "warmupDiscarded": [
-        0,
-        1
-      ],
+      "warmupDiscarded": [0, 1],
       "rssMiB": {
         "median": -0.421875,
         "iqr": 8.3994140625
@@ -116,10 +99,7 @@
       "evaluablePairs": 8,
       "totalPairs": 10,
       "droppedPairs": [],
-      "warmupDiscarded": [
-        0,
-        1
-      ],
+      "warmupDiscarded": [0, 1],
       "rssMiB": {
         "median": -42.650390625,
         "iqr": 81.8076171875
@@ -135,10 +115,7 @@
       "evaluablePairs": 8,
       "totalPairs": 10,
       "droppedPairs": [],
-      "warmupDiscarded": [
-        0,
-        1
-      ],
+      "warmupDiscarded": [0, 1],
       "rssMiB": {
         "median": 40.552734375,
         "iqr": 149.7861328125
