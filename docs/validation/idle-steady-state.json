@@ -1,0 +1,54 @@
+{
+  "kind": "idle-steady-state-verdict",
+  "note": "Sustained idle only (post-settle to end of idle); verdict is data, not acceptance.",
+  "window": {
+    "from": "settled",
+    "to": "ready+idle"
+  },
+  "criteria": {
+    "pairs": 10,
+    "warmupPairsDiscarded": 2,
+    "minEvaluablePairs": 5,
+    "budget": {
+      "rssMiB": 64,
+      "cpuPoints": 1
+    },
+    "signalIqrMultiple": 3,
+    "idleMs": 70000
+  },
+  "evaluablePairs": 8,
+  "totalPairs": 10,
+  "droppedPairs": [],
+  "warmupDiscarded": [
+    0,
+    1
+  ],
+  "cpuPoints": {
+    "median": 0.1357205544817035,
+    "iqr": 0.1418033292496788
+  },
+  "rssMiB": {
+    "median": -0.83984375,
+    "iqr": 141.8759765625
+  },
+  "verdict": {
+    "verdict": "INCONCLUSIVE",
+    "rss": {
+      "metric": "rss",
+      "evaluable": 8,
+      "median": -0.83984375,
+      "iqr": 141.8759765625,
+      "budget": 64,
+      "verdict": "INCONCLUSIVE"
+    },
+    "cpu": {
+      "metric": "cpu",
+      "evaluable": 8,
+      "median": 0.1357205544817035,
+      "iqr": 0.1418033292496788,
+      "budget": 1,
+      "verdict": "PASS"
+    },
+    "evaluablePairs": 8
+  }
+}
