@@ -36,16 +36,19 @@ export const iconCatalog = Object.freeze({
   // The pinned font's Unicode check/ellipsis outlines exceed their one-cell advances.
   // Codicons provides fitted one-cell outlines for Nerd mode, including label truncation.
   completion: entry("Completed", glyph("✓"), glyph("+"), glyph("\uEAB2")),
-  pinActive: entry("Pin active", glyph("◆"), glyph("P"), glyph("\uEBA0")),
-  pinInactive: entry("Pin inactive", glyph("◇"), glyph("p"), glyph("\uEB2B")),
+  // Material's filled/outline pair has the same upright silhouette in both states.
+  // The previous Codicons inactive pin was only 346 units high in the pinned font;
+  // these outlines are 832 high and still fit its unchanged 500-unit cell.
+  pinActive: entry("Pin active", glyph("◆"), glyph("P"), glyph("\u{F0403}")),
+  pinInactive: entry("Pin inactive", glyph("◇"), glyph("p"), glyph("\u{F0931}")),
   // U+231B is wide in the Unicode width tables. A terminal may render it as emoji.
-  // Octicons clock-fill/clock in the pinned Nerd Font: the Later control is a clock,
+  // Material clock/clock-outline in the pinned Nerd Font: the Later control is a clock,
   // with separate filled/outline states so membership is not conveyed by color alone.
-  laterActive: entry("Later active", glyph("⌛", 2), glyph("L"), glyph("\uF4AB")),
-  laterInactive: entry("Later inactive", glyph("≡"), glyph("l"), glyph("\uF43A")),
+  laterActive: entry("Later active", glyph("⌛", 2), glyph("L"), glyph("\u{F0954}")),
+  laterInactive: entry("Later inactive", glyph("≡"), glyph("l"), glyph("\u{F0150}")),
   expanded: entry("Expanded", glyph("▾"), glyph("v"), glyph("\uEB6E")),
   collapsed: entry("Collapsed", glyph("▸"), glyph(">"), glyph("\uEB70")),
-  delete: entry("Delete", glyph("⌫"), glyph("del", 3), glyph("\uF48E")),
+  delete: entry("Delete", glyph("⌫"), glyph("del", 3), glyph("\u{F0A7A}")),
   menu: entry("Menu", glyph("…"), glyph("...", 3), glyph("\uEA7C")),
   promoted: entry("Shown elsewhere", glyph("↗"), glyph(">>", 2), glyph("\uF46C")),
   treeBranch: entry("Tree branch", glyph("├"), glyph("|")),

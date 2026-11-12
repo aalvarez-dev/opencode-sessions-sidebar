@@ -82,8 +82,45 @@ inline creation header, compact live-subagent trees, default active expansion wi
 choices, counted nonempty groups, aligned completion action and a verified clock icon family. A
 shared, explicitly synthetic design fixture exercises the unchanged built product inside stock
 OpenCode on Linux and macOS. This is presentation evidence only; native execution/attention checks
-remain independent. Revised-build pixel review is pending and does not close the outstanding
-rendered RSS release gate.
+remain independent. The final `5080241` build passed Ubuntu and macOS pixel review, native
+attention/transport checks, container validation and CI. PR #8 was merged into `main` on November 7
+as development integration at the owner's explicit request. Its short 250-session CPU comparison
+still failed: +1.2050 percentage points against the unchanged +1.0 limit. The delayed comparison
+passed at +0.9999 points, with effectively no CPU margin; it does not override the short failure.
+Both RSS medians passed in that campaign. The package remains experimental and unpublished, with
+resource acceptance and execution correlation still open. See the exact
+[campaign record](sidebar-resource-benchmark.md#november-7-development-merge).
+
+The follow-up visual review distinguishes structural agreement from finishing the presentation. More
+legible one-cell Material pin/clock/trash glyphs and theme-derived secondary contrast are now
+implemented, with font-boundary and dark/light/custom-palette tests. Shared project-context labels
+and retry colors are memoized instead of recalculated per row. Native frame acceptance checks now
+also inspect the actual secondary-text/control colors and distinct pin/clock states. Candidate
+`b4eca46` passed Ubuntu/macOS pixel review, seven shared design checks, native interaction,
+attention/transport checks, container validation and CI. Its short 250-session CPU median still
+failed at +1.2124 points; delayed RSS/CPU medians passed. This does not establish stable resource
+acceptance. The [campaign record](sidebar-resource-benchmark.md#november-7-legibility-follow-up)
+retains both results and their exact bundle identity. The prior PR #9 candidate `852b140` passed
+functional and graphical checks but failed short 250-session RSS at +84.4258 MiB versus 64 MiB. Its
+passing delayed median did not cancel that failure; the diagnostic now distinguishes anonymous,
+file-backed and shared RSS using existing process reads.
+
+The subsequent viewport optimization computes compact subtree heights only for expanded roots,
+sharing descendants across overlapping open roots. At 250 flat sessions with the active leaf open,
+the deterministic child-lookup count falls from 500 to two; fully collapsed rows need none. Existing
+promoted-child geometry and deep iterative traversal are preserved. This reduces layout work and
+temporary allocations; it is not a demonstrated fix for process-wide idle CPU or RSS. Its native and
+resource validation must use its new bundle, not the preceding candidate's receipts.
+
+A further transport cleanup avoids aborting health responses whose JSON body has already been
+consumed, while preserving cancellation of pending/rejected requests, timeouts, reconnection and
+disposal. A bounded native comparison found a modest, variable CPU reduction; it does not close
+resource acceptance. The
+[investigation record](sidebar-resource-benchmark.md#fulfilled-health-cleanup-investigation) retains
+all three pairs and requires the unchanged original gates on the new candidate. Its first
+original-gate validation passed both short comparisons but failed delayed CPU at +1.4001 points
+against the unchanged +1.0 limit. The exact bundle passed 222 local tests and eleven native
+remote-transport checks; these correctness results do not override the resource failure.
 
 ## Required runtime scenarios
 
@@ -129,3 +166,43 @@ older successful check.
 Until that decision is made, continue using focused task branches and reviewed PRs to `main` under
 the existing contributor instructions. Creating `develop`, changing branch protections, and enabling
 automerge are pending maintenance work.
+
+The November 7 graph optimization deduplicates batched ancestor invalidation and shares uncached
+subtree summaries. An independent DFS oracle covers flat/deep/wide graphs at 25/250/500 nodes,
+structural changes, missing parents, cycles and attention/error facts. Deterministic operation
+counts establish improved scaling; these headless regressions do not close the rendered idle-CPU,
+prolonged-lifecycle or release acceptance gates.
+
+## V1 integration candidate 1
+
+The frozen product has completed the 20-minute-per-treatment and 50-cycle stability observations.
+Two of three original resource campaigns passed; campaign 2 failed, so stable release approval
+remains blocked. A separate Linux x64 OpenCode 1.19.3 compatibility trial passed installed-package
+sidebar/attention and remote recovery checks. See
+[the candidate handoff](v1-integration-candidate.md) for exact identity, all results, isolation,
+legacy-sidebar replacement and rollback. Full harness integration remains pending; no server
+installation or public package release has been performed.
+
+## Windowed row containers
+
+Top-level groups now mount only nearby row containers, retaining complete scroll geometry through
+prefix heights and spacers. The 250-session fixture retains five row containers instead of 250;
+native navigation and attention remain available. Its original short-window CPU acceptance failed,
+despite a passing delayed window. See [the optimization report](windowed-row-containers.md) and its
+machine-readable measurements. No session cap or feature restriction was introduced; stable V1 and
+combined-harness integration remain blocked.
+
+A subsequent diagnostic counted all product function entries and compared real/synthetic health
+responses within two processes in mirrored order. Only transport-health sites executed during idle;
+real requests added +1.4786 and +0.9068 CPU points within their respective processes. See the
+[health crossover](health-crossover-diagnostic.md). The owner subsequently accepted slower silent
+disconnect detection to prioritize idle performance. The
+[quiet health cadence](quiet-transport-health.md) now waits 60 seconds while healthy and 15 seconds
+after a known failure, preserving the two-second deadline and immediate native events. All 233 tests
+pass. The new local short/delayed resource gates and sustained observation pass; the latter covers
+three real health calls with zero extra frames. Stock OpenCode 1.19.3 passes eleven native
+attach/cut/recovery/restart checks. Hosted CI, container, graphical, short-resource and sustained
+checks pass, but hosted delayed RSS fails at +80.6641 MiB against the unchanged +64 MiB limit. Those
+failed samples finish before the first health request; further spacing cannot address their
+pre-probe memory difference. Allocation ownership remains unresolved. No cap, forced GC or budget
+relaxation was introduced. The PR remains draft and stable resource acceptance remains blocked.

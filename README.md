@@ -23,11 +23,13 @@ V1** through its public APIs. The minimum supported release will be published af
 runtime testing. A future V2 adapter can live in this repository and share the domain model; V2
 support is not currently implemented.
 
-The UI retains the entire session list but mounts native row contents only near the viewport to
-bound offscreen buffers. The pinned V1 TUI has no public disconnect signal, so its integration uses
-the [bounded transport health fallback](docs/performance.md#bounded-tui-transport-health-fallback).
-It detects unavailable HTTP transport; a silent event-stream-only fault is not certified by that
-check. The headless adapter does not poll.
+The UI retains the entire session list but mounts top-level group containers and row contents only
+near the viewport, preserving full scroll geometry with spacers. The pinned V1 TUI has no public
+disconnect signal, so its integration uses the
+[bounded transport health fallback](docs/performance.md#bounded-tui-transport-health-fallback). It
+detects unavailable HTTP transport; a silent event-stream-only fault is not certified by that check.
+Healthy checks are one minute apart; known outages retry after 15 seconds. Session updates remain
+event-driven and immediate. The headless adapter does not poll.
 
 For an isolated browser-terminal trial, see the [Codespaces lab](docs/codespaces-lab.md). Its
 development container pins the tested toolchain and provides verification and separate scratch
@@ -42,6 +44,16 @@ computer when using SSH.
 [Development package validation](docs/release.md) checks an offline installation without checkout
 dependencies and can exercise that installed artifact in stock OpenCode. A package check is not a
 public release or a guarantee about every terminal's active font.
+
+The [row-container optimization](docs/windowed-row-containers.md) reduces the render tree; its
+short-window CPU acceptance failed. The latest
+[quiet health cadence](docs/quiet-transport-health.md) reduces background requests and passes its
+local short, delayed and sustained resource comparisons. Hosted delayed RSS still fails at +80.66
+MiB against the +64 MiB limit, so resource acceptance remains open. Native disconnect/recovery
+passes on OpenCode 1.19.3; full harness integration remains pending. No session cap or feature
+restriction was introduced. The [V1 integration candidate](docs/v1-integration-candidate.md)
+describes the preceding frozen trial build; its hashes do not identify this newer optimization.
+Neither is stable release approval.
 
 ## Intended behavior
 

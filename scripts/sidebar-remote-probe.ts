@@ -1,5 +1,6 @@
 /** Test-only local observer: snapshots never contact the disconnected server. */
 import assert from "node:assert/strict";
+import { validationHostVersion } from "./lib/validation-host";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
 import type { Renderable } from "@opentui/core";
@@ -13,7 +14,7 @@ export default {
     const projectId = process.env.SIDEBAR_REMOTE_PROJECT;
     const sessionIds = JSON.parse(process.env.SIDEBAR_REMOTE_SESSIONS ?? "[]") as string[];
     assert(exchange && storageDirectory && projectId && sessionIds.length);
-    assert.equal(api.app.version, "1.18.30");
+    assert.equal(api.app.version, validationHostVersion);
     const storage = createFileStorage({ directory: storageDirectory });
     const scope = { hostId: "synthetic-sidebar-remote", projectId };
     const events: { type: string; elapsedMs: number }[] = [];

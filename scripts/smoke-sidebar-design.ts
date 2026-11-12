@@ -34,6 +34,8 @@ const sourcePaths = [
   "dist/tui.js",
   "src/ui/end-label.tsx",
   "src/ui/icons.ts",
+  "src/ui/colors.ts",
+  "src/ui/view.tsx",
   "scripts/sidebar-design-fixture.ts",
   "scripts/sidebar-design-wrapper.ts",
   "scripts/sidebar-probe.ts",

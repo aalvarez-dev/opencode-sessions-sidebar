@@ -40,6 +40,25 @@ and trash symbols with consistent expected cell widths. Unicode and ASCII are co
 and are evaluated separately; they are not visually identical replacements for vector icons. The
 plugin never installs a font or changes a user's terminal profile as part of activation.
 
+Legibility is a separate requirement from ordering the controls correctly. The Nerd catalog uses
+fitted Material filled/outline pin and clock pairs, plus a stronger trash outline. The old small
+horizontal inactive pin was substantially shorter than the mockup's upright pin. These replacements
+fit the existing one-cell advance without changing font bytes. A circular clock remains bounded by
+one cell; a terminal glyph cannot independently become a 13 px browser SVG at every font size.
+
+Secondary row text and available, unselected controls approach 6:1 contrast against the host's
+opaque panel by blending its muted color toward its normal text color. Normal text caps that target;
+already readable colors remain unchanged. Terminal-controlled indexed/default colors and unknown
+transparent backdrops are preserved without a contrast guarantee; their fallback RGB cannot prove
+the client's actual palette. The calculation is memoized per view/theme. Configured agent and
+activity/completion colors retain their host semantics. On the pinned dark fixture, this changes
+gray from `#808080` to `#949494`, close to the approved prototype's `#93918d`.
+
+The pinned host owns the sidebar width and terminal font metrics. The plugin's public content slot
+does not expose a width setting. Do not force an oversized child outside that slot to mimic the 420
+px prototype. Retain aligned context selectors, visible truncation and access to complete values in
+Session details when the host grants fewer columns than the browser example.
+
 Use host theme semantics for text, muted metadata, warning actions, success and errors. Agent colors
 come from public host configuration. Missing agent colors or repository values are not permission to
 invent data. The current exact-directory adapter reports public project/path/VCS context, not

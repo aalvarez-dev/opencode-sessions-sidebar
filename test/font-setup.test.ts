@@ -149,15 +149,22 @@ function bundle() {
 describe("portable font coverage", () => {
   test("checks both Unicode cmap formats, including offset glyph arrays and animation symbols", () => {
     for (const format of [4, 12]) {
-      expect(inspectFontCoverage(fontFixture(fontCodepoints(), format), fontCodepoints())).toEqual({
+      // Format 4 only represents the BMP; Material controls require full Unicode format 12.
+      const points = fontCodepoints().filter((cp) => format === 12 || cp <= 0xffff);
+      const font = fontFixture(points, format);
+      expect(inspectFontCoverage(font, points)).toEqual({
         cellAdvance: 500,
         missing: [],
         differentAdvance: [],
       });
+      if (format === 4)
+        expect(inspectFontCoverage(font, fontCodepoints()).missing).toEqual(
+          fontCodepoints().filter((cp) => cp > 0xffff),
+        );
     }
     expect(fontCodepoints()).toContain(0x21bb);
     expect(fontCodepoints()).toContain(0x280b);
-    expect(fontCodepoints()).toContain(0xeba0);
+    expect(fontCodepoints()).toContain(0xf0403);
   });
   test("rejects missing icons and different advances despite valid font structure", () => {
     expect(() =>
@@ -231,6 +238,7 @@ describe("portable font coverage", () => {
     // Unicode compatibility glyphs can overhang; the fitted guarantee is Nerd-only.
     expect(() => check(new Map([[0x2026, [89, 911] as const]]))).not.toThrow();
     expect(() => check(new Map([[0xea7c, [89, 911] as const]]))).toThrow("U+EA7C");
+    expect(() => check(new Map([[0xf0931, [-1, 500] as const]]))).toThrow("U+F0931");
   });
   test("bounds malformed directories, tables, cmaps, and caller requests", () => {
     const directory = fontFixture();

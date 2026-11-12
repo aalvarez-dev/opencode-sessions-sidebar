@@ -218,7 +218,9 @@ describe("V1 adapter contract with a fake public host", () => {
       },
     );
     const probe = async () => {
-      const next = [...scheduled].find(([, delay]) => delay === 5_000)!;
+      const next = [...scheduled].find(
+        ([, delay]) => delay === (healthCalls === 0 ? 60_000 : 15_000),
+      )!;
       scheduled.delete(next[0]);
       next[0]();
       for (let turn = 0; turn < 4; turn++) await Promise.resolve();
@@ -1237,4 +1239,124 @@ describe("V1 adapter contract with a fake public host", () => {
     expect(adapter.state()).toMatchObject({ phase: "disposed", refreshing: false });
     await nextReading;
   });
+});
+
+/** Count dictionary reads, not wall-clock time or an implementation-specific timer. */
+async function mapReads(work: () => void | Promise<void>) {
+  const original = Map.prototype.get;
+  let reads = 0;
+  Map.prototype.get = function (key: unknown) {
+    reads++;
+    return original.call(this, key);
+  };
+  try {
+    await work();
+    return reads;
+  } finally {
+    Map.prototype.get = original;
+  }
+}
+
+function checkGraphSummaries(adapter: ReturnType<typeof createV1Adapter>) {
+  const rows = adapter.list();
+  // Deliberately simple independent oracle: index parent links, then DFS each root.
+  // It does not reuse the adapter's child index, invalidation, or summary cache.
+  const descendants = new Map(
+    rows.map((row) => [row.id, rows.filter((child) => child.parentId === row.id)]),
+  );
+  for (const root of rows) {
+    const expected = { busy: 0, retry: 0, unknown: 0, permissions: 0, questions: 0, errors: 0 };
+    const seen = new Set<string>();
+    const stack = [root];
+    while (stack.length) {
+      const row = stack.pop()!;
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      if (row.activity !== "idle") expected[row.activity]++;
+      expected.permissions += row.permissions;
+      expected.questions += row.questions;
+      if (row.error) expected.errors++;
+      stack.push(...descendants.get(row.id)!);
+    }
+    expect(adapter.summary(root.id)).toEqual(expected);
+  }
+}
+
+describe("V1 graph update scaling and equivalence", () => {
+  for (const shape of ["flat", "deep", "wide"] as const) {
+    for (const size of [25, 250, 500]) {
+      test(`${shape} ${size}: snapshot, activity, attention and topology preserve summaries`, async () => {
+        const host = new FakeHost();
+        host.sessions = Array.from({ length: size }, (_, index) =>
+          session(`node-${index}`, {
+            ...(index && shape !== "flat"
+              ? { parentID: `node-${shape === "deep" ? index - 1 : 0}` }
+              : {}),
+          }),
+        );
+        const adapter = adapterFor(host, { maxSessions: size + 1 });
+        const reads: Record<string, number> = {};
+        reads.hydrate = await mapReads(() => adapter.start());
+        checkGraphSummaries(adapter);
+        const leaf = `node-${size - 1}`;
+        reads.status = await mapReads(() => host.status("graph-busy", leaf, { type: "busy" }));
+        reads.summaries = await mapReads(() => {
+          for (const row of host.sessions) adapter.summary(row.id);
+        });
+        checkGraphSummaries(adapter);
+        host.permissions = [permission("graph-permission", leaf)];
+        host.questions = [question("graph-question", "node-1")];
+        // Change every title in an existing graph; this was the cubic invalidation case.
+        host.sessions = host.sessions.map((row) => ({ ...row, title: `${row.title} renamed` }));
+        reads.refresh = await mapReads(() => adapter.refresh());
+        checkGraphSummaries(adapter);
+        // Read cached summaries from the notification itself, after multiple edges change.
+        const subscriberErrors: unknown[] = [];
+        const unsubscribe = adapter.subscribe(() => {
+          try {
+            checkGraphSummaries(adapter);
+          } catch (error) {
+            subscriberErrors.push(error);
+          }
+        });
+        host.sessions = host.sessions.map((row, index) => ({
+          ...row,
+          ...(index === 0 ? { parentID: leaf } : index === 1 ? { parentID: "missing" } : {}),
+        }));
+        await adapter.refresh();
+        host.emit({
+          id: "graph-reparent",
+          type: "session.updated",
+          properties: { sessionID: "node-1", info: session("node-1", { parentID: leaf }) },
+        });
+        host.emit({
+          id: "graph-error",
+          type: "session.error",
+          properties: {
+            sessionID: "node-1",
+            error: { name: "UnknownError", data: { message: "synthetic" } },
+          },
+        });
+        host.status("graph-idle", "node-1", { type: "idle" });
+        host.emit({
+          id: "graph-delete",
+          type: "session.deleted",
+          properties: { sessionID: "node-0", info: session("node-0") },
+        });
+        host.emit({
+          id: "graph-parent-arrives",
+          type: "session.created",
+          properties: { sessionID: "missing", info: session("missing") },
+        });
+        unsubscribe();
+        expect(subscriberErrors).toEqual([]);
+        checkGraphSummaries(adapter);
+        console.log(JSON.stringify({ graphReads: { shape, size, ...reads } }));
+        expect(reads.hydrate!).toBeLessThan(16 * size + 100);
+        expect(reads.status!).toBeLessThan(4 * size + 30);
+        expect(reads.refresh!).toBeLessThan(20 * size + 100);
+        expect(reads.summaries!).toBeLessThan(12 * size + 100);
+      });
+    }
+  }
 });

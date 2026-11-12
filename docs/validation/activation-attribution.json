@@ -1,0 +1,129 @@
+{
+  "kind": "activation-attribution-verdict",
+  "note": "Verdict is data, not acceptance: the PR stays draft and V1 acceptance is the owner's decision.",
+  "criteria": {
+    "pairs": 10,
+    "warmupPairsDiscarded": 2,
+    "minEvaluablePairs": 5,
+    "extensionMaxPairs": 16,
+    "sessions": 250,
+    "budget": {
+      "rssMiB": 64,
+      "cpuPoints": 1
+    },
+    "signalIqrMultiple": 3,
+    "windows": {
+      "baselineMs": 30000,
+      "idleMs": 70000,
+      "sampleIntervalMs": 1000
+    },
+    "idleCheckpointsSeconds": [0, 2, 5, 10, 20, 30, 70]
+  },
+  "verdict": {
+    "verdict": "FAIL_CPU",
+    "rss": {
+      "metric": "rss",
+      "evaluable": 8,
+      "median": 18.791015625,
+      "iqr": 65.654296875,
+      "budget": 64.0,
+      "verdict": "INCONCLUSIVE"
+    },
+    "cpu": {
+      "metric": "cpu",
+      "evaluable": 8,
+      "median": 2.068076368991534,
+      "iqr": 0.5171581938540517,
+      "budget": 1.0,
+      "verdict": "FAIL"
+    },
+    "evaluablePairs": 8
+  },
+  "total": {
+    "evaluablePairs": 8,
+    "totalPairs": 10,
+    "droppedPairs": []
+  },
+  "windows": {
+    "total": {
+      "from": "before-import",
+      "to": "ready+idle",
+      "evaluablePairs": 8,
+      "totalPairs": 10,
+      "droppedPairs": [],
+      "warmupDiscarded": [0, 1],
+      "rssMiB": {
+        "median": 18.791015625,
+        "iqr": 65.654296875
+      },
+      "cpuPoints": {
+        "median": 2.068076368991534,
+        "iqr": 0.5171581938540517
+      }
+    },
+    "import": {
+      "from": "before-import",
+      "to": "after-import",
+      "evaluablePairs": 8,
+      "totalPairs": 10,
+      "droppedPairs": [],
+      "warmupDiscarded": [0, 1],
+      "rssMiB": {
+        "median": 1.3046875,
+        "iqr": 15.8447265625
+      },
+      "cpuPoints": {
+        "median": 4.157795100009153,
+        "iqr": 39.90393532870095
+      }
+    },
+    "activation": {
+      "from": "after-import",
+      "to": "after-activate",
+      "evaluablePairs": 8,
+      "totalPairs": 10,
+      "droppedPairs": [],
+      "warmupDiscarded": [0, 1],
+      "rssMiB": {
+        "median": -0.421875,
+        "iqr": 8.3994140625
+      },
+      "cpuPoints": {
+        "median": 10.301491727779847,
+        "iqr": 27.38712968713962
+      }
+    },
+    "events": {
+      "from": "ready",
+      "to": "after-events",
+      "evaluablePairs": 8,
+      "totalPairs": 10,
+      "droppedPairs": [],
+      "warmupDiscarded": [0, 1],
+      "rssMiB": {
+        "median": -42.650390625,
+        "iqr": 81.8076171875
+      },
+      "cpuPoints": {
+        "median": 7.472219844214166,
+        "iqr": 1.7897022620367338
+      }
+    },
+    "idle": {
+      "from": "after-events",
+      "to": "ready+idle",
+      "evaluablePairs": 8,
+      "totalPairs": 10,
+      "droppedPairs": [],
+      "warmupDiscarded": [0, 1],
+      "rssMiB": {
+        "median": 40.552734375,
+        "iqr": 149.7861328125
+      },
+      "cpuPoints": {
+        "median": 2.815478178856402,
+        "iqr": 4.575926194755099
+      }
+    }
+  }
+}

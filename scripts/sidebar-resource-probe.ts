@@ -57,7 +57,7 @@ async function waitForMeasurement(
     let settled = false;
     const timeout = setTimeout(
       () => finish(new Error("Parent did not finish the bounded resource measurement.")),
-      90_000,
+      process.env.SIDEBAR_RESOURCE_SUSTAINED === "true" ? 270_000 : 90_000,
     );
     function finish(error?: unknown) {
       if (settled) return;
@@ -192,11 +192,7 @@ async function measure(api: TuiPluginApi) {
   async function checkViewport(lastId: string) {
     const initial = renderTreeStats();
     const bound = Math.ceil((api.renderer.terminalHeight + 24) / 3) + 2;
-    assert.equal(
-      initial.sessionRowShells,
-      expected,
-      "The full list must retain its scroll geometry.",
-    );
+    assert(initial.sessionRowShells <= bound, "Offscreen row containers were retained.");
     assert(
       initial.mountedSessionRows > 0 && initial.mountedSessionRows <= bound,
       "Too many offscreen rows remain mounted.",
@@ -208,6 +204,8 @@ async function measure(api: TuiPluginApi) {
       ancestor = ancestor.parent;
     assert(ancestor, "Native sidebar scrollbox was not found.");
     const scroll = ancestor as ScrollBoxRenderable;
+    const fullHeight = scroll.scrollHeight;
+    assert(fullHeight >= expected * 3, "The complete list lost scroll geometry.");
     scroll.scrollTo(scroll.scrollHeight);
     const target = `sidebar-session-${lastId}-status`;
     await until(() => {
@@ -215,7 +213,8 @@ async function measure(api: TuiPluginApi) {
       return Boolean(element && visible(element));
     }, "The final session did not mount after scrolling to the bottom.");
     const bottom = renderTreeStats();
-    assert.equal(bottom.sessionRowShells, expected);
+    assert(bottom.sessionRowShells <= bound, "Bottom retained offscreen row containers.");
+    assert.equal(scroll.scrollHeight, fullHeight, "Mounting the final rows changed scroll extent.");
     assert(
       bottom.mountedSessionRows > 0 && bottom.mountedSessionRows <= bound,
       "Bottom viewport retained too many mounted rows.",

@@ -1,5 +1,6 @@
 /** Test-only observer for the actual sidebar loaded by stock OpenCode. */
 import assert from "node:assert/strict";
+import { validationHostVersion } from "./lib/validation-host";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
 import type { Renderable } from "@opentui/core";
@@ -21,7 +22,7 @@ export default {
       exchange && directory && storageDirectory,
       "Missing isolated sidebar probe environment.",
     );
-    assert.equal(api.app.version, "1.18.30");
+    assert.equal(api.app.version, validationHostVersion);
     const scopeDirectory = directory;
     const storage = createFileStorage({ directory: storageDirectory });
     let lastRequest = 0;
@@ -92,10 +93,9 @@ export default {
         version: api.app.version,
         theme: { mode: api.theme.mode(), selected: api.theme.selected },
         palette: Object.fromEntries(
-          (["text", "textMuted", "success", "warning", "error"] as const).map((name) => [
-            name,
-            api.theme.current[name].toInts().slice(0, 3),
-          ]),
+          (["text", "textMuted", "backgroundPanel", "success", "warning", "error"] as const).map(
+            (name) => [name, api.theme.current[name].toInts().slice(0, 3)],
+          ),
         ),
         route: api.route.current,
         publicContext: { project: project.data, path: api.state.path, vcs: api.state.vcs },

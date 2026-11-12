@@ -5,11 +5,12 @@ import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from
 import { arch, cpus, release, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { iconGlyph } from "../src/ui/icons";
 import { startGraphicalTerminal, type GraphicalTerminal } from "./lib/graphical-terminal";
 
-const expectedVersion = "1.18.30";
+import { validationHostVersion as expectedVersion } from "./lib/validation-host";
 const binary = process.env.OPENCODE_BIN;
-assert(binary, "Set OPENCODE_BIN to stock OpenCode 1.18.30.");
+assert(binary, "Set OPENCODE_BIN to the explicitly selected stock OpenCode version.");
 assert(process.platform !== "win32", "The rendered stock TUI smoke requires a POSIX PTY.");
 const executable = await realpath(binary);
 const plugin = await realpath(
@@ -91,6 +92,7 @@ const sourceFiles = [
   "src/ui/viewport.ts",
   "src/ui/motion.ts",
   "src/ui/icons.ts",
+  "src/ui/colors.ts",
   "src/extensions/runtime.ts",
   "src/extensions/types.ts",
   "src/adapters/opencode-v1/completion-capabilities.ts",
@@ -100,6 +102,7 @@ const sourceFiles = [
   "scripts/build.ts",
   "scripts/sidebar-probe.ts",
   "scripts/smoke-sidebar.ts",
+  "scripts/lib/validation-host.ts",
   "scripts/lib/graphical-terminal.ts",
   "dist/tui.js",
 ];
@@ -463,6 +466,7 @@ throw new Error("Disabled modules must never be imported");`,
       ...env,
       TERM: "xterm-256color",
       LANG: "C.UTF-8",
+      SIDEBAR_TEST_OPENCODE_VERSION: expectedVersion,
       SIDEBAR_SMOKE_EXCHANGE: exchange,
       SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
       SIDEBAR_SMOKE_STORAGE: storage,
@@ -487,6 +491,7 @@ throw new Error("Disabled modules must never be imported");`,
           ...env,
           TERM: "xterm-256color",
           LANG: "C.UTF-8",
+          SIDEBAR_TEST_OPENCODE_VERSION: expectedVersion,
           SIDEBAR_SMOKE_EXCHANGE: exchange,
           SIDEBAR_SMOKE_DIRECTORY: currentDirectory,
           SIDEBAR_SMOKE_STORAGE: storage,
@@ -738,11 +743,8 @@ throw new Error("Disabled modules must never be imported");`,
   );
   await capture("wide-organized", "dark", "ascii");
   if (graphical) {
-    for (const [mode, pin] of [
-      ["nerd", "\uEBA0"],
-      ["unicode", "◆"],
-      ["ascii", "P"],
-    ] as const) {
+    for (const mode of ["nerd", "unicode", "ascii"] as const) {
+      const pin = iconGlyph("pinActive", mode);
       await request("command", { command: "sessions-sidebar.settings" });
       await until((snapshot) => snapshot.dialogDepth > 0, "Icon settings did not open.");
       input(`Icons: ${mode}\r`);
@@ -1199,7 +1201,8 @@ throw new Error("Disabled modules must never be imported");`,
   const processors = cpus();
   const report = {
     schema: 1,
-    runtime: { opencode: expectedVersion, opentui: "0.4.5", solid: "1.9.10", bun: Bun.version },
+    runtime: { opencode: expectedVersion, bun: Bun.version },
+    compiledAgainst: { opentui: "0.4.5", solid: "1.9.10" },
     environment: {
       platform: process.platform,
       architecture: arch(),

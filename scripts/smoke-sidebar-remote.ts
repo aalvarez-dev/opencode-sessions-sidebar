@@ -10,8 +10,11 @@ import { pathToFileURL } from "node:url";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2";
 import { startGraphicalTerminal, type GraphicalTerminal } from "./lib/graphical-terminal";
 
-const expectedVersion = "1.18.30";
-assert(process.env.OPENCODE_BIN, "Set OPENCODE_BIN to stock OpenCode 1.18.30.");
+import { validationHostVersion as expectedVersion } from "./lib/validation-host";
+assert(
+  process.env.OPENCODE_BIN,
+  "Set OPENCODE_BIN to the explicitly selected stock OpenCode version.",
+);
 assert(process.platform !== "win32", "The native attach probe needs a POSIX PTY.");
 const executable = await realpath(process.env.OPENCODE_BIN);
 const plugin = await realpath(
@@ -31,9 +34,11 @@ const checks: { name: string; status: "passed" | "failed"; detail?: string }[] =
 const frames: { name: string; snapshot: Snapshot }[] = [];
 const proxyActivity = { forwarded: 0, rejected: 0, eventStreams: 0, cuts: 0 };
 const budgets = {
-  totalMs: 150_000,
-  outageMs: 10_000,
-  reconnectMs: 20_000,
+  totalMs: 240_000,
+  // Quiet health: at most 60s to the next probe + 2s deadline, with scheduling margin.
+  outageMs: 70_000,
+  // A longer cut reaches the native SSE client's 30s maximum reconnect backoff.
+  reconnectMs: 35_000,
   liveEventMs: 2_000,
   observerResponseMs: 2_000,
 };
@@ -372,6 +377,7 @@ try {
     outputTail = "";
     const launchEnv = {
       ...environment("client"),
+      SIDEBAR_TEST_OPENCODE_VERSION: expectedVersion,
       SIDEBAR_REMOTE_EXCHANGE: exchange,
       SIDEBAR_REMOTE_STORAGE: storage,
       SIDEBAR_REMOTE_PROJECT: currentProject.data!.id,
@@ -395,6 +401,7 @@ try {
         cwd: localProject,
         env: {
           ...environment("client"),
+          SIDEBAR_TEST_OPENCODE_VERSION: expectedVersion,
           SIDEBAR_REMOTE_EXCHANGE: exchange,
           SIDEBAR_REMOTE_STORAGE: storage,
           SIDEBAR_REMOTE_PROJECT: currentProject.data!.id,
@@ -611,6 +618,7 @@ try {
         "src/adapters/opencode-v1/transport-health.ts",
         "scripts/sidebar-remote-probe.ts",
         "scripts/smoke-sidebar-remote.ts",
+        "scripts/lib/validation-host.ts",
         "scripts/lib/graphical-terminal.ts",
       ].map(async (file) => [
         file,

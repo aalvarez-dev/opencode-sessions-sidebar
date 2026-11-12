@@ -1,0 +1,150 @@
+{
+  "acceptanceEvaluated": false,
+  "productChanged": false,
+  "productSha256": "4ba1671d7074735ebb604f41be2b8a3ef2064db5d51c4b19c6a1a52f96899b57",
+  "hostBinarySha256": "87bd160e053af86b5b409daabf71f8dc05bbc3a2a3a5f563f36011cdf706a999",
+  "hostVersion": "1.18.30",
+  "embeddedBunVersion": "1.3.14",
+  "diagnosticCommit": "ffd02f6d85fd48eeb55c562e2d475898a37cf066",
+  "runUrl": "https://github.com/aalvarez-labs/opencode-sessions-sidebar/actions/runs/42425416143",
+  "artifactSha256": "1e44ced63d48450aa70eaae350730ed2b870e8fda53f3e4706fd8d5d2d5277e4",
+  "phaseEndpoints": [
+    {
+      "label": "1-control",
+      "rssMiB": 678.2578125,
+      "anonymousMiB": 562.69921875,
+      "mainHeapSizeMiB": 62.93096351623535,
+      "mainHeapCapacityMiB": 75.03092384338379,
+      "mimallocCommittedMiB": 207.5,
+      "framesAfter20s": 0,
+      "liveSubscriptions": 0,
+      "pendingRequests": 0,
+      "disposed": null
+    },
+    {
+      "label": "2-import",
+      "rssMiB": 838.26953125,
+      "anonymousMiB": 722.69921875,
+      "mainHeapSizeMiB": 63.3047981262207,
+      "mainHeapCapacityMiB": 75.63742446899414,
+      "mimallocCommittedMiB": 125.25,
+      "framesAfter20s": 0,
+      "liveSubscriptions": 0,
+      "pendingRequests": 0,
+      "disposed": null
+    },
+    {
+      "label": "3-data",
+      "rssMiB": 843.09375,
+      "anonymousMiB": 727.5625,
+      "mainHeapSizeMiB": 80.94721412658691,
+      "mainHeapCapacityMiB": 90.82961463928223,
+      "mimallocCommittedMiB": 118.1875,
+      "framesAfter20s": 0,
+      "liveSubscriptions": 12,
+      "pendingRequests": 0,
+      "disposed": {
+        "subscriptions": 0,
+        "pending": 0
+      }
+    },
+    {
+      "label": "4-full",
+      "rssMiB": 831.65625,
+      "anonymousMiB": 716.140625,
+      "mainHeapSizeMiB": 83.52692031860352,
+      "mainHeapCapacityMiB": 93.41833877563477,
+      "mimallocCommittedMiB": 118.8125,
+      "framesAfter20s": 0,
+      "liveSubscriptions": 12,
+      "pendingRequests": 0,
+      "disposed": {
+        "subscriptions": 0,
+        "pending": 0
+      }
+    },
+    {
+      "label": "5-full",
+      "rssMiB": 815.06640625,
+      "anonymousMiB": 699.53125,
+      "mainHeapSizeMiB": 82.3653736114502,
+      "mainHeapCapacityMiB": 92.63058662414551,
+      "mimallocCommittedMiB": 125.8125,
+      "framesAfter20s": 0,
+      "liveSubscriptions": 12,
+      "pendingRequests": 0,
+      "disposed": {
+        "subscriptions": 0,
+        "pending": 0
+      }
+    },
+    {
+      "label": "6-data",
+      "rssMiB": 821.01171875,
+      "anonymousMiB": 705.44140625,
+      "mainHeapSizeMiB": 64.08221054077148,
+      "mainHeapCapacityMiB": 76.35749435424805,
+      "mimallocCommittedMiB": 118.1875,
+      "framesAfter20s": 0,
+      "liveSubscriptions": 12,
+      "pendingRequests": 0,
+      "disposed": {
+        "subscriptions": 0,
+        "pending": 0
+      }
+    },
+    {
+      "label": "7-import",
+      "rssMiB": 856.859375,
+      "anonymousMiB": 741.2890625,
+      "mainHeapSizeMiB": 63.19809532165527,
+      "mainHeapCapacityMiB": 75.2854061126709,
+      "mimallocCommittedMiB": 121.5625,
+      "framesAfter20s": 0,
+      "liveSubscriptions": 0,
+      "pendingRequests": 0,
+      "disposed": null
+    },
+    {
+      "label": "8-control",
+      "rssMiB": 778.609375,
+      "anonymousMiB": 663.0390625,
+      "mainHeapSizeMiB": 63.08705139160156,
+      "mainHeapCapacityMiB": 75.47296142578125,
+      "mimallocCommittedMiB": 114.75,
+      "framesAfter20s": 0,
+      "liveSubscriptions": 0,
+      "pendingRequests": 0,
+      "disposed": null
+    }
+  ],
+  "forensicCases": [
+    {
+      "label": "1-full",
+      "rssAt45sMiB": 696.890625,
+      "rssBeforeHeapCommandMiB": 725.30859375,
+      "tuiShallowBytes": 73373108,
+      "serverShallowBytes": 151881538
+    },
+    {
+      "label": "2-control",
+      "rssAt45sMiB": 834.6328125,
+      "rssBeforeHeapCommandMiB": 870.6640625,
+      "tuiShallowBytes": 71332298,
+      "serverShallowBytes": 162747777
+    }
+  ],
+  "knownBlockingFailuresMiB": {
+    "earlierDelayedMedian": 80.6640625,
+    "earlierSustained": 199.69921875
+  },
+  "withinPhaseControlSpreadMiB": 100.3515625,
+  "limitations": [
+    "Instrumented fresh processes; not acceptance or an allocation-owner proof.",
+    "Both control processes omit product import and activation.",
+    "No forced GC in product or phase protocol; native heap capture may collect and itself increases RSS.",
+    "Shallow heap totals omit resident native and allocator ownership.",
+    "No cross-run result supersedes a prior failure.",
+    "Actual local and hosted 1.18.30 binary SHA-256 matches."
+  ]
+}

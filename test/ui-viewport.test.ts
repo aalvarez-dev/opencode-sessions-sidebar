@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
-import { createSidebarViewport, sidebarChildLines, sidebarRowHeights } from "../src/ui/viewport";
+import {
+  createSidebarViewport,
+  sidebarChildLines,
+  sidebarRowHeights,
+  sidebarVisibleRange,
+} from "../src/ui/viewport";
 import type { MotionNode } from "../src/ui/motion";
 import type { SidebarRow } from "../src/ui/model";
 
@@ -42,6 +47,81 @@ function row(id: string): SidebarRow {
 }
 
 describe("viewport-bounded sidebar mounting", () => {
+  test("variable-height ranges match an independent intersection scan at every boundary", () => {
+    const offsets = [0];
+    for (let index = 0; index < 1000; index++) offsets.push(offsets.at(-1)! + 1 + (index % 9));
+    for (let top = -20; top < offsets.at(-1)! + 20; top += 3) {
+      const bottom = top + 19;
+      const expected = offsets
+        .slice(0, -1)
+        .flatMap((start, index) => (start < bottom && offsets[index + 1]! > top ? [index] : []));
+      const range = sidebarVisibleRange(offsets, top, bottom);
+      expect(Array.from({ length: range.end - range.start }, (_, i) => range.start + i)).toEqual(
+        expected,
+      );
+    }
+    expect(sidebarVisibleRange([0], 0, 20)).toEqual({ start: 0, end: 0 });
+    expect(sidebarVisibleRange([0, 3, 7, 12], 3, 7)).toEqual({ start: 1, end: 2 });
+    expect(sidebarVisibleRange([0, 3, 7, 12], 4, 4)).toEqual({ start: 0, end: 0 });
+  });
+
+  test("one group tracks all rows through jumps, resizes, collapse, shrink and disposal", () => {
+    const root = node();
+    const surface = Object.assign(new EventEmitter(), {
+      root,
+      terminalWidth: 40,
+      terminalHeight: 20,
+      isDestroyed: false,
+    });
+    const clip = node({ parent: root, screenY: 5, height: 10, overflow: "hidden" });
+    const group = node({ parent: clip, screenY: 5, height: 3000 });
+    let offsets: readonly number[] = Array.from({ length: 1001 }, (_, i) => i * 3);
+    const viewport = createSidebarViewport(surface, 3);
+    const ranges: { start: number; end: number }[] = [];
+    const stop = viewport.trackRows({
+      element: () => group,
+      offsets: () => offsets,
+      changed: (x) => ranges.push(x),
+    });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 5 });
+    surface.emit("frame");
+    expect(ranges).toHaveLength(1);
+    Object.assign(group, { screenY: 5 - 996 * 3 });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 995, end: 1000 });
+    offsets = [0, 4, 11];
+    Object.assign(group, { screenY: 5, height: 11 });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 2 });
+    Object.assign(clip, { visible: false });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 0 });
+    Object.assign(clip, { visible: true });
+    surface.terminalHeight = 0;
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 0 });
+    surface.terminalHeight = 20;
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 2 });
+    Object.assign(group, { parent: null });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 0 });
+    stop();
+    Object.assign(group, { parent: clip });
+    surface.emit("frame");
+    expect(ranges.at(-1)).toEqual({ start: 0, end: 0 });
+    surface.emit("destroy");
+    expect(surface.listenerCount("frame")).toBe(0);
+    viewport.trackRows({
+      element: () => group,
+      offsets: () => offsets,
+      changed: () => {
+        throw Error("disposed");
+      },
+    });
+    surface.emit("frame");
+  });
   test("shares ancestor inspection within a frame and invalidates every frame", () => {
     let ancestorReads = 0;
     let rootVisible = true;
@@ -204,6 +284,7 @@ describe("viewport-bounded sidebar mounting", () => {
 
   test("calculates a deep expanded forest without recursive stack growth", () => {
     const rows = Array.from({ length: 5000 }, (_, index) => row(String(index)));
+    let reads = 0;
     const heights = sidebarRowHeights({
       rows,
       activeId: "0",
@@ -211,10 +292,93 @@ describe("viewport-bounded sidebar mounting", () => {
       expandedContext: new Set(),
       expandedChildren: new Set(rows.map((entry) => entry.session.id)),
       rowGap: 0,
-      childrenFor: (id) => (Number(id) + 1 < rows.length ? [rows[Number(id) + 1]!] : []),
+      childrenFor: (id) => {
+        reads++;
+        return Number(id) + 1 < rows.length ? [rows[Number(id) + 1]!] : [];
+      },
     });
     expect(heights.get("0")).toBe(5003);
     expect(heights.get("4999")).toBe(3);
+    expect(reads).toBeLessThanOrEqual(2 * rows.length);
+  });
+
+  test("skips child traversal for 250 collapsed rows and reads only an expanded leaf", () => {
+    const rows = Array.from({ length: 250 }, (_, index) => row(String(index)));
+    let reads = 0;
+    const options = {
+      rows,
+      activeId: "0",
+      topLevel: new Set(rows.map((entry) => entry.session.id)),
+      expandedContext: new Set(["7"]),
+      expandedChildren: new Set<string>(),
+      rowGap: 1,
+      childrenFor: () => {
+        reads++;
+        return [];
+      },
+    };
+    const collapsed = sidebarRowHeights(options);
+    expect(collapsed.size).toBe(250);
+    expect(reads).toBe(0);
+    expect([...collapsed.values()]).toEqual(
+      rows.map((entry) => (entry.session.id === "0" ? 5 : entry.session.id === "7" ? 7 : 4)),
+    );
+    const activeExpanded = sidebarRowHeights({
+      ...options,
+      expandedChildren: new Set(["0"]),
+    });
+    expect(activeExpanded).toEqual(collapsed);
+    expect(reads).toBeLessThanOrEqual(2);
+  });
+
+  test("sizes only open subtrees and keeps a promoted descendant's expansion separate", () => {
+    const rows = [
+      row("parent"),
+      row("child"),
+      row("grandchild"),
+      row("promoted"),
+      row("elsewhere"),
+      row("closed"),
+      row("hidden"),
+    ];
+    const children = new Map([
+      ["parent", [rows[1]!, rows[3]!]],
+      ["child", [rows[2]!]],
+      ["promoted", [rows[4]!]],
+      ["closed", [rows[6]!]],
+    ]);
+    const reads = new Map<string, number>();
+    const options = {
+      rows,
+      activeId: "parent",
+      topLevel: new Set(["parent", "promoted", "closed"]),
+      expandedContext: new Set<string>(),
+      expandedChildren: new Set(["parent"]),
+      rowGap: 1,
+      childrenFor: (id: string) => {
+        reads.set(id, (reads.get(id) ?? 0) + 1);
+        return children.get(id) ?? [];
+      },
+    };
+    const parentExpanded = sidebarRowHeights(options);
+    expect(parentExpanded.get("parent")).toBe(8);
+    expect(parentExpanded.get("promoted")).toBe(4);
+    expect(parentExpanded.get("closed")).toBe(4);
+    expect(new Set(reads.keys())).toEqual(new Set(["parent", "child", "grandchild"]));
+    expect([...reads.values()].every((count) => count <= 2)).toBe(true);
+    reads.clear();
+    const bothExpanded = sidebarRowHeights({
+      ...options,
+      expandedChildren: new Set(["parent", "child", "promoted"]),
+    });
+    expect(bothExpanded.get("parent")).toBe(8);
+    expect(bothExpanded.get("child")).toBe(5);
+    expect(bothExpanded.get("promoted")).toBe(5);
+    expect(bothExpanded.get("closed")).toBe(4);
+    expect(new Set(reads.keys())).toEqual(
+      new Set(["parent", "child", "grandchild", "promoted", "elsewhere"]),
+    );
+    expect([...reads.values()].every((count) => count <= 2)).toBe(true);
   });
 
   test("flattens live descendants into one line each and stops at promoted roots", () => {

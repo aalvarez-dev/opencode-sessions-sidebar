@@ -46,16 +46,27 @@ histories. Any future external reporting requires a separately documented opt-in
 OpenCode 1.18.30's public TUI event API does not expose transport loss. Its local worker also
 buffers SDK fetch responses with `response.text()`, so an additional indefinite SSE subscription
 cannot be used safely for both local and attached clients. The TUI integration therefore owns one
-public `global.health` check per active scope, scheduled five seconds after the preceding check
-settles, with a two-second deadline and at most one request in flight. Stable healthy responses do
+public `global.health` check per active scope, scheduled **60 seconds** after a healthy check
+settles (and 60 seconds after activation). Known outages retry **15 seconds** after settlement. The
+deadline remains **two seconds**, with at most one request in flight. Stable healthy responses do
 not invalidate session data, fetch session metadata, or trigger UI updates. No request is made per
 row.
+
+Native session events remain immediate for every group; these intervals do not control session
+freshness. A silent HTTP failure can take about 62 seconds to be marked uncertain, plus scheduler
+delays. After a settled failure, probe-driven recovery can take about 17 seconds; native events may
+recover sooner. A successful recovery restores the quiet 60-second interval.
 
 A failed request, invalid response, or deadline marks transport-dependent activity uncertain. A
 confirmed recovery reconciles the snapshot. Disposal and scope replacement remove the timer, abort
 the pending request, and reject late responses. If a non-cooperative transport ignores cancellation,
 the UI still becomes uncertain at the deadline; another request is not started until that request
 settles. This prevents an unbounded pile-up.
+
+Once the SDK has fulfilled a health request, its JSON body is fully consumed. Cleanup cancels the
+deadline and releases the controller without aborting that completed request. Rejected requests,
+deadlines and disposal still abort; a late fulfilled response after timeout cannot restore
+certainty. This avoids redundant cancellation; the quiet cadence is independent of this cleanup.
 
 This fallback establishes HTTP server reachability. It does not prove that an independently broken
 event stream is healthy while HTTP remains available, and it does not infer a failure from normal
@@ -200,3 +211,31 @@ reactivation separately from the idle sampling window.
 
 See that document for the procedure, recorded evidence and limits. This bounded workload does not
 close sustained-load, native-client font, remote/disconnect, or general leak-detection gates.
+
+### Batched ancestor invalidation
+
+Snapshot mutations retain the old parent as an invalidation seed and expand the union of current
+ancestor paths once when the existing synchronous adapter batch ends. Intersections and cycles stop
+at already visited nodes. This preserves notifications and invalidates both sides of a reparent
+without repeatedly walking each ancestor's entire ancestry. It does not coalesce separate host
+events.
+
+The graph regression covers flat, deep and wide shapes at 25/250/500 nodes, including reparenting,
+missing parents, cycles, permission/question counts, errors and deletion. It compares summaries
+against an independent DFS oracle, including reads inside subscriber callbacks. For a 500-node
+chain, dictionary reads during a changed-title snapshot fall from 21,212,004 to 2,502; hydration
+falls from 377,761 to 2,011. These are deterministic adapter operation counts, not host latency or
+idle-CPU results.
+
+### Shared affected subtree summaries
+
+A missing summary now discovers only uncached descendants, adds cached subtrees, and propagates
+completed leaf totals once. Remaining cycle members receive the same aggregate of their component
+and attached trees. Computation is iterative; temporary maps and the existing summary cache are
+bounded by loaded sessions. Unaffected cached summaries keep their identity. No new timer, global
+cache or host request is added.
+
+After one leaf activity change in a 500-node chain, reading every summary uses 4,501 dictionary
+reads instead of 376,253. The same independent oracle and shape matrix cover the combined
+invalidation/aggregation path. These counts establish reduced adapter work; rendered-host
+performance and the original resource gates remain separate.

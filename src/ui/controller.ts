@@ -1,5 +1,5 @@
 import { isAbsolute } from "node:path";
-import { createMemo, createSignal } from "solid-js";
+import { batch, createMemo, createSignal } from "solid-js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import {
   createV1Adapter,
@@ -100,6 +100,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     hasVcs: boolean;
   } | null>(null);
   const [revision, setRevision] = createSignal(0);
+  const [sessionRevision, setSessionRevision] = createSignal(0);
   const [connecting, setConnecting] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [pending, setPending] = createSignal(false);
@@ -113,19 +114,25 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
   let epoch = 0;
   let scopeDirectory: string | undefined;
   const changed = () => {
-    setChildDisclosures((previous) => {
-      const retained = [...previous].filter(([id]) => adapter?.get(id));
-      return retained.length === previous.size ? previous : new Map(retained);
-    });
-    setExpandedContext((previous) => {
-      const retained = [...previous].filter((id) => adapter?.get(id));
-      return retained.length === previous.size ? previous : new Set(retained);
-    });
-    setContextFields((previous) => {
-      const retained = [...previous].filter(([id]) => adapter?.get(id));
-      return retained.length === previous.size ? previous : new Map(retained);
-    });
     setRevision((value) => value + 1);
+  };
+  const sessionsChanged = () => {
+    batch(() => {
+      setChildDisclosures((previous) => {
+        const retained = [...previous].filter(([id]) => adapter?.get(id));
+        return retained.length === previous.size ? previous : new Map(retained);
+      });
+      setExpandedContext((previous) => {
+        const retained = [...previous].filter((id) => adapter?.get(id));
+        return retained.length === previous.size ? previous : new Set(retained);
+      });
+      setContextFields((previous) => {
+        const retained = [...previous].filter(([id]) => adapter?.get(id));
+        return retained.length === previous.size ? previous : new Map(retained);
+      });
+      setSessionRevision((value) => value + 1);
+      changed();
+    });
   };
   const buildModel = createSidebarModelBuilder();
   const extensions = createExtensionRuntime({
@@ -145,14 +152,14 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     revision();
     return organization?.snapshot();
   });
+  const sessions = createMemo(() => {
+    sessionRevision();
+    return adapter?.list() ?? [];
+  });
+  const selectedSessionId = createMemo(() => state()?.selectedSessionId ?? null);
+  // Loading, diagnostics and extension status do not change the session model.
   const model = createMemo(() => {
-    revision();
-    return buildModel(
-      adapter?.list() ?? [],
-      document(),
-      (id) => adapter?.summary(id),
-      state()?.selectedSessionId ?? null,
-    );
+    return buildModel(sessions(), document(), (id) => adapter?.summary(id), selectedSessionId());
   });
   const groups = createMemo(() => model().groups);
   const rows = createMemo(() => model().rows);
@@ -183,11 +190,11 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     return current?.later.map((key) => sessionIdFromKey(current.scope, key)) ?? [];
   });
   const unavailableLater = createMemo(() => {
-    revision();
+    sessionRevision();
     return laterIds().filter((id) => id !== null && !adapter?.get(id));
   });
   const unavailablePins = createMemo(() => {
-    revision();
+    sessionRevision();
     const current = document();
     return (
       current?.pins
@@ -227,7 +234,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     setPending(false);
     setConnecting(true);
     setError(null);
-    changed();
+    sessionsChanged();
     if (lookupInFlight) {
       setConnecting(false);
       setError("The previous project lookup is still finishing. Refresh to retry.");
@@ -273,8 +280,11 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
         scope: { hostId: scope.hostId, projectId: scope.projectId },
         storage: createFileStorage({ directory: options.storageDirectory }),
       });
-      unsubscribe = adapter.subscribe(changed);
-      changed();
+      unsubscribe = adapter.subscribe((change) => {
+        if (change.sessionIds.length) sessionsChanged();
+        else changed();
+      });
+      sessionsChanged();
       await Promise.all([adapter.start(), organization.start()]);
       if (!active() || generation !== epoch) return;
       const currentAdapter = adapter;
@@ -441,7 +451,7 @@ export function createSidebarController(api: TuiPluginApi, options: SidebarOptio
     extensions.dispose();
     ++epoch;
     stopScope();
-    changed();
+    sessionsChanged();
   }
   return {
     active,

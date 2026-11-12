@@ -1,0 +1,59 @@
+name: Isolated memory phase diagnostic
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/isolated-memory-phases.yml"
+      - "scripts/diagnose-memory-phases.ts"
+      - "scripts/diagnose-memory-heaps.ts"
+      - "scripts/memory-phase-subject.ts"
+      - "scripts/memory-phase-observer.ts"
+      - "scripts/memory-heap-observer.ts"
+      - "docs/memory-phase-diagnostic.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: isolated-memory-phases-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  memory-phases:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Build with pinned tools and record the actual executable
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sidebar-tools" --no-audit --no-fund opencode-ai@1.18.30
+          echo "OPENCODE_BIN=$RUNNER_TEMP/sidebar-tools/node_modules/.bin/opencode" >> "$GITHUB_ENV"
+          bun install --frozen-lockfile
+          bun run build
+          mkdir -p .sidebar-lab/actions/memory-phases
+          git rev-parse HEAD > .sidebar-lab/actions/memory-phases/checkout-sha.txt
+          uname -a > .sidebar-lab/actions/memory-phases/host.txt
+          lscpu >> .sidebar-lab/actions/memory-phases/host.txt
+      - name: Measure import, data, rendering and disposal in mirrored order
+        env:
+          SIDEBAR_MEMORY_DIR: ${{ github.workspace }}/.sidebar-lab/actions/memory-phases/phases
+        run: bun scripts/diagnose-memory-phases.ts
+      - name: Capture both native heaps in separate forensic processes
+        env:
+          SIDEBAR_MEMORY_DIR: ${{ github.workspace }}/.sidebar-lab/actions/memory-phases/heaps
+        run: bun scripts/diagnose-memory-heaps.ts
+      - name: Retain every result including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: memory-phase-diagnostic
+          path: .sidebar-lab/actions/memory-phases/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14

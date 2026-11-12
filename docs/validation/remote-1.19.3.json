@@ -1,0 +1,91 @@
+{
+  "status": "passed",
+  "version": "1.19.3",
+  "bunVersion": "1.3.14",
+  "platform": "linux",
+  "budgets": {
+    "totalMs": 150000,
+    "outageMs": 10000,
+    "reconnectMs": 20000,
+    "liveEventMs": 2000,
+    "observerResponseMs": 2000
+  },
+  "checks": [
+    {
+      "name": "stock attach loads the sidebar against a separate server and local client profile",
+      "status": "passed"
+    },
+    {
+      "name": "mark, pin and Later persist through real attached TUI actions",
+      "status": "passed"
+    },
+    {
+      "name": "local observer remains responsive throughout the real transport cut",
+      "status": "passed"
+    },
+    {
+      "name": "native sidebar marks activity uncertain while disconnected",
+      "status": "passed",
+      "detail": "After 10057 ms without transport, the rendered activity glyph was \"?\"; expected '?'. No invalidation or refresh was injected."
+    },
+    {
+      "name": "offline server changes do not leak through the severed client transport",
+      "status": "passed"
+    },
+    {
+      "name": "annotations are preserved during loss of transport",
+      "status": "passed"
+    },
+    {
+      "name": "native reconnect reconciles missed rename/create/delete without a manual refresh",
+      "status": "passed"
+    },
+    {
+      "name": "annotations survive native transport restoration",
+      "status": "passed"
+    },
+    {
+      "name": "the native event stream reopens after restoring transport",
+      "status": "passed",
+      "detail": "Observed 2 forwarded event subscriptions."
+    },
+    {
+      "name": "restored native events deliver new changes without a refresh",
+      "status": "passed"
+    },
+    {
+      "name": "client restart preserves mark/pin/Later and loads current server state",
+      "status": "passed"
+    }
+  ],
+  "proxyActivity": {
+    "forwarded": 98,
+    "rejected": 7,
+    "eventStreams": 3,
+    "cuts": 1
+  },
+  "graphicalRuns": [],
+  "reconnectElapsedMs": 5032.509160999998,
+  "artifactHashes": {
+    "src/tui.tsx": "1452f748d7116b157d1f348003cb8e1e467206ccbcd9afe9ac5f5bef02c0b287",
+    "src/ui/controller.ts": "01149a50abd1ff04c8e2735cb80a2d192a349b5133feb094aedde1b766c54a57",
+    "src/ui/model.ts": "0cc957920b7111ee12c8493be489222ce5c31a007adf510ed203489fd33af4b3",
+    "src/ui/view.tsx": "4e6cada65e96c85e000e13f56754b69875d51d8736e3818bcea5b42076efdca2",
+    "src/ui/end-label.tsx": "dcb695bee1ebfd7b872be98e25119b66bcff7cd2c76ed138c579711e2f99a49c",
+    "src/ui/viewport.ts": "9388a54adda033166e3d96697c055d5a3ff1014759ce6443a4aa91791e624a7d",
+    "src/adapters/opencode-v1/adapter.ts": "79cdb9c0dcc9733c05d153410ecfd5b12eb946fb3d9d4663bd8fcc9d693ad2ab",
+    "src/adapters/opencode-v1/transport-health.ts": "31b76ddce5cd064f218fb33905d736ad6b7558bf6b9646af7d73b0827389f5fb",
+    "scripts/sidebar-remote-probe.ts": "179a7b8cd8264e2af1087070a4cfb059b22dd18d75eb7ee6e906d8aa5ea0a9a5",
+    "scripts/smoke-sidebar-remote.ts": "c17334a0484bf4ee9b57312ef48b7060858afabfd874eff5775eddcd3bb75ce6",
+    "scripts/lib/validation-host.ts": "53569ac09b42006a00ae700d3970452001726eeabf851bb4a0881572c82c3214",
+    "scripts/lib/graphical-terminal.ts": "87a35ba234c058d70ce2e481c9274143edb6cae0c2e9539d83d28c818281bfcd",
+    "runtimePlugin": "a91d70019f34307548355234859f80130bac1cc8483adee6bdcc9535bf1a472d"
+  },
+  "evidence": "Real stock TUI attach, separate loopback server, socket-destroying proxy, local-only observation, public CRUD and actual keyboard organization actions.",
+  "limitations": [
+    "Controlled loopback transport, not SSH or arbitrary WAN behavior.",
+    "No injected adapter invalidation or transport event.",
+    "Automatic completion policies and correlated report exceptions are outside this transport probe.",
+    "Captured renderer buffers are not terminal-pixel screenshots."
+  ]
+}

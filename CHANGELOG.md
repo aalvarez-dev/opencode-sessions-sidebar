@@ -2,6 +2,13 @@
 
 ## Unreleased development build
 
+- Space healthy global transport checks to 60 seconds, with 15-second retries after known failure
+  and the existing two-second deadline. Native session events remain immediate. See the
+  [quiet-health validation](docs/quiet-transport-health.md); no session cap or feature restriction.
+
+- Window top-level group row containers with prefix heights and spacers, preserving every session
+  and full-list scrolling. See [the optimization report](docs/windowed-row-containers.md) for its
+  pre-cadence validation; the subsequent quiet-health results are recorded separately above.
 - Keep offscreen session geometry while mounting native text buffers only near the viewport;
   preserve full-list scrolling, expanded context/children and completion ordering.
 - Detect unavailable TUI HTTP transport with one bounded health check, reject stale snapshots and
