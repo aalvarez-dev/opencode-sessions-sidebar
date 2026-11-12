@@ -44,6 +44,8 @@ const report: any = {
     warmupPairsDiscarded: attributionCriteria.warmupPairsDiscarded,
     idleMs,
     eventCount,
+    settleMs: Number(process.env.SIDEBAR_ATTRIBUTION_SETTLE_MS ?? 0),
+    profile: process.env.SIDEBAR_ATTRIBUTION_PROFILE === "1",
     interleaved: true,
     sequentialArms: true,
     forcedGC: false,
@@ -240,6 +242,8 @@ try {
         SIDEBAR_ATTRIBUTION_SESSION: selectedSession!,
         SIDEBAR_ATTRIBUTION_IDLE_MS: String(idleMs),
         SIDEBAR_ATTRIBUTION_EVENTS: String(eventCount),
+        SIDEBAR_ATTRIBUTION_SETTLE_MS: process.env.SIDEBAR_ATTRIBUTION_SETTLE_MS ?? "0",
+        SIDEBAR_ATTRIBUTION_PROFILE: process.env.SIDEBAR_ATTRIBUTION_PROFILE ?? "",
         SIDEBAR_TEST_OPENCODE_VERSION: version,
       },
       terminal: {

@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { rename, writeFile } from "node:fs/promises";
 import { snapshot, type AttributionState } from "./activation-attribution-subject";
 import { attributionCriteria } from "./lib/attribution-criteria";
+import { startCpuProfile, type CpuProfiler } from "./lib/cpu-profile";
 
 const arm = process.env.SIDEBAR_ATTRIBUTION_ARM === "product" ? "product" : "control";
 const output = process.env.SIDEBAR_ATTRIBUTION_OUTPUT!;
@@ -16,6 +17,8 @@ const idleMs = Number(
   process.env.SIDEBAR_ATTRIBUTION_IDLE_MS ?? attributionCriteria.windows.idleMs,
 );
 const eventCount = Number(process.env.SIDEBAR_ATTRIBUTION_EVENTS ?? 0);
+const settleMs = Number(process.env.SIDEBAR_ATTRIBUTION_SETTLE_MS ?? 0);
+const profileRequested = process.env.SIDEBAR_ATTRIBUTION_PROFILE === "1";
 
 const state = (): AttributionState => (globalThis as any).__sidebarActivationAttribution;
 
@@ -78,6 +81,10 @@ async function measure(api: any): Promise<void> {
     }, "Native session not ready");
     await until(() => tree(api).rows > 0 === (arm === "product"), "Unexpected sidebar geometry");
     snapshot("ready");
+    // Optional settle so a steady-state run can exclude the transient that follows seeding and the
+    // first render; the measured window then starts at the post-settle "settled" snapshot.
+    if (settleMs > 0) await Bun.sleep(settleMs);
+    snapshot("settled");
     for (let index = 0; index < eventCount; index += 1) {
       await api.client.session.create(
         { directory, title: `Synthetic attribution event ${index + 1}` },
@@ -87,8 +94,32 @@ async function measure(api: any): Promise<void> {
       await Bun.sleep(50);
     }
     snapshot("after-events");
+    // The profile covers exactly the idle window: started after the last pre-idle snapshot and
+    // stopped as soon as the idle sleep ends. If the host lacks node:inspector we keep the CPU-time
+    // measurement and record the reason instead of failing the arm.
+    let profiler: CpuProfiler | undefined;
+    let profileError: string | undefined;
+    if (profileRequested) {
+      try {
+        profiler = await startCpuProfile();
+      } catch (error) {
+        profileError = String(error);
+      }
+    }
     await Bun.sleep(idleMs);
     snapshot("ready+idle");
+    if (profiler) {
+      try {
+        const captured = await profiler.stop();
+        await writeFile(`${output}.cpuprofile`, JSON.stringify(captured));
+        profiler = undefined;
+      } catch (error) {
+        profileError = String(error);
+      }
+    }
+    result.profile = profileRequested
+      ? { requested: true, captured: profileError === undefined, error: profileError }
+      : undefined;
     result.completed = true;
   } catch (error) {
     result.failure = String(error);

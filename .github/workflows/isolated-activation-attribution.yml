@@ -14,10 +14,19 @@ on:
       - "scripts/lib/memory-deltas.ts"
       - "scripts/lib/memory-phase-reanalysis.ts"
       - "docs/validation/activation-attribution-criteria.md"
+      - "scripts/lib/cpu-profile.ts"
+      - "scripts/lib/cpu-profile-analysis.ts"
+      - "scripts/analyze-cpu-profile.ts"
+      - "scripts/analyze-idle-steady-state.ts"
+      - "docs/validation/idle-steady-state-criteria.md"
   workflow_dispatch:
     inputs:
       run_campaign:
         description: Run the paired N=10 activation-attribution campaign
+        type: boolean
+        default: false
+      run_idle_diagnostic:
+        description: Run the steady-state idle measurement and CPU profile
         type: boolean
         default: false
 
@@ -120,6 +129,93 @@ jobs:
         with:
           name: activation-attribution
           path: .sidebar-lab/activation-attribution/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+  idle-diagnostic:
+    if: inputs.run_idle_diagnostic
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Build with pinned tools and record the actual executable
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sidebar-tools" --no-audit --no-fund opencode-ai@1.18.30
+          echo "OPENCODE_BIN=$RUNNER_TEMP/sidebar-tools/node_modules/.bin/opencode" >> "$GITHUB_ENV"
+          bun install --frozen-lockfile
+          bun run build
+      - name: Steady-state idle measurement (N=10, no events, 30s settle, 70s idle)
+        env:
+          SIDEBAR_ATTRIBUTION_DIR: ${{ github.workspace }}/.sidebar-lab/idle-steady
+          SIDEBAR_ATTRIBUTION_PAIRS: "10"
+          SIDEBAR_ATTRIBUTION_EVENTS: "0"
+          SIDEBAR_ATTRIBUTION_SETTLE_MS: "30000"
+          SIDEBAR_ATTRIBUTION_IDLE_MS: "70000"
+          SIDEBAR_TEST_OPENCODE_VERSION: "1.18.30"
+          BUN_JSC_logGC: "1"
+        run: bun scripts/diagnose-activation-attribution.ts
+      - name: Compute the steady-state verdict
+        if: always()
+        continue-on-error: true
+        run: |
+          summary=.sidebar-lab/idle-steady/summary.json
+          if [ -f "$summary" ]; then
+            bun scripts/analyze-idle-steady-state.ts "$summary" docs/validation/idle-steady-state.json
+          fi
+      - name: Steady-state CPU profile (N=2, 30s settle, 70s idle)
+        if: always()
+        continue-on-error: true
+        env:
+          SIDEBAR_ATTRIBUTION_DIR: ${{ github.workspace }}/.sidebar-lab/idle-profile-steady
+          SIDEBAR_ATTRIBUTION_PAIRS: "2"
+          SIDEBAR_ATTRIBUTION_EVENTS: "0"
+          SIDEBAR_ATTRIBUTION_SETTLE_MS: "30000"
+          SIDEBAR_ATTRIBUTION_IDLE_MS: "70000"
+          SIDEBAR_ATTRIBUTION_PROFILE: "1"
+          SIDEBAR_TEST_OPENCODE_VERSION: "1.18.30"
+          BUN_JSC_logGC: "1"
+        run: bun scripts/diagnose-activation-attribution.ts
+      - name: Short-gate CPU profile (N=2, 2s settle, 5s observe)
+        if: always()
+        continue-on-error: true
+        env:
+          SIDEBAR_ATTRIBUTION_DIR: ${{ github.workspace }}/.sidebar-lab/idle-profile-short
+          SIDEBAR_ATTRIBUTION_PAIRS: "2"
+          SIDEBAR_ATTRIBUTION_EVENTS: "0"
+          SIDEBAR_ATTRIBUTION_SETTLE_MS: "2000"
+          SIDEBAR_ATTRIBUTION_IDLE_MS: "5000"
+          SIDEBAR_ATTRIBUTION_PROFILE: "1"
+          SIDEBAR_TEST_OPENCODE_VERSION: "1.18.30"
+          BUN_JSC_logGC: "1"
+        run: bun scripts/diagnose-activation-attribution.ts
+      - name: Summarize captured profiles
+        if: always()
+        continue-on-error: true
+        run: |
+          shopt -s nullglob
+          files=(.sidebar-lab/idle-profile-*/*.cpuprofile)
+          if [ ${#files[@]} -gt 0 ]; then
+            bun scripts/analyze-cpu-profile.ts "${files[@]}" --out docs/validation/idle-profile-frames.json
+          else
+            echo "No .cpuprofile captured (node:inspector may be unavailable in the host build)."
+          fi
+      - name: Retain every result including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: idle-diagnostic
+          path: |
+            .sidebar-lab/idle-steady/
+            .sidebar-lab/idle-profile-steady/
+            .sidebar-lab/idle-profile-short/
+            docs/validation/idle-steady-state.json
+            docs/validation/idle-profile-frames.json
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
