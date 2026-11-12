@@ -54,7 +54,9 @@ burns roughly 2.6 cores **in both arms**. That cost decays to about 21% over the
 about 1.8% in steady idle, in both arms. After `ready` the sidebar's incremental CPU is
 indistinguishable from zero.
 
-The cold window (N=2, 0 s settle, 5 s observe — the shape of the short acceptance gate) confirms the
+The cold window (N=2, 0 s settle, 5 s observe — a cold probe that drops the 2 s settle of the short
+acceptance gate; the deviation from the pre-registered 2 s settle is recorded in the criteria doc)
+confirms the
 front-loading: the first 5 s after `ready` burn 54–112% of a core in both arms, with the product
 only somewhat higher in one pair (112% vs 54%) and level in the other (65% vs 60%). With two pairs
 this is not enough to attribute a number, but it shows the cost is a transient of the first seconds,
@@ -67,6 +69,16 @@ inside the host) and, after the closing snapshot was moved out of the capture wi
 contain the observer's own `heapStats()` walks. The 5 s cold windows are still too short and too
 noisy — hashed chunk URLs, profiler start/stop boundary time — to attribute frames reliably, so the
 profiles are not used for the verdict above. The CPU-time measurement is authoritative for the PASS.
+
+### Precision caveat
+
+The `+0.136` median is a tight upper bound on the sidebar's incremental cost, not an exact figure:
+both arms take an `after-events` snapshot even with zero events, and that snapshot's `heapStats()`
+walk runs inside the measured window. Because the product arm carries the mounted sidebar, its walk
+can be marginally larger; at ~100 ms this is ≈0.14 points — comparable to the median, far below the
+`1.0` budget, and of an uncertain sign. The PASS holds by a wide margin. Removing this harness
+overhead (skip the empty `after-events` snapshot, or read `cpuUsec` before the walks) is a
+refinement for a future window, not a correction to this result.
 
 ## Interpretation
 

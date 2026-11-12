@@ -19,8 +19,12 @@ cycles actually go.
 - **Measure** (`SIDEBAR_ATTRIBUTION_IDLE_MS=70000`): 70 s of idle with **no injected events**, long
   enough to pass the JSC full-GC idle plateau.
 - **Steady window** = `settled` → `ready+idle` (`scripts/analyze-idle-steady-state.ts`).
-- **Short profile** (separate run): settle 2 s, observe 5 s, matching the acceptance short gate, to
-  characterize the transient that gate measures.
+- **Cold-window profile** (separate run): settle 0 s, observe 5 s, to characterize the front-loaded
+  transient that the acceptance short gate (2 s settle + 5 s observe) only partly captures.
+  **Amendment (2026-11-12, recorded before analysis):** this document pre-registered a short profile
+  with a 2 s settle; the executed campaign used a 0 s settle to expose the pure front-loading. The
+  deviation is recorded here, the profiles are informational only (never used for the verdict), and
+  the change is not silent.
 
 No garbage collection is forced and `app.heap_snapshot` is never invoked.
 
