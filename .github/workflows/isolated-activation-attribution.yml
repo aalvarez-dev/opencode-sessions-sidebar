@@ -29,6 +29,10 @@ on:
         description: Run the steady-state idle measurement and CPU profile
         type: boolean
         default: false
+      profile_only:
+        description: Skip the long steady-state measurement and run only the CPU profiles
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -151,6 +155,7 @@ jobs:
           bun install --frozen-lockfile
           bun run build
       - name: Steady-state idle measurement (N=10, no events, 30s settle, 70s idle)
+        if: ${{ !cancelled() && !inputs.profile_only }}
         env:
           SIDEBAR_ATTRIBUTION_DIR: ${{ github.workspace }}/.sidebar-lab/idle-steady
           SIDEBAR_ATTRIBUTION_PAIRS: "10"
@@ -169,7 +174,7 @@ jobs:
             bun scripts/analyze-idle-steady-state.ts "$summary" docs/validation/idle-steady-state.json
           fi
       - name: Steady-state CPU profile (N=2, 30s settle, 70s idle)
-        if: always()
+        if: ${{ !cancelled() && !inputs.profile_only }}
         continue-on-error: true
         env:
           SIDEBAR_ATTRIBUTION_DIR: ${{ github.workspace }}/.sidebar-lab/idle-profile-steady
@@ -181,14 +186,14 @@ jobs:
           SIDEBAR_TEST_OPENCODE_VERSION: "1.18.30"
           BUN_JSC_logGC: "1"
         run: bun scripts/diagnose-activation-attribution.ts
-      - name: Short-gate CPU profile (N=2, 2s settle, 5s observe)
+      - name: Cold-window CPU profile (N=2, 0s settle, 5s observe)
         if: always()
         continue-on-error: true
         env:
           SIDEBAR_ATTRIBUTION_DIR: ${{ github.workspace }}/.sidebar-lab/idle-profile-short
           SIDEBAR_ATTRIBUTION_PAIRS: "2"
           SIDEBAR_ATTRIBUTION_EVENTS: "0"
-          SIDEBAR_ATTRIBUTION_SETTLE_MS: "2000"
+          SIDEBAR_ATTRIBUTION_SETTLE_MS: "0"
           SIDEBAR_ATTRIBUTION_IDLE_MS: "5000"
           SIDEBAR_ATTRIBUTION_PROFILE: "1"
           SIDEBAR_TEST_OPENCODE_VERSION: "1.18.30"

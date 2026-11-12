@@ -107,7 +107,8 @@ async function measure(api: any): Promise<void> {
       }
     }
     await Bun.sleep(idleMs);
-    snapshot("ready+idle");
+    // Stop the profile before the closing snapshot so the snapshot's heap walk (heapStats) stays
+    // out of the captured window and does not masquerade as product CPU.
     if (profiler) {
       try {
         const captured = await profiler.stop();
@@ -117,6 +118,7 @@ async function measure(api: any): Promise<void> {
         profileError = String(error);
       }
     }
+    snapshot("ready+idle");
     result.profile = profileRequested
       ? { requested: true, captured: profileError === undefined, error: profileError }
       : undefined;
