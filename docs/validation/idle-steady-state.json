@@ -19,10 +19,7 @@
   "evaluablePairs": 8,
   "totalPairs": 10,
   "droppedPairs": [],
-  "warmupDiscarded": [
-    0,
-    1
-  ],
+  "warmupDiscarded": [0, 1],
   "cpuPoints": {
     "median": 0.1357205544817035,
     "iqr": 0.1418033292496788
