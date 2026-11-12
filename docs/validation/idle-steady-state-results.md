@@ -56,11 +56,10 @@ indistinguishable from zero.
 
 The cold window (N=2, 0 s settle, 5 s observe — a cold probe that drops the 2 s settle of the short
 acceptance gate; the deviation from the pre-registered 2 s settle is recorded in the criteria doc)
-confirms the
-front-loading: the first 5 s after `ready` burn 54–112% of a core in both arms, with the product
-only somewhat higher in one pair (112% vs 54%) and level in the other (65% vs 60%). With two pairs
-this is not enough to attribute a number, but it shows the cost is a transient of the first seconds,
-not a sustained one.
+confirms the front-loading: the first 5 s after `ready` burn 54–112% of a core in both arms, with
+the product only somewhat higher in one pair (112% vs 54%) and level in the other (65% vs 60%). With
+two pairs this is not enough to attribute a number, but it shows the cost is a transient of the
+first seconds, not a sustained one.
 
 ## Profiles
 
