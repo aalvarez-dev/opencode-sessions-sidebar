@@ -26,8 +26,8 @@ No garbage collection is forced and `app.heap_snapshot` is never invoked.
 
 ## Sample and statistic
 
-- N = 10 interleaved sequential pairs, first 2 discarded as warm-up, minimum 5 evaluable; below
-  that the verdict is INCONCLUSIVE. Profile runs use N = 2 (frames only, no verdict).
+- N = 10 interleaved sequential pairs, first 2 discarded as warm-up, minimum 5 evaluable; below that
+  the verdict is INCONCLUSIVE. Profile runs use N = 2 (frames only, no verdict).
 - Metric: within-process `process.cpuUsage()` delta over the steady window, paired
   difference-in-differences (product − control), reported as median and IQR.
 

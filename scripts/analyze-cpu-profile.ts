@@ -24,7 +24,9 @@ for (let index = 0; index < args.length; index += 1) {
 }
 
 if (inputs.length === 0) {
-  console.error("usage: bun scripts/analyze-cpu-profile.ts <profile.json ...> [--out summary.json]");
+  console.error(
+    "usage: bun scripts/analyze-cpu-profile.ts <profile.json ...> [--out summary.json]",
+  );
   process.exitCode = 2;
 } else {
   const profiles: unknown[] = [];

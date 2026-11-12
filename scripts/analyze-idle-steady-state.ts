@@ -32,12 +32,7 @@ if (!input) {
   process.exitCode = 2;
 } else {
   const report = JSON.parse(await readFile(resolve(input), "utf8")) as CampaignReport;
-  const samples = collectWindowSamples(
-    report,
-    FROM,
-    TO,
-    attributionCriteria.warmupPairsDiscarded,
-  );
+  const samples = collectWindowSamples(report, FROM, TO, attributionCriteria.warmupPairsDiscarded);
   const verdict = decideVerdict(
     { rss: samples.rss, cpu: samples.cpu },
     {

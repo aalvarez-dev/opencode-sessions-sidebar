@@ -50,7 +50,12 @@ test("falls back to hitCount when samples are absent", () => {
     nodes: [
       {
         id: 1,
-        callFrame: { functionName: "x", url: "bundle:///dist/tui.js", lineNumber: 1, columnNumber: 0 },
+        callFrame: {
+          functionName: "x",
+          url: "bundle:///dist/tui.js",
+          lineNumber: 1,
+          columnNumber: 0,
+        },
         hitCount: 7,
       },
     ],

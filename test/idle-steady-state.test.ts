@@ -58,9 +58,9 @@ const criteria = {
   minEvaluablePairs: 5,
 };
 
-// +2 CPU points over the idle window == 2 * 70_000 * 1000 / 100 microseconds.
-const TWO_POINTS = 2 * IDLE_MS * 1000;
-const HALF_POINT = 0.5 * IDLE_MS * 1000;
+// cpuPoints = micros / (10 * elapsedMs); +2 points over 70_000 ms == 1_400_000 microseconds.
+const TWO_POINTS = 2 * IDLE_MS * 10;
+const HALF_POINT = 0.5 * IDLE_MS * 10;
 
 test("steady window excludes the settle snapshot and fails above the CPU budget", () => {
   const data = report([

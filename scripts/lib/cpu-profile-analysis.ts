@@ -102,7 +102,11 @@ export function summarizeProfile(profile: CpuProfile, topFrameCount = 15): Profi
     }
   }
   const buckets = [...bucketMicros.entries()]
-    .map(([bucket, selfMicros]) => ({ bucket, selfMicros, samples: bucketSamples.get(bucket) ?? 0 }))
+    .map(([bucket, selfMicros]) => ({
+      bucket,
+      selfMicros,
+      samples: bucketSamples.get(bucket) ?? 0,
+    }))
     .sort((a, b) => b.selfMicros - a.selfMicros);
   return { totalMicros, buckets, topFrames: frames.slice(0, topFrameCount) };
 }
